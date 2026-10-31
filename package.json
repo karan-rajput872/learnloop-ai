@@ -1,0 +1,22 @@
+{
+  "name": "learnloop-ai-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LearnLoop AI — Adaptive Exam-Prep Tutor",
+  "scripts": {
+    "start:backend": "cd backend && .\\.venv\\Scripts\\uvicorn.exe app.main:app --host 0.0.0.0 --port 8000 --reload",
+    "start:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
+  },
+  "keywords": [
+    "adaptive-learning",
+    "agentic-ai",
+    "dsa",
+    "exam-prep",
+    "misconception-detection",
+    "spaced-repetition"
+  ],
+  "author": "LearnLoop AI Team",
+  "license": "MIT"
+}
