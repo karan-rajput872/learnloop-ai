@@ -23,6 +23,7 @@ export const AuthModal: React.FC = () => {
     openAuthModal,
     login,
     register,
+    loginWithGoogle,
     logout,
     user
   } = useAuth();
@@ -136,9 +137,30 @@ export const AuthModal: React.FC = () => {
       return;
     }
     if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
-      (window as any).google.accounts.id.prompt();
+      try {
+        (window as any).google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (response: { credential: string }) => {
+            if (response?.credential) {
+              setIsLoading(true);
+              setErrorMessage(null);
+              try {
+                await loginWithGoogle(response.credential);
+                closeAuthModal();
+              } catch (err: any) {
+                setErrorMessage(err.message || 'Google authentication failed.');
+              } finally {
+                setIsLoading(false);
+              }
+            }
+          }
+        });
+        (window as any).google.accounts.id.prompt();
+      } catch (err: any) {
+        setErrorMessage(err.message || 'Could not launch Google Sign-In.');
+      }
     } else {
-      setErrorMessage('Google Identity Services initializing. Please try again or sign in with email & password.');
+      setErrorMessage('Google Identity Services library is loading. Please try again or sign in with email & password.');
     }
   };
 

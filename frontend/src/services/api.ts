@@ -11,19 +11,11 @@ import {
   DiagnosticAttemptSummary
 } from '../types';
 
-// If VITE_API_BASE is provided in build env, use it.
-// Default to same-origin '/api' routed via Vite proxy (local dev) or Vercel proxy (production).
+// Always use same-origin '/api' in browser environment.
+// This automatically routes via Vite proxy in development (http://localhost:8000)
+// and Vercel edge rewrite proxy in production (https://learnloop-ai-backend.onrender.com),
+// guaranteeing first-party cookie handling, zero CORS preflight failures, and complete origin safety.
 export const getApiBase = (): string => {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host.endsWith('vercel.app') || host === 'localhost' || host === '127.0.0.1') {
-      return '/api';
-    }
-  }
-  const envBase = import.meta.env.VITE_API_BASE;
-  if (envBase && typeof envBase === 'string' && envBase.trim() !== '') {
-    return envBase.trim().replace(/\/+$/, '');
-  }
   return '/api';
 };
 
