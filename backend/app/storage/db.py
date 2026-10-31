@@ -109,6 +109,19 @@ class StorageManager:
                     timestamp TEXT
                 )
             """)
+            # Diagnostic Assessment Attempts History
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS diagnostic_attempts (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT,
+                    score INTEGER,
+                    total_questions INTEGER,
+                    percentage REAL,
+                    concept_results TEXT,
+                    question_details TEXT,
+                    timestamp TEXT
+                )
+            """)
             conn.commit()
 
     def ensure_default_learner(self):
@@ -408,6 +421,57 @@ class StorageManager:
                         m["metadata"] = {}
                 messages.append(m)
             return messages
+
+    def save_diagnostic_attempt(self, attempt_data: Dict[str, Any]):
+        """Persist a complete diagnostic assessment attempt with concept results and question details."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO diagnostic_attempts
+                (id, student_id, score, total_questions, percentage, concept_results, question_details, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                attempt_data["id"],
+                attempt_data.get("student_id", "student_default"),
+                attempt_data["score"],
+                attempt_data["total_questions"],
+                attempt_data["percentage"],
+                json.dumps(attempt_data.get("concept_results", [])),
+                json.dumps(attempt_data.get("question_details", [])),
+                attempt_data.get("timestamp", datetime.utcnow().isoformat())
+            ))
+            conn.commit()
+
+    def get_diagnostic_attempts(self, student_id: str = "student_default") -> List[Dict[str, Any]]:
+        """Retrieve historical diagnostic assessment attempts summaries for a student."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, student_id, score, total_questions, percentage, timestamp
+                FROM diagnostic_attempts
+                WHERE student_id = ?
+                ORDER BY timestamp DESC
+            """, (student_id,))
+            return [dict(r) for r in cursor.fetchall()]
+
+    def get_diagnostic_attempt_by_id(self, attempt_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve full details of a specific diagnostic attempt by ID for review."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM diagnostic_attempts WHERE id = ?", (attempt_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            res = dict(row)
+            try:
+                res["concept_results"] = json.loads(res.get("concept_results") or "[]")
+            except Exception:
+                res["concept_results"] = []
+            try:
+                res["question_details"] = json.loads(res.get("question_details") or "[]")
+            except Exception:
+                res["question_details"] = []
+            return res
 
     def ensure_teacher_demo_cohort(self):
         """Seed realistic demonstration cohort data for the teacher dashboard (clearly labeled sample data)"""

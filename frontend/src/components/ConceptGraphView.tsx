@@ -288,7 +288,7 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
                       fontWeight="600"
                       fontFamily="JetBrains Mono, monospace"
                     >
-                      {concept.mastery_percentage}% Mastery
+                      {concept.questions_attempted === 0 ? 'Not Assessed' : `${concept.mastery_percentage}% Mastery`}
                     </text>
                   </g>
                 );
@@ -324,10 +324,11 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-sm text-[#172033] font-sans">{c.name}</span>
                         <span className={`text-xs font-mono font-bold ${
+                          c.questions_attempted === 0 ? 'text-slate-500' :
                           c.mastery_percentage >= 70 ? 'text-teal-700' :
                           c.mastery_percentage >= 40 ? 'text-amber-700' : 'text-[#5B5CE2]'
                         }`}>
-                          {c.mastery_percentage}%
+                          {c.questions_attempted === 0 ? 'Not Assessed' : `${c.mastery_percentage}%`}
                         </span>
                       </div>
 
@@ -372,7 +373,7 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
               </span>
               <h4 className="text-base font-bold text-[#172033] font-sans">{selectedConcept.name}</h4>
               <span className="text-xs font-mono text-teal-700 font-bold">
-                {selectedConcept.mastery_percentage}% Mastery
+                {selectedConcept.questions_attempted === 0 ? 'Not Assessed' : `${selectedConcept.mastery_percentage}% Mastery`}
               </span>
             </div>
 

@@ -114,8 +114,33 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
 
-      {/* Header Info */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF0FD] border border-[#C7D2FE] text-[#5B5CE2] text-xs font-mono font-medium mb-1.5">
+            <GraduationCap className="w-3.5 h-3.5" />
+            Dynamic Adaptive Evaluation
+          </div>
+          <h2 className="text-2xl font-bold font-sans text-[#172033] tracking-tight">
+            Adaptive Concept Practice
+          </h2>
+          <p className="text-xs sm:text-sm text-[#667085] mt-0.5 font-sans">
+            Calibrated questions targeting boundary conditions and diagnosing cognitive flaws through student reasoning.
+          </p>
+        </div>
+
+        <button
+          onClick={() => fetchNextQuestion()}
+          disabled={loading || submitting}
+          className="self-start sm:self-auto flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-[#E6E9EF] text-[#667085] hover:text-[#172033] text-xs font-medium transition-colors shadow-xs"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Regenerate Question
+        </button>
+      </div>
+
+      {/* Concept & Difficulty Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-[#E6E9EF] shadow-xs">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-semibold uppercase px-3 py-1 rounded-full bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE]">
             {question.concept_id.replace('_', ' ').toUpperCase()}
@@ -124,15 +149,6 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
             Calibrated: {difficulty}
           </span>
         </div>
-
-        <button
-          onClick={() => fetchNextQuestion()}
-          disabled={loading || submitting}
-          className="flex items-center gap-1.5 text-xs font-mono text-[#667085] hover:text-[#172033] transition-colors"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          Regenerate Question
-        </button>
       </div>
 
       {/* Agent Question Calibration Rationale */}

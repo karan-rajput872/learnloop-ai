@@ -136,6 +136,8 @@ export function App() {
         healthInfo={healthInfo}
         profile={profile}
         onReset={handleReset}
+        onRefresh={() => fetchProfileAndHealth(true)}
+        isRefreshing={isRetrying}
       />
 
       {/* Main Content Area */}
@@ -303,8 +305,12 @@ export function App() {
           <DiagnosticPage
             onComplete={() => {
               fetchProfileAndHealth();
-              setActiveTab('graph');
             }}
+            onNavigateToDashboard={() => {
+              fetchProfileAndHealth();
+              setActiveTab('dashboard');
+            }}
+            onRefreshProfile={() => fetchProfileAndHealth()}
           />
         )}
 

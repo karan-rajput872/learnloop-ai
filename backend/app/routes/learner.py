@@ -47,6 +47,7 @@ def reset_profile(student_id: str = "student_default"):
         """, (student_id,))
         cursor.execute("DELETE FROM attempts WHERE student_id = ?", (student_id,))
         cursor.execute("DELETE FROM revision_tasks WHERE student_id = ?", (student_id,))
+        cursor.execute("DELETE FROM diagnostic_attempts WHERE student_id = ?", (student_id,))
         conn.commit()
 
     return {"status": "success", "message": "Learner profile reset to clean baseline state."}

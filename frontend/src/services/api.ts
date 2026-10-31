@@ -6,7 +6,9 @@ import {
   Question,
   EvaluationResult,
   RevisionTask,
-  TeacherDashboardData
+  TeacherDashboardData,
+  DiagnosticResult,
+  DiagnosticAttemptSummary
 } from '../types';
 
 const isBrowser = typeof window !== 'undefined';
@@ -101,13 +103,23 @@ export const api = {
   async submitDiagnostic(
     submissions: { question_id: string; concept_id: string; selected_option: string; student_reasoning?: string }[],
     studentId = 'student_default'
-  ): Promise<any> {
+  ): Promise<DiagnosticResult> {
     const res = await fetchWithTimeout(`${API_BASE}/diagnostic/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ student_id: studentId, submissions })
     });
-    return await handleResponse<any>(res, 'Failed to submit diagnostic assessment');
+    return await handleResponse<DiagnosticResult>(res, 'Failed to submit diagnostic assessment');
+  },
+
+  async getDiagnosticAttempts(studentId = 'student_default'): Promise<{ attempts: DiagnosticAttemptSummary[]; total: number }> {
+    const res = await fetchWithTimeout(`${API_BASE}/diagnostic/attempts?student_id=${studentId}`);
+    return await handleResponse<{ attempts: DiagnosticAttemptSummary[]; total: number }>(res, 'Failed to fetch diagnostic attempts');
+  },
+
+  async getDiagnosticAttempt(attemptId: string): Promise<{ attempt: DiagnosticResult }> {
+    const res = await fetchWithTimeout(`${API_BASE}/diagnostic/attempt/${attemptId}`);
+    return await handleResponse<{ attempt: DiagnosticResult }>(res, `Failed to fetch diagnostic attempt '${attemptId}'`);
   },
 
   async getAdaptiveQuestion(conceptId?: string, studentId = 'student_default'): Promise<{

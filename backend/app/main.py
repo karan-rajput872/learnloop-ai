@@ -26,7 +26,11 @@ baseline_origins = [
 
 cors_origins_raw = os.getenv("CORS_ORIGINS", "")
 if cors_origins_raw.strip():
-    custom_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
+    custom_origins = [
+        origin.strip().strip('"').strip("'").rstrip("/")
+        for origin in cors_origins_raw.split(",")
+        if origin.strip().strip('"').strip("'").rstrip("/")
+    ]
     # Ensure baseline production and development origins are preserved
     allowed_origins = list(dict.fromkeys(baseline_origins + custom_origins))
 else:

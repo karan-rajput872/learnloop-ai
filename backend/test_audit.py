@@ -61,8 +61,44 @@ def run_audit():
         assert len(prof_data["concepts"]) == 12
         assert prof_data["overall_mastery"] > 0, "Overall mastery was not calculated"
 
+        # 1.3 Verify Calibrated Mastery Model (Fixing 65% Bug)
+        # Check that individual concept mastery is calibrated (80.0 for correct, 20.0 for incorrect)
+        # rather than the flat 65% hardcoded flaw
+        assert "attempt_id" in sub_data, "Diagnostic submit response missing attempt_id"
+        assert "concept_breakdown" in sub_data and len(sub_data["concept_breakdown"]) == 12
+        assert "question_reviews" in sub_data and len(sub_data["question_reviews"]) == 12
+        sample_correct = next(c for c in sub_data["concept_breakdown"] if c["accuracy"] == 100.0)
+        sample_incorrect = next(c for c in sub_data["concept_breakdown"] if c["accuracy"] == 0.0)
+        assert sample_correct["calibrated_mastery"] == 80.0, f"Expected 80.0% calibrated mastery, got {sample_correct['calibrated_mastery']}"
+        assert sample_incorrect["calibrated_mastery"] == 20.0, f"Expected 20.0% calibrated mastery, got {sample_incorrect['calibrated_mastery']}"
+        assert prof_data["overall_mastery"] != 65.0, "Overall mastery must not equal hardcoded 65.0%"
+
+        # 1.4 Diagnostic Attempt History Persistence
+        hist_res = client.get(f"{BASE_URL}/diagnostic/attempts?student_id=student_audit")
+        assert hist_res.status_code == 200
+        hist_data = hist_res.json()
+        assert hist_data["total"] >= 1
+        assert any(a["id"] == sub_data["attempt_id"] for a in hist_data["attempts"])
+
+        # 1.5 Individual Diagnostic Attempt Full Review Retrieval
+        review_res = client.get(f"{BASE_URL}/diagnostic/attempt/{sub_data['attempt_id']}")
+        assert review_res.status_code == 200
+        review_data = review_res.json()["attempt"]
+        assert review_data["id"] == sub_data["attempt_id"]
+        assert len(review_data["question_details"]) == 12
+        assert all("explanation" in q and len(q["explanation"]) > 0 for q in review_data["question_details"])
+
+        # 1.6 Verify Reviewing Past Attempt Does Not Alter Learner Mastery
+        mastery_before = prof_data["overall_mastery"]
+        prof_res_after = client.get(f"{BASE_URL}/learner/profile?student_id=student_audit")
+        assert prof_res_after.json()["profile"]["overall_mastery"] == mastery_before
+
         passed_tests.append("1.1 Diagnostic question count and concept coverage verified (12/12 concepts)")
         passed_tests.append("1.2 Diagnostic batch submission and baseline mastery initialization verified")
+        passed_tests.append("1.3 Calibrated mastery model verified (80% correct, 20% incorrect; 65% defect eliminated)")
+        passed_tests.append("1.4 Diagnostic attempt history persistence in SQLite verified")
+        passed_tests.append("1.5 Full question review retrieval with explanations and misconception rationale verified")
+        passed_tests.append("1.6 Read-only historical attempt review verified with zero mutation to active learner profile")
         print("  [PASS] Diagnostic Assessment PASSED")
     except Exception as e:
         failed_tests.append(f"Diagnostic Assessment Failed: {e}")
@@ -390,6 +426,62 @@ def run_audit():
     except Exception as e:
         failed_tests.append(f"Security & Validation Failed: {e}")
         print(f"  [FAIL] Security & Validation FAILED: {e}")
+
+    # -------------------------------------------------------------
+    # 10. CORS PREFLIGHT & ORIGIN SECURITY AUDIT
+    # -------------------------------------------------------------
+    print("\n[AUDIT 10] CORS Preflight & Origin Security Testing...")
+    try:
+        # 10.1 Production Vercel Origin Accepted
+        h_prod = {
+            "Origin": "https://learnloop-ai-one.vercel.app",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "content-type"
+        }
+        r_prod_opt = client.options(f"{BASE_URL}/health", headers=h_prod)
+        assert r_prod_opt.status_code == 200, f"Production Vercel preflight failed: {r_prod_opt.status_code}"
+        assert r_prod_opt.headers.get("access-control-allow-origin") == "https://learnloop-ai-one.vercel.app"
+        r_prod_get = client.get(f"{BASE_URL}/health", headers={"Origin": "https://learnloop-ai-one.vercel.app"})
+        assert r_prod_get.status_code == 200
+        assert r_prod_get.headers.get("access-control-allow-origin") == "https://learnloop-ai-one.vercel.app"
+        passed_tests.append("10.1 Production Vercel origin accepted in preflight and GET (https://learnloop-ai-one.vercel.app)")
+
+        # 10.2 Localhost Development Origin Accepted
+        h_local = {
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "content-type"
+        }
+        r_local_opt = client.options(f"{BASE_URL}/health", headers=h_local)
+        assert r_local_opt.status_code == 200, f"Localhost preflight failed: {r_local_opt.status_code}"
+        assert r_local_opt.headers.get("access-control-allow-origin") == "http://localhost:3000"
+        r_local_get = client.get(f"{BASE_URL}/health", headers={"Origin": "http://localhost:3000"})
+        assert r_local_get.status_code == 200
+        assert r_local_get.headers.get("access-control-allow-origin") == "http://localhost:3000"
+        passed_tests.append("10.2 Localhost development origin accepted in preflight and GET (http://localhost:3000)")
+
+        # 10.3 Untrusted External Origin Rejected
+        h_bad = {
+            "Origin": "https://untrusted-external-site.com",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "content-type"
+        }
+        r_bad_opt = client.options(f"{BASE_URL}/health", headers=h_bad)
+        assert r_bad_opt.status_code == 400, f"Expected 400 for untrusted origin, got {r_bad_opt.status_code}"
+        assert "access-control-allow-origin" not in r_bad_opt.headers
+        r_bad_get = client.get(f"{BASE_URL}/health", headers={"Origin": "https://untrusted-external-site.com"})
+        assert "access-control-allow-origin" not in r_bad_get.headers
+        passed_tests.append("10.3 Untrusted external origin rejected with HTTP 400 Disallowed CORS in preflight")
+
+        # 10.4 OPTIONS Preflight Returns Valid CORS Headers with Credentials Disabled
+        assert "access-control-allow-methods" in r_prod_opt.headers
+        assert "access-control-allow-headers" in r_prod_opt.headers
+        assert r_prod_opt.headers.get("access-control-allow-credentials") != "true"
+        passed_tests.append("10.4 OPTIONS preflight returns correct CORS headers with credentials safely disabled")
+        print("  [PASS] CORS Preflight & Origin Security PASSED")
+    except Exception as e:
+        failed_tests.append(f"CORS Preflight & Origin Security Failed: {e}")
+        print(f"  [FAIL] CORS Preflight & Origin Security FAILED: {e}")
 
     # Summary
     print("\n" + "=" * 70)

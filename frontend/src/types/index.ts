@@ -138,3 +138,61 @@ export interface HealthInfo {
   };
   features: Record<string, string>;
 }
+
+export interface DiagnosticQuestionReview {
+  question_id: string;
+  concept_id: string;
+  concept_name: string;
+  category: string;
+  difficulty: 'novice' | 'intermediate' | 'advanced';
+  question_text: string;
+  options: QuestionOption[];
+  selected_option: string;
+  correct_option: string;
+  is_correct: boolean;
+  status: 'correct' | 'incorrect' | 'unanswered';
+  explanation: string;
+  student_reasoning?: string;
+  misconception?: {
+    id: string;
+    name: string;
+    description: string;
+    remediation_tip: string;
+    prerequisite_to_review?: string;
+  } | null;
+  calibrated_mastery: number;
+}
+
+export interface DiagnosticConceptAnalysis {
+  concept_id: string;
+  concept_name: string;
+  category: string;
+  total_questions: number;
+  correct_answers: number;
+  incorrect_answers: number;
+  accuracy: number;
+  status: 'Strong' | 'Developing' | 'Needs Improvement';
+  calibrated_mastery: number;
+}
+
+export interface DiagnosticResult {
+  status: string;
+  diagnostic_completed: boolean;
+  attempt_id: string;
+  score: number;
+  total_questions: number;
+  percentage: number;
+  completed_at: string;
+  overall_mastery: number;
+  concept_breakdown: DiagnosticConceptAnalysis[];
+  question_reviews: DiagnosticQuestionReview[];
+}
+
+export interface DiagnosticAttemptSummary {
+  id: string;
+  student_id: string;
+  score: number;
+  total_questions: number;
+  percentage: number;
+  timestamp: string;
+}
