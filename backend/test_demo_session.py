@@ -30,7 +30,7 @@ def test_demo_session_flow():
     prof = prof_data.get("profile", prof_data)
     assert prof["student_id"] == "student_guest_demo"
     assert prof["overall_mastery"] > 0
-    assert prof["verified_proficiency_level"] is not None
+    assert prof["verified_proficiency_level"] == "Level 2 — Developing Apprentice"
     print("  [PASS] Demo Learner profile retrieved with realistic progress!")
 
     # 3. Check teacher dashboard access (allowed for demo user)

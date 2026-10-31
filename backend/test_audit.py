@@ -363,6 +363,19 @@ def run_audit():
         passed_tests.append("6.1 Teacher dashboard KPI calculations verified (learners, average mastery, weaknesses)")
         passed_tests.append("6.2 Misconception distribution aggregation verified")
         passed_tests.append("6.3 Intervention recommendations and prominent sample demonstration notice verified")
+
+        # 6.4 Teacher demo dashboard endpoint
+        r_demo_ep = client.get(f"{BASE_URL}/teacher/demo-dashboard")
+        assert r_demo_ep.status_code == 200
+        assert r_demo_ep.json().get("is_demo") is True
+        passed_tests.append("6.4 Teacher demo dashboard endpoint verified (publicly accessible synthetic cohort)")
+
+        # 6.5 Demo cohort aggregation endpoint
+        r_agg_ep = client.post(f"{BASE_URL}/teacher/aggregate-demo")
+        assert r_agg_ep.status_code == 200
+        assert r_agg_ep.json().get("status") == "success"
+        passed_tests.append("6.5 Demo cohort aggregation endpoint verified (instant recalculation)")
+
         print("  [PASS] Teacher Dashboard PASSED")
     except Exception as e:
         failed_tests.append(f"Teacher Dashboard Failed: {e}")
@@ -766,7 +779,33 @@ def run_audit():
         assert r_teacher_denied.status_code == 403, f"Expected 403 Forbidden for student role on teacher dashboard, got {r_teacher_denied.status_code}"
         passed_tests.append("11.7 Role-based access control verified (student role rejected from teacher analytics)")
 
-        # 11.8 Explicit Logout invalidates corresponding session and clears cookie
+        # 11.8 Student attempted mutation to class aggregation is forbidden (HTTP 403)
+        r_s_agg = client.post(f"{BASE_URL}/teacher/aggregate", headers=headers_a)
+        assert r_s_agg.status_code == 403, f"Expected 403 Forbidden for student aggregate, got {r_s_agg.status_code}"
+        passed_tests.append("11.8 Student mutation to class aggregation rejected with 403 Forbidden")
+
+        # 11.9 Verified Teacher login & authorized teacher dashboard access
+        r_t_login = client.post(f"{BASE_URL}/auth/login", json={
+            "email": "teacher@learnloop.ai",
+            "password": "TeacherDemo2026!",
+            "remember_me": True
+        })
+        assert r_t_login.status_code == 200, f"Teacher login failed: {r_t_login.text}"
+        teacher_token = r_t_login.json()["access_token"]
+        headers_teacher = {"Authorization": f"Bearer {teacher_token}"}
+
+        r_t_dash = client.get(f"{BASE_URL}/teacher/dashboard", headers=headers_teacher)
+        assert r_t_dash.status_code == 200, f"Teacher dashboard failed: {r_t_dash.text}"
+        assert r_t_dash.json().get("is_demo") is False
+        passed_tests.append("11.9 Verified teacher login and live educator class analytics retrieval verified")
+
+        # 11.10 Teacher class aggregation mutation
+        r_t_agg = client.post(f"{BASE_URL}/teacher/aggregate", headers=headers_teacher)
+        assert r_t_agg.status_code == 200
+        assert r_t_agg.json().get("status") == "success"
+        passed_tests.append("11.10 Educator class telemetry recalculation verified (HTTP 200)")
+
+        # 11.11 Explicit Logout invalidates corresponding session and clears cookie
         r_logout = client.post(
             f"{BASE_URL}/auth/logout",
             cookies={"refresh_token": new_refresh_cookie},
@@ -779,7 +818,7 @@ def run_audit():
             cookies={"refresh_token": new_refresh_cookie}
         )
         assert r_refresh_after_logout.status_code == 401
-        passed_tests.append("11.8 Explicit logout and active session revocation verified")
+        passed_tests.append("11.11 Explicit logout and active session revocation verified")
         print("  [PASS] Production Authentication & Multi-User Isolation PASSED")
     except Exception as e:
         import traceback

@@ -362,7 +362,12 @@ function AppContent() {
         )}
 
         {/* Tab 7: Teacher Dashboard */}
-        {activeTab === 'teacher' && <TeacherDashboardPage />}
+        {activeTab === 'teacher' && (
+          <TeacherDashboardPage onNavigateToTab={(tab) => {
+            setActiveTab(tab);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }} />
+        )}
       </main>
 
       {/* Global Auth Modal */}

@@ -76,6 +76,19 @@ async def tutor_chat(
         "timestamp": datetime.utcnow().isoformat()
     })
 
+    # Gamification: Record tutor chat interaction
+    try:
+        from app.gamification.service import gamification_service
+        gamification_service.record_activity(
+            student_id=effective_id,
+            activity_type="tutor_chat",
+            qualifying=True,
+            learning_minutes=2,
+            details={"tools_executed": len(result.get("tools_executed", []))}
+        )
+    except Exception as err:
+        print("Gamification tutor chat activity error:", err)
+
     return {
         **result,
         "user_message_id": user_msg_id,
@@ -160,4 +173,19 @@ def mark_revision_completed(
             )
 
     storage.complete_revision_task(payload.task_id)
+
+    # Gamification: Record revision activity
+    try:
+        from app.gamification.service import gamification_service
+        st_id = task.get("student_id") or (user.get("student_id") if user else "student_default")
+        gamification_service.record_activity(
+            student_id=st_id,
+            activity_type="revision",
+            qualifying=True,
+            learning_minutes=5,
+            details={"task_id": payload.task_id, "concept_id": task.get("concept_id")}
+        )
+    except Exception as err:
+        print("Gamification revision activity error:", err)
+
     return {"status": "success", "message": f"Task {payload.task_id} completed."}

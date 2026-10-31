@@ -24,3 +24,4 @@ To ensure long-term retention, LearnLoop implements a modified SuperMemo SM-2 sp
 
 [SCENE 9: Teacher Analytics Dashboard & Closing | 4:30 - 4:45]
 For educators, our Teacher Dashboard aggregates class-wide mastery and highlights students needing intervention. LearnLoop AI delivers an end-to-end, agentic exam-prep experience. Don't just learn the answers—master the concepts. Thank you.
+

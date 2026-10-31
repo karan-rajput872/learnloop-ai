@@ -43,4 +43,21 @@ async def submit_answer(
         student_reasoning=submission.student_reasoning,
         confidence_level=submission.confidence_level
     )
+
+    try:
+        from app.gamification.service import gamification_service
+        gamification_service.record_activity(
+            student_id=effective_id,
+            activity_type="quiz",
+            qualifying=True,
+            learning_minutes=3,
+            details={
+                "concept_id": submission.concept_id,
+                "is_correct": result.get("is_correct", False),
+                "mastery": result.get("new_mastery", 0)
+            }
+        )
+    except Exception as err:
+        print("Gamification quiz activity error:", err)
+
     return result

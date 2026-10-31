@@ -172,7 +172,10 @@ export interface TeacherDashboardData {
   weakest_concepts: { concept: string; struggling_students: number }[];
   class_misconception_distribution: { misconception: string; count: number }[];
   students_requiring_intervention: TeacherIntervention[];
-  sample_notice: string;
+  sample_notice?: string | null;
+  is_demo?: boolean;
+  message?: string;
+  last_aggregated_at?: string;
 }
 
 export interface HealthInfo {

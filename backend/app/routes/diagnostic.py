@@ -210,6 +210,19 @@ def submit_diagnostic_test(
     )
     storage.save_learning_path(student_id, learning_path)
 
+    # Gamification: Record genuine diagnostic completion activity
+    try:
+        from app.gamification.service import gamification_service
+        gamification_service.record_activity(
+            student_id=student_id,
+            activity_type="diagnostic",
+            qualifying=True,
+            learning_minutes=15,
+            details={"score": score, "total": total_questions, "percentage": accuracy_percentage}
+        )
+    except Exception as err:
+        print("Gamification diagnostic activity error:", err)
+
     attempt_record = {
         "id": attempt_id,
         "student_id": student_id,

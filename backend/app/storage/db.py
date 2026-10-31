@@ -22,6 +22,7 @@ class StorageManager:
         self.init_sqlite()
         self.ensure_default_learner()
         self.ensure_teacher_demo_cohort()
+        self.ensure_demo_teacher()
 
     def get_connection(self):
         conn = sqlite3.connect(DB_PATH)
@@ -206,6 +207,105 @@ class StorageManager:
                 cursor.execute("ALTER TABLE learners ADD COLUMN verified_proficiency_score REAL DEFAULT 0.0")
             if "learning_path_json" not in learner_cols:
                 cursor.execute("ALTER TABLE learners ADD COLUMN learning_path_json TEXT")
+
+            # Gamification: Activity logs for streaks and engagement tracking
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_activity_logs (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL,
+                    activity_type TEXT NOT NULL,
+                    activity_date TEXT NOT NULL,
+                    qualifying INTEGER NOT NULL DEFAULT 1,
+                    learning_minutes INTEGER DEFAULT 5,
+                    details_json TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_student_date ON user_activity_logs(student_id, activity_date)")
+
+            # Gamification: Daily streaks
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_streaks (
+                    student_id TEXT PRIMARY KEY,
+                    current_streak INTEGER NOT NULL DEFAULT 0,
+                    longest_streak INTEGER NOT NULL DEFAULT 0,
+                    last_activity_date TEXT,
+                    total_active_days INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
+            # Gamification: XP and Level
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_gamification (
+                    student_id TEXT PRIMARY KEY,
+                    total_xp INTEGER NOT NULL DEFAULT 0,
+                    level INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
+            # Gamification: Achievements
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_achievements (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL,
+                    achievement_id TEXT NOT NULL,
+                    unlocked INTEGER NOT NULL DEFAULT 0,
+                    progress_current INTEGER NOT NULL DEFAULT 0,
+                    progress_target INTEGER NOT NULL DEFAULT 1,
+                    unlocked_at TEXT,
+                    UNIQUE(student_id, achievement_id)
+                )
+            """)
+
+            # Gamification: Daily and Weekly Challenges
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_challenges (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL,
+                    challenge_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    challenge_type TEXT NOT NULL,
+                    current_count INTEGER NOT NULL DEFAULT 0,
+                    target_count INTEGER NOT NULL DEFAULT 1,
+                    xp_reward INTEGER NOT NULL DEFAULT 15,
+                    completed INTEGER NOT NULL DEFAULT 0,
+                    completed_at TEXT,
+                    period_key TEXT NOT NULL
+                )
+            """)
+
+            # Settings: User preferences
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_settings (
+                    student_id TEXT PRIMARY KEY,
+                    theme TEXT NOT NULL DEFAULT 'light',
+                    timezone TEXT NOT NULL DEFAULT 'UTC',
+                    daily_goal_minutes INTEGER NOT NULL DEFAULT 30,
+                    preferred_study_days TEXT NOT NULL DEFAULT '["Mon","Tue","Wed","Thu","Fri"]',
+                    reminder_notifications INTEGER NOT NULL DEFAULT 1,
+                    revision_reminders INTEGER NOT NULL DEFAULT 1,
+                    streak_reminders INTEGER NOT NULL DEFAULT 1,
+                    sound_effects INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
+            # Notifications: In-app notifications
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_notifications (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    notification_type TEXT NOT NULL DEFAULT 'info',
+                    action_tab TEXT,
+                    is_read INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL
+                )
+            """)
 
             conn.commit()
 
@@ -1099,7 +1199,41 @@ class StorageManager:
                 ))
             conn.commit()
 
-    def get_teacher_dashboard_data(self) -> Dict[str, Any]:
+    def ensure_demo_teacher(self):
+        """Ensure a demo educator account exists for educator dashboard evaluation."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM users WHERE email = 'teacher@learnloop.ai'")
+            if cursor.fetchone():
+                return
+
+            now = datetime.now(timezone.utc).isoformat()
+            cursor.execute("""
+                INSERT INTO users (
+                    id, student_id, full_name, email, normalized_email,
+                    hashed_password, google_sub, auth_provider, role,
+                    is_email_verified, is_active, created_at, updated_at, last_login_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                "usr_demo_teacher",
+                "stu_demo_teacher",
+                "Prof. Alan Turing (Educator)",
+                "teacher@learnloop.ai",
+                "teacher@learnloop.ai",
+                "$argon2id$v=19$m=65536,t=2,p=4$8b/zNvY3Re++MWdsM4C96g$wdmj6fc957Ndf4/Bci2wK9xjt06KwA/6TWSv0S/5Wr4",
+                None,
+                "local",
+                "teacher",
+                1,
+                1,
+                now,
+                now,
+                now
+            ))
+            conn.commit()
+
+    def get_demo_teacher_dashboard_data(self) -> Dict[str, Any]:
+        """Retrieve synthetic demonstration cohort analytics for safe demo viewing."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM teacher_demo_cohort")
@@ -1144,7 +1278,107 @@ class StorageManager:
                 "weakest_concepts": weakest_concepts,
                 "class_misconception_distribution": misconception_dist,
                 "students_requiring_intervention": interventions,
-                "sample_notice": "Demonstration Cohort Notice: Metrics displayed here represent seeded demonstration cohorts for educational demonstration as required by the hackathon specifications."
+                "is_demo": True,
+                "sample_notice": "Demonstration Cohort Notice: Metrics displayed here represent seeded demonstration cohorts for educational demonstration as required by the hackathon specifications.",
+                "last_aggregated_at": datetime.now(timezone.utc).isoformat()
             }
+
+    def get_real_teacher_dashboard_data(self) -> Dict[str, Any]:
+        """Aggregate real learner cohort metrics from the active student database."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT student_id, name, overall_mastery, updated_at
+                FROM learners
+                WHERE student_id NOT LIKE 'demo_%'
+                  AND student_id != 'student_default'
+                  AND student_id != 'usr_guest_demo'
+            """)
+            real_learners = [dict(r) for r in cursor.fetchall()]
+            total_learners = len(real_learners)
+
+            if total_learners == 0:
+                return {
+                    "total_demo_learners": 0,
+                    "average_concept_mastery": 0.0,
+                    "weakest_concepts": [],
+                    "class_misconception_distribution": [],
+                    "students_requiring_intervention": [],
+                    "is_demo": False,
+                    "sample_notice": None,
+                    "message": "No active class sessions recorded yet. Enrolled learners will appear here once they complete diagnostic assessments or adaptive practice.",
+                    "last_aggregated_at": datetime.now(timezone.utc).isoformat()
+                }
+
+            avg_mastery = round(sum(r["overall_mastery"] for r in real_learners) / max(1, total_learners), 1)
+
+            # Weakest concepts across cohort
+            cursor.execute("""
+                SELECT concept_name, COUNT(*) as struggling_count
+                FROM concept_mastery
+                WHERE mastery_percentage < 40.0
+                  AND student_id NOT LIKE 'demo_%'
+                  AND student_id != 'student_default'
+                  AND student_id != 'usr_guest_demo'
+                GROUP BY concept_name
+                ORDER BY struggling_count DESC
+                LIMIT 6
+            """)
+            weakest_concepts = [{"concept": r["concept_name"], "struggling_students": r["struggling_count"]} for r in cursor.fetchall()]
+
+            # Misconceptions breakdown
+            cursor.execute("""
+                SELECT last_misconception, COUNT(*) as cnt
+                FROM concept_mastery
+                WHERE last_misconception IS NOT NULL AND last_misconception != ''
+                  AND student_id NOT LIKE 'demo_%'
+                  AND student_id != 'student_default'
+                  AND student_id != 'usr_guest_demo'
+                GROUP BY last_misconception
+                ORDER BY cnt DESC
+                LIMIT 6
+            """)
+            misconception_dist = [{"misconception": r["last_misconception"], "count": r["cnt"]} for r in cursor.fetchall()]
+
+            # Students requiring intervention
+            interventions = []
+            for lr in real_learners:
+                if lr["overall_mastery"] < 50.0:
+                    cursor.execute("""
+                        SELECT concept_name, mastery_percentage, last_misconception
+                        FROM concept_mastery
+                        WHERE student_id = ?
+                        ORDER BY mastery_percentage ASC
+                        LIMIT 1
+                    """, (lr["student_id"],))
+                    weak_row = cursor.fetchone()
+                    weak_concept = weak_row["concept_name"] if weak_row else "Core Fundamentals"
+                    misc = weak_row["last_misconception"] if (weak_row and weak_row["last_misconception"]) else "Conceptual foundation pending practice"
+                    interventions.append({
+                        "student_id": lr["student_id"],
+                        "name": lr["name"] or f"Learner {lr['student_id'][:8]}",
+                        "weakest_concept": weak_concept,
+                        "mastery": lr["overall_mastery"],
+                        "primary_misconception": misc,
+                        "days_since_practice": 1,
+                        "recommended_intervention": f"Assign targeted review for {weak_concept} to resolve foundational gaps."
+                    })
+                    if len(interventions) >= 12:
+                        break
+
+            return {
+                "total_demo_learners": total_learners,
+                "average_concept_mastery": avg_mastery,
+                "weakest_concepts": weakest_concepts,
+                "class_misconception_distribution": misconception_dist,
+                "students_requiring_intervention": interventions,
+                "is_demo": False,
+                "sample_notice": None,
+                "last_aggregated_at": datetime.now(timezone.utc).isoformat()
+            }
+
+    def get_teacher_dashboard_data(self) -> Dict[str, Any]:
+        """Backward-compatible default returning demo teacher dashboard data."""
+        return self.get_demo_teacher_dashboard_data()
 
 storage = StorageManager()

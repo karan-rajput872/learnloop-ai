@@ -397,8 +397,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#172033] font-sans truncate">{concept.concept_name}</span>
                 <span className={`text-xs font-mono font-bold ${concept.questions_attempted === 0 ? 'text-slate-500' :
-                    concept.mastery_percentage >= 70 ? 'text-teal-700' :
-                      concept.mastery_percentage >= 40 ? 'text-amber-700' : 'text-[#5B5CE2]'
+                  concept.mastery_percentage >= 70 ? 'text-teal-700' :
+                    concept.mastery_percentage >= 40 ? 'text-amber-700' : 'text-[#5B5CE2]'
                   }`}>
                   {concept.questions_attempted === 0 ? 'Not Assessed' : `${concept.mastery_percentage}%`}
                 </span>

@@ -270,5 +270,63 @@ export const api = {
   async getTeacherDashboard(): Promise<TeacherDashboardData> {
     const res = await fetchWithTimeout(`${API_BASE}/teacher/dashboard`);
     return await handleResponse<TeacherDashboardData>(res, 'Failed to fetch teacher dashboard data');
+  },
+
+  async getTeacherDemoDashboard(): Promise<TeacherDashboardData> {
+    const res = await fetchWithTimeout(`${API_BASE}/teacher/demo-dashboard`);
+    return await handleResponse<TeacherDashboardData>(res, 'Failed to fetch teacher demo dashboard data');
+  },
+
+  async aggregateTeacherMetrics(): Promise<{ status: string; message: string; data: TeacherDashboardData }> {
+    const res = await fetchWithTimeout(`${API_BASE}/teacher/aggregate`, {
+      method: 'POST'
+    });
+    return await handleResponse<{ status: string; message: string; data: TeacherDashboardData }>(res, 'Failed to aggregate class metrics');
+  },
+
+  async aggregateDemoMetrics(): Promise<{ status: string; message: string; data: TeacherDashboardData }> {
+    const res = await fetchWithTimeout(`${API_BASE}/teacher/aggregate-demo`, {
+      method: 'POST'
+    });
+    return await handleResponse<{ status: string; message: string; data: TeacherDashboardData }>(res, 'Failed to aggregate demonstration metrics');
+  },
+
+  async getGamificationDashboard(studentId?: string): Promise<any> {
+    const query = studentId ? `?student_id=${studentId}` : '';
+    const res = await fetchWithTimeout(`${API_BASE}/gamification/dashboard${query}`);
+    return await handleResponse<any>(res, 'Failed to fetch gamification dashboard');
+  },
+
+  async getUserSettings(studentId?: string): Promise<any> {
+    const query = studentId ? `?student_id=${studentId}` : '';
+    const res = await fetchWithTimeout(`${API_BASE}/user/settings${query}`);
+    return await handleResponse<any>(res, 'Failed to fetch user settings');
+  },
+
+  async updateUserSettings(payload: any): Promise<any> {
+    const res = await fetchWithTimeout(`${API_BASE}/user/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await handleResponse<any>(res, 'Failed to update user settings');
+  },
+
+  async getUserNotifications(studentId?: string): Promise<any[]> {
+    const query = studentId ? `?student_id=${studentId}` : '';
+    const res = await fetchWithTimeout(`${API_BASE}/user/notifications${query}`);
+    return await handleResponse<any[]>(res, 'Failed to fetch notifications');
+  },
+
+  async markNotificationsRead(notificationId?: string): Promise<any> {
+    const endpoint = notificationId
+      ? `${API_BASE}/user/notifications/${notificationId}/read`
+      : `${API_BASE}/user/notifications/mark-read`;
+    const res = await fetchWithTimeout(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    return await handleResponse<any>(res, 'Failed to mark notifications read');
   }
 };

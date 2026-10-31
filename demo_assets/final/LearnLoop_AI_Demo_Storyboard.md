@@ -75,3 +75,4 @@
 - **Visual Focus:** Navigating to the Teacher Dashboard showing cohort metrics, common misconceptions, and student intervention alerts. Concluding on the LearnLoop AI brand banner.
 - **Narration Script:**
   > "For educators, our Teacher Dashboard aggregates class-wide mastery and highlights students needing intervention. LearnLoop AI delivers an end-to-end, agentic exam-prep experience. Don't just learn the answers—master the concepts. Thank you."
+
