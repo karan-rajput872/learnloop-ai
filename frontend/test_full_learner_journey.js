@@ -55,8 +55,8 @@ async function runLearnerJourney() {
     console.log('  [PASS] Adaptive Quiz module active.');
 
     // 5. AI Socratic Tutor Tab
-    console.log('\n[STEP 5] Testing AI Socratic Tutor Conversation...');
-    await page.click('button:has-text("AI Socratic Tutor")');
+    console.log('\n[STEP 5] Testing AI Tutor Conversation...');
+    await page.click('button:has-text("AI Tutor")');
     await page.waitForTimeout(1000);
 
     // Send a message
@@ -67,20 +67,20 @@ async function runLearnerJourney() {
       if (sendBtn) {
         await sendBtn.click();
         console.log('  -> Sent message to Socratic Tutor...');
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(2000);
         console.log('  [PASS] Socratic Tutor responded.');
       }
     }
 
     // 6. Spaced Repetition Tab
-    console.log('\n[STEP 6] Testing Spaced Repetition Schedule Tab...');
-    await page.click('button:has-text("Spaced Repetition")');
+    console.log('\n[STEP 6] Testing Spaced Revision Schedule Tab...');
+    await page.click('button:has-text("Spaced Revision")');
     await page.waitForTimeout(1000);
-    console.log('  [PASS] Spaced Repetition schedule view active.');
+    console.log('  [PASS] Spaced Revision schedule view active.');
 
     // 7. Teacher Analytics Tab (Student Role Block)
     console.log('\n[STEP 7] Verifying Role-Based Access Control...');
-    const teacherBtn = await page.$('button:has-text("Teacher Analytics")');
+    const teacherBtn = await page.$('button:has-text("Teacher Dashboard")');
     if (teacherBtn) {
       await teacherBtn.click();
       await page.waitForTimeout(1000);
