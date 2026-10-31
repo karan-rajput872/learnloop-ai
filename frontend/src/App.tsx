@@ -20,13 +20,17 @@ import {
   CheckCircle2,
   Clock
 } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthModal } from './components/AuthModal';
 
-export function App() {
+function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [profile, setProfile] = useState<LearnerProfile | null>(null);
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
   const [revisionTasks, setRevisionTasks] = useState<RevisionTask[]>([]);
   const [focusedConceptId, setFocusedConceptId] = useState<string | null>(null);
+
+  const { user } = useAuth();
 
   // Connection & Loading States
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -82,6 +86,9 @@ export function App() {
 
   useEffect(() => {
     fetchProfileAndHealth();
+  }, [user, fetchProfileAndHealth]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       fetchProfileAndHealth();
     }, 25000);
@@ -339,6 +346,9 @@ export function App() {
         {activeTab === 'teacher' && <TeacherDashboardPage />}
       </main>
 
+      {/* Global Auth Modal */}
+      <AuthModal />
+
       {/* Educational Platform Footer */}
       <footer className="bg-white border-t border-[#E6E9EF] py-6 text-center text-xs text-[#667085] font-sans">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -361,6 +371,14 @@ export function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

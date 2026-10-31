@@ -32,13 +32,29 @@ export const getApiBase = (): string => {
 
 const API_BASE = getApiBase();
 
+let currentAuthToken: string | null = null;
+
+export const setAuthToken = (token: string | null) => {
+  currentAuthToken = token;
+};
+
+export const getAuthToken = (): string | null => {
+  return currentAuthToken;
+};
+
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 30000): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+  const headers = new Headers(options.headers || {});
+  if (currentAuthToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${currentAuthToken}`);
+  }
+
   try {
     const res = await fetch(url, {
       ...options,
+      headers,
       signal: controller.signal
     });
     return res;

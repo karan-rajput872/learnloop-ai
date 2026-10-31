@@ -11,9 +11,12 @@ import {
   RotateCcw,
   RefreshCw,
   Menu,
-  X
+  X,
+  User as UserIcon,
+  LogIn
 } from 'lucide-react';
 import { HealthInfo, LearnerProfile } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
   activeTab: string;
@@ -35,6 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isRefreshing = false
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, isAuthenticated, openAuthModal } = useAuth();
 
   const isAi = healthInfo?.engine?.is_ai_configured;
   const engineModel = healthInfo?.engine?.model || (isAi ? 'Gemini 2.5 Flash' : 'Deterministic Fallback');
@@ -147,7 +151,39 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
 
-            {/* 3. Refresh Sync Action */}
+            {/* 3. Account / User Profile Controls */}
+            {isAuthenticated && user ? (
+              <button
+                onClick={() => openAuthModal('profile')}
+                className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-xs text-indigo-900 transition-colors shadow-xs"
+                title={`Signed in as ${user.full_name} (${user.email})`}
+              >
+                <div className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-[10px]">
+                  {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <span className="font-semibold hidden md:inline truncate max-w-[120px]">
+                  {user.full_name}
+                </span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => openAuthModal('login')}
+                  className="flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-[#E6E9EF] hover:border-indigo-200 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors shadow-xs"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
+                </button>
+                <button
+                  onClick={() => openAuthModal('register')}
+                  className="hidden md:inline-flex items-center px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                >
+                  Sign Up
+                </button>
+              </div>
+            )}
+
+            {/* 4. Refresh Sync Action */}
             {onRefresh && (
               <button
                 onClick={onRefresh}
@@ -160,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* 4. Reset Learner Profile Action */}
+            {/* 5. Reset Learner Profile Action */}
             <button
               onClick={onReset}
               className="p-1.5 sm:p-2 rounded-xl bg-slate-50 hover:bg-rose-50 border border-[#E6E9EF] hover:border-rose-200 text-[#667085] hover:text-rose-600 transition-colors shadow-xs"
@@ -254,6 +290,44 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {engineModel}
               </span>
             </div>
+          </div>
+
+          {/* Mobile Auth Buttons */}
+          <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+            {isAuthenticated && user ? (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  openAuthModal('profile');
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold text-xs flex items-center justify-center gap-2"
+              >
+                <UserIcon className="w-4 h-4" />
+                <span>Account ({user.full_name})</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openAuthModal('login');
+                  }}
+                  className="flex-1 py-2 px-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openAuthModal('register');
+                  }}
+                  className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 text-white font-semibold text-xs flex items-center justify-center"
+                >
+                  Create Account
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

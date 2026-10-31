@@ -1,12 +1,13 @@
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 from app.models.schemas import SpeechInputPayload
 from app.agent.tutor_agent import tutor_agent
 from app.agent.gemini_service import gemini_tutor
 from app.storage.db import storage
+from app.auth.security import get_current_user_optional, resolve_student_id
 
 router = APIRouter(prefix="/api/tutor", tags=["AI Tutor & Revision"])
 
@@ -19,25 +20,35 @@ class TutorActionPayload(BaseModel):
     student_id: Optional[str] = "student_default"
 
 @router.get("/messages")
-def get_chat_history(student_id: str = "student_default", limit: int = 50):
+def get_chat_history(
+    student_id: Optional[str] = "student_default",
+    limit: int = 50,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     """Retrieve persistent conversation history for the student."""
-    messages = storage.get_chat_messages(student_id=student_id, limit=limit)
+    effective_id = resolve_student_id(user, student_id)
+    messages = storage.get_chat_messages(student_id=effective_id, limit=limit)
     return {"messages": messages, "total": len(messages)}
 
 @router.post("/chat")
-async def tutor_chat(payload: SpeechInputPayload):
+async def tutor_chat(
+    payload: SpeechInputPayload,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     """
     Tutor dialogue accepting natural speech dictated using Wispr Flow.
     Disfluency parsing cleans filler words ('um', 'like', 'you know'),
     resolves self-corrections, and isolates digressions before agent reasoning.
     Persists turns to SQLite chat_messages.
     """
+    effective_id = resolve_student_id(user, payload.student_id)
+
     # 1. Save user message to persistent storage
     user_msg_id = f"msg_{uuid.uuid4().hex[:10]}"
     storage.save_chat_message({
         "id": user_msg_id,
         "session_id": "default_session",
-        "student_id": payload.student_id,
+        "student_id": effective_id,
         "role": "user",
         "content": payload.raw_transcript,
         "metadata": {},
@@ -46,7 +57,7 @@ async def tutor_chat(payload: SpeechInputPayload):
 
     # 2. Execute bounded agent reasoning
     result = await tutor_agent.handle_speech_chat(
-        student_id=payload.student_id,
+        student_id=effective_id,
         raw_transcript=payload.raw_transcript
     )
 
@@ -55,12 +66,12 @@ async def tutor_chat(payload: SpeechInputPayload):
     storage.save_chat_message({
         "id": asst_msg_id,
         "session_id": "default_session",
-        "student_id": payload.student_id,
+        "student_id": effective_id,
         "role": "assistant",
         "content": result["response"],
         "metadata": {
-            "speech_metadata": result.get("speech_metadata"),
-            "tools_executed": result.get("tools_executed")
+            "speech_metadata": result.get("speech_metadata", {}),
+            "tools_executed": result.get("tools_executed", [])
         },
         "timestamp": datetime.utcnow().isoformat()
     })
@@ -72,12 +83,16 @@ async def tutor_chat(payload: SpeechInputPayload):
     }
 
 @router.post("/action")
-def tutor_action(payload: TutorActionPayload):
+def tutor_action(
+    payload: TutorActionPayload,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     """
     Interactive Socratic guidance controls:
     Provides hints, physical analogies, worked examples, challenge questions, or simple explanations.
     """
-    profile = storage.get_learner_profile(payload.student_id)
+    effective_id = resolve_student_id(user, payload.student_id)
+    profile = storage.get_learner_profile(effective_id)
     recent_m = profile.get("concepts", {}).get(payload.concept_id, {}).get("last_misconception") if profile else None
     result = gemini_tutor.execute_tutor_action(
         concept_id=payload.concept_id,
@@ -101,7 +116,7 @@ def tutor_action(payload: TutorActionPayload):
     storage.save_chat_message({
         "id": msg_id,
         "session_id": "default_session",
-        "student_id": payload.student_id or "student_default",
+        "student_id": effective_id,
         "role": "assistant",
         "content": action_content,
         "metadata": {
@@ -118,13 +133,20 @@ def tutor_action(payload: TutorActionPayload):
     }
 
 @router.get("/revision/tasks")
-def list_revision_tasks(student_id: str = "student_default"):
+def list_revision_tasks(
+    student_id: Optional[str] = "student_default",
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     """Retrieve spaced repetition revision schedule."""
-    tasks = storage.get_revision_tasks(student_id)
+    effective_id = resolve_student_id(user, student_id)
+    tasks = storage.get_revision_tasks(effective_id)
     return {"tasks": tasks, "total": len(tasks)}
 
 @router.post("/revision/complete")
-def mark_revision_completed(payload: CompleteRevisionPayload):
+def mark_revision_completed(
+    payload: CompleteRevisionPayload,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     """Mark a spaced repetition task as completed."""
     storage.complete_revision_task(payload.task_id)
     return {"status": "success", "message": f"Task {payload.task_id} completed."}

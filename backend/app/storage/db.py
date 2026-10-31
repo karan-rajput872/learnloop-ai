@@ -122,6 +122,51 @@ class StorageManager:
                     timestamp TEXT
                 )
             """)
+            # Authentication: Users table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT UNIQUE,
+                    full_name TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    normalized_email TEXT NOT NULL UNIQUE,
+                    hashed_password TEXT,
+                    google_sub TEXT UNIQUE,
+                    auth_provider TEXT NOT NULL DEFAULT 'local',
+                    role TEXT NOT NULL DEFAULT 'student',
+                    is_email_verified INTEGER NOT NULL DEFAULT 0,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    last_login_at TEXT
+                )
+            """)
+            # Authentication: User sessions / Refresh tokens
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_sessions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    refresh_token_hash TEXT NOT NULL UNIQUE,
+                    device_info TEXT,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    last_used_at TEXT NOT NULL,
+                    revoked_at TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            # Authentication: Password reset tokens
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    expires_at TEXT NOT NULL,
+                    used_at TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
             conn.commit()
 
     def ensure_default_learner(self):
@@ -472,6 +517,198 @@ class StorageManager:
             except Exception:
                 res["question_details"] = []
             return res
+
+    # --------------------------------------------------------------------------
+    # AUTHENTICATION & MULTI-USER STORAGE METHODS
+    # --------------------------------------------------------------------------
+    def create_user(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new authenticated user record."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO users (
+                    id, student_id, full_name, email, normalized_email,
+                    hashed_password, google_sub, auth_provider, role,
+                    is_email_verified, is_active, created_at, updated_at, last_login_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                user_data["id"],
+                user_data["student_id"],
+                user_data["full_name"],
+                user_data["email"],
+                user_data["normalized_email"],
+                user_data.get("hashed_password"),
+                user_data.get("google_sub"),
+                user_data.get("auth_provider", "local"),
+                user_data.get("role", "student"),
+                1 if user_data.get("is_email_verified") else 0,
+                1 if user_data.get("is_active", True) else 0,
+                user_data.get("created_at", now),
+                user_data.get("updated_at", now),
+                user_data.get("last_login_at", now)
+            ))
+            conn.commit()
+            return self.get_user_by_id(user_data["id"])
+
+    def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve user by unique user ID."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """Retrieve user by case-insensitive normalized email."""
+        norm = email.strip().lower()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE normalized_email = ?", (norm,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def get_user_by_google_sub(self, google_sub: str) -> Optional[Dict[str, Any]]:
+        """Retrieve user by unique Google subject identifier."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE google_sub = ?", (google_sub,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def link_google_account(self, user_id: str, google_sub: str, is_email_verified: bool = True) -> bool:
+        """Link an existing local account to a verified Google Identity."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE users
+                SET google_sub = ?,
+                    auth_provider = CASE WHEN auth_provider = 'local' THEN 'local+google' ELSE auth_provider END,
+                    is_email_verified = MAX(is_email_verified, ?),
+                    updated_at = ?,
+                    last_login_at = ?
+                WHERE id = ?
+            """, (google_sub, 1 if is_email_verified else 0, now, now, user_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_user_last_login(self, user_id: str):
+        """Update last login timestamp on successful authentication."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?", (now, now, user_id))
+            conn.commit()
+
+    def update_user_password(self, user_id: str, hashed_password: str):
+        """Update hashed password for a user."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET hashed_password = ?, updated_at = ? WHERE id = ?", (hashed_password, now, user_id))
+            conn.commit()
+
+    def update_user_profile(self, user_id: str, full_name: str) -> Optional[Dict[str, Any]]:
+        """Update full name and synchronize with learner profile."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET full_name = ?, updated_at = ? WHERE id = ?", (full_name, now, user_id))
+            cursor.execute("SELECT student_id FROM users WHERE id = ?", (user_id,))
+            row = cursor.fetchone()
+            if row and row["student_id"]:
+                cursor.execute("UPDATE learners SET name = ?, updated_at = ? WHERE student_id = ?", (full_name, now, row["student_id"]))
+            conn.commit()
+            return self.get_user_by_id(user_id)
+
+    def create_user_session(self, session_data: Dict[str, Any]):
+        """Persist a user session record with token hash."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO user_sessions (id, user_id, refresh_token_hash, device_info, created_at, expires_at, last_used_at, revoked_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+            """, (
+                session_data["id"],
+                session_data["user_id"],
+                session_data["refresh_token_hash"],
+                session_data.get("device_info", "browser"),
+                session_data.get("created_at", datetime.utcnow().isoformat()),
+                session_data["expires_at"],
+                session_data.get("last_used_at", datetime.utcnow().isoformat())
+            ))
+            conn.commit()
+
+    def get_session_by_token_hash(self, token_hash: str) -> Optional[Dict[str, Any]]:
+        """Lookup session by SHA-256 hash of refresh token."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM user_sessions WHERE refresh_token_hash = ?", (token_hash,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def update_session_token_hash(self, session_id: str, new_token_hash: str, new_expires_at: str):
+        """Rotate refresh token hash and update session activity."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE user_sessions
+                SET refresh_token_hash = ?,
+                    expires_at = ?,
+                    last_used_at = ?
+                WHERE id = ?
+            """, (new_token_hash, new_expires_at, now, session_id))
+            conn.commit()
+
+    def revoke_session(self, session_id: str):
+        """Mark a session as revoked on logout or token rotation invalidation."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE user_sessions SET revoked_at = ? WHERE id = ?", (now, session_id))
+            conn.commit()
+
+    def revoke_all_user_sessions(self, user_id: str):
+        """Revoke all active sessions for a user (e.g., security breach or token reuse detection)."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL", (now, user_id))
+            conn.commit()
+
+    def create_password_reset_token(self, token_data: Dict[str, Any]):
+        """Store hashed password reset token with short expiration."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, used_at, created_at)
+                VALUES (?, ?, ?, ?, NULL, ?)
+            """, (
+                token_data["id"],
+                token_data["user_id"],
+                token_data["token_hash"],
+                token_data["expires_at"],
+                token_data.get("created_at", datetime.utcnow().isoformat())
+            ))
+            conn.commit()
+
+    def get_password_reset_token(self, token_hash: str) -> Optional[Dict[str, Any]]:
+        """Lookup unused password reset token by hash."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM password_reset_tokens WHERE token_hash = ? AND used_at IS NULL", (token_hash,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def mark_password_reset_used(self, token_id: str):
+        """Mark reset token as used."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE password_reset_tokens SET used_at = ? WHERE id = ?", (now, token_id))
+            conn.commit()
 
     def ensure_teacher_demo_cohort(self):
         """Seed realistic demonstration cohort data for the teacher dashboard (clearly labeled sample data)"""

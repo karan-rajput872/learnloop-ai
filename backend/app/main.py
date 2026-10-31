@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.routes import diagnostic, concepts, learner, quiz, tutor, teacher
+from app.routes import diagnostic, concepts, learner, quiz, tutor, teacher, auth
 from app.dsa.syllabus import DSA_CONCEPTS
 from app.agent.gemini_service import gemini_tutor
 
@@ -46,6 +46,7 @@ app.add_middleware(
 )
 
 # Mount Routes
+app.include_router(auth.router)
 app.include_router(diagnostic.router)
 app.include_router(concepts.router)
 app.include_router(learner.router)

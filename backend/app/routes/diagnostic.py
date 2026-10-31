@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import uuid
@@ -8,6 +8,7 @@ from app.dsa.syllabus import DSA_CONCEPTS
 from app.dsa.misconceptions import MISCONCEPTION_CATALOG
 from app.storage.db import storage
 from app.tools.repetition_scheduler import schedule_spaced_repetition
+from app.auth.security import get_current_user_optional, resolve_student_id
 
 router = APIRouter(prefix="/api/diagnostic", tags=["Diagnostic Assessment"])
 
@@ -40,12 +41,15 @@ def get_diagnostic_test():
     return {"questions": safe_list, "total": len(safe_list)}
 
 @router.post("/submit")
-def submit_diagnostic_test(payload: DiagnosticBatchSubmission):
+def submit_diagnostic_test(
+    payload: DiagnosticBatchSubmission,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     """
     Evaluate diagnostic answers, establish calibrated baseline concept mastery,
     persist full attempt history, and return comprehensive results + review payload.
     """
-    student_id = payload.student_id
+    student_id = resolve_student_id(user, payload.student_id)
     results = []
     question_reviews = []
     concept_breakdown = []
@@ -193,15 +197,31 @@ def submit_diagnostic_test(payload: DiagnosticBatchSubmission):
     }
 
 @router.get("/attempts")
-def get_diagnostic_attempts(student_id: str = "student_default"):
+def get_diagnostic_attempts(
+    student_id: Optional[str] = "student_default",
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     """List historical diagnostic assessment attempts for a student."""
-    attempts = storage.get_diagnostic_attempts(student_id)
+    effective_id = resolve_student_id(user, student_id)
+    attempts = storage.get_diagnostic_attempts(effective_id)
     return {"attempts": attempts, "total": len(attempts)}
 
 @router.get("/attempt/{attempt_id}")
-def get_diagnostic_attempt(attempt_id: str):
+def get_diagnostic_attempt(
+    attempt_id: str,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     """Retrieve full review details for a specific diagnostic attempt without modifying learner profile."""
     attempt = storage.get_diagnostic_attempt_by_id(attempt_id)
     if not attempt:
         raise HTTPException(status_code=404, detail=f"Diagnostic attempt '{attempt_id}' not found")
+
+    # Enforce data isolation if authenticated
+    if user and user.get("role") not in ["teacher", "admin"]:
+        if attempt.get("student_id") != user.get("student_id"):
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: You cannot view another student's diagnostic attempt."
+            )
+
     return {"attempt": attempt}

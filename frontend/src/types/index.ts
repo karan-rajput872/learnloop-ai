@@ -196,3 +196,28 @@ export interface DiagnosticAttemptSummary {
   percentage: number;
   timestamp: string;
 }
+
+export interface User {
+  id: string;
+  student_id: string;
+  full_name: string;
+  email: string;
+  normalized_email?: string;
+  role: 'student' | 'teacher' | 'admin';
+  auth_provider: 'local' | 'google';
+  is_email_verified?: boolean;
+  avatar_url?: string;
+  created_at?: string;
+  last_login_at?: string;
+}
+
+export interface AuthResponse {
+  status: string;
+  message: string;
+  access_token: string;
+  refresh_token?: string;
+  token_type: string;
+  user: User;
+  learner?: LearnerProfile;
+}
+

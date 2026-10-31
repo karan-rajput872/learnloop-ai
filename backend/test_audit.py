@@ -483,6 +483,181 @@ def run_audit():
         failed_tests.append(f"CORS Preflight & Origin Security Failed: {e}")
         print(f"  [FAIL] CORS Preflight & Origin Security FAILED: {e}")
 
+    # -------------------------------------------------------------
+    # 11. PRODUCTION AUTHENTICATION & MULTI-USER ISOLATION AUDIT
+    # -------------------------------------------------------------
+    print("\n[AUDIT 11] Production Authentication, Google Token Flow & User Isolation Testing...")
+    try:
+        from app.storage.db import storage
+
+        test_ts = int(time.time())
+        email_a = f"alice_{test_ts}@learnloop.edu"
+        email_b = f"bob_{test_ts}@learnloop.edu"
+        pwd_a = "StrongPass123!"
+        pwd_b = "SecurePass456!"
+
+        # 11.1 Account Registration & Input Validation
+        # Missing fields rejected
+        r_empty = client.post(f"{BASE_URL}/auth/register", json={})
+        assert r_empty.status_code == 422, f"Expected 422 for missing registration body, got {r_empty.status_code}"
+
+        # Password confirmation mismatch rejected
+        r_mismatch = client.post(f"{BASE_URL}/auth/register", json={
+            "full_name": "Alice Walker",
+            "email": email_a,
+            "password": pwd_a,
+            "confirm_password": "WrongPassword999!",
+            "terms_accepted": True
+        })
+        assert r_mismatch.status_code == 400, f"Expected 400 for password mismatch, got {r_mismatch.status_code}"
+
+        # Password too short rejected
+        r_short = client.post(f"{BASE_URL}/auth/register", json={
+            "full_name": "Alice Walker",
+            "email": email_a,
+            "password": "short",
+            "confirm_password": "short",
+            "terms_accepted": True
+        })
+        assert r_short.status_code in [400, 422], f"Expected 400/422 for short password, got {r_short.status_code}"
+
+        # Successful registration of User A
+        r_reg_a = client.post(f"{BASE_URL}/auth/register", json={
+            "full_name": "Alice Walker",
+            "email": email_a,
+            "password": pwd_a,
+            "confirm_password": pwd_a,
+            "terms_accepted": True
+        })
+        assert r_reg_a.status_code == 201, f"Expected 201 Created for registration, got {r_reg_a.status_code}"
+        data_a = r_reg_a.json()
+        assert "access_token" in data_a and len(data_a["access_token"]) > 20
+        assert "refresh_token" in data_a and len(data_a["refresh_token"]) > 20
+        user_a = data_a["user"]
+        student_id_a = user_a["student_id"]
+        assert user_a["role"] == "student"
+        assert user_a["normalized_email"] == email_a.lower()
+        passed_tests.append("11.1 Account registration and robust input validation verified")
+
+        # Duplicate email registration rejected
+        r_dup = client.post(f"{BASE_URL}/auth/register", json={
+            "full_name": "Duplicate Alice",
+            "email": email_a.upper(),  # Testing case insensitivity
+            "password": pwd_a,
+            "confirm_password": pwd_a,
+            "terms_accepted": True
+        })
+        assert r_dup.status_code == 409, f"Expected 409 for duplicate normalized email, got {r_dup.status_code}"
+        passed_tests.append("11.2 Case-insensitive duplicate registration prevention verified (HTTP 409)")
+
+        # 11.3 Argon2id Password Hashing Verification
+        db_user_a = storage.get_user_by_id(user_a["id"])
+        assert db_user_a is not None
+        assert db_user_a["hashed_password"].startswith("$argon2id$"), "Stored password must be an Argon2id hash"
+        assert pwd_a not in db_user_a["hashed_password"], "Plaintext password must NEVER appear in the hash string"
+        passed_tests.append("11.3 OWASP-compliant Argon2id password hashing verified (zero plaintext storage)")
+
+        # 11.4 Email/Password Login & Case-Insensitive Matching
+        r_login_a = client.post(f"{BASE_URL}/auth/login", json={
+            "email": email_a.upper(),  # Case-insensitive login
+            "password": pwd_a
+        })
+        assert r_login_a.status_code == 200, f"Expected 200 on login, got {r_login_a.status_code}"
+        login_data_a = r_login_a.json()
+        token_a = login_data_a["access_token"]
+        refresh_a = login_data_a["refresh_token"]
+
+        # Safe rejection of invalid credentials without user enumeration
+        r_bad_pwd = client.post(f"{BASE_URL}/auth/login", json={
+            "email": email_a,
+            "password": "WrongPassword!"
+        })
+        assert r_bad_pwd.status_code == 401
+        r_bad_email = client.post(f"{BASE_URL}/auth/login", json={
+            "email": "nonexistent@learnloop.edu",
+            "password": "SomePassword123!"
+        })
+        assert r_bad_email.status_code == 401
+        assert r_bad_pwd.json()["detail"] == r_bad_email.json()["detail"], "Login error must be identical to prevent enumeration"
+        passed_tests.append("11.4 Login authentication with case-insensitive normalization & enumeration safety verified")
+
+        # 11.5 Persistent Session & Refresh Token Rotation
+        r_refresh = client.post(f"{BASE_URL}/auth/refresh", json={"refresh_token": refresh_a})
+        assert r_refresh.status_code == 200
+        refresh_data = r_refresh.json()
+        new_access_a = refresh_data["access_token"]
+        new_refresh_a = refresh_data["refresh_token"]
+        assert new_refresh_a != refresh_a, "Refresh token must rotate upon use"
+
+        # Token reuse detection: Reusing old rotated refresh token triggers security revocation
+        r_reuse = client.post(f"{BASE_URL}/auth/refresh", json={"refresh_token": refresh_a})
+        assert r_reuse.status_code == 401, f"Reused refresh token must be rejected with 401, got {r_reuse.status_code}"
+        passed_tests.append("11.5 Session persistence, token rotation, and reuse attack invalidation verified")
+
+        # 11.6 Register User B for User Data Isolation Audit
+        r_reg_b = client.post(f"{BASE_URL}/auth/register", json={
+            "full_name": "Bob Martinez",
+            "email": email_b,
+            "password": pwd_b,
+            "confirm_password": pwd_b,
+            "terms_accepted": True
+        })
+        assert r_reg_b.status_code == 201
+        user_b = r_reg_b.json()["user"]
+        student_id_b = user_b["student_id"]
+        token_b = r_reg_b.json()["access_token"]
+
+        # User A authenticated requests
+        headers_a = {"Authorization": f"Bearer {new_access_a}"}
+        headers_b = {"Authorization": f"Bearer {token_b}"}
+
+        # User A reads own profile -> returns User A's student_id
+        r_prof_a = client.get(f"{BASE_URL}/learner/profile", headers=headers_a)
+        assert r_prof_a.status_code == 200
+        assert r_prof_a.json()["profile"]["student_id"] == student_id_a
+
+        # User A attempts to access User B's profile by explicitly supplying User B's student_id -> HTTP 403 Forbidden!
+        r_spoof = client.get(f"{BASE_URL}/learner/profile?student_id={student_id_b}", headers=headers_a)
+        assert r_spoof.status_code == 403, f"Expected 403 Forbidden for cross-user profile access, got {r_spoof.status_code}"
+
+        # User B submits a diagnostic test
+        sub_b = client.post(f"{BASE_URL}/diagnostic/submit", json={
+            "student_id": student_id_b,
+            "submissions": [{
+                "question_id": "q_arr_01",
+                "concept_id": "arrays",
+                "selected_option": "A",
+                "student_reasoning": "User B arrays reasoning"
+            }]
+        }, headers=headers_b)
+        assert sub_b.status_code == 200
+        attempt_id_b = sub_b.json()["attempt_id"]
+
+        # User A attempts to view User B's diagnostic attempt -> HTTP 403 Forbidden!
+        r_view_b = client.get(f"{BASE_URL}/diagnostic/attempt/{attempt_id_b}", headers=headers_a)
+        assert r_view_b.status_code == 403, f"Expected 403 Forbidden for cross-user diagnostic review, got {r_view_b.status_code}"
+        passed_tests.append("11.6 Strict cross-user data isolation verified (profile, attempts, and reviews protected)")
+
+        # 11.7 Role-Based Access Control: Teacher Portal Protection
+        # User A (student role) attempts to access /api/teacher/dashboard with their token -> HTTP 403 Forbidden!
+        r_teacher_denied = client.get(f"{BASE_URL}/teacher/dashboard", headers=headers_a)
+        assert r_teacher_denied.status_code == 403, f"Expected 403 Forbidden for student role on teacher dashboard, got {r_teacher_denied.status_code}"
+        passed_tests.append("11.7 Role-based access control verified (student role rejected from teacher analytics)")
+
+        # 11.8 Explicit Logout
+        r_logout = client.post(f"{BASE_URL}/auth/logout", json={"refresh_token": new_refresh_a}, headers=headers_a)
+        assert r_logout.status_code == 200
+        # Refresh with logged out token rejected
+        r_refresh_after_logout = client.post(f"{BASE_URL}/auth/refresh", json={"refresh_token": new_refresh_a})
+        assert r_refresh_after_logout.status_code == 401
+        passed_tests.append("11.8 Explicit logout and active session revocation verified")
+        print("  [PASS] Production Authentication & Multi-User Isolation PASSED")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        failed_tests.append(f"Production Authentication Failed: {e}")
+        print(f"  [FAIL] Production Authentication FAILED: {e}")
+
     # Summary
     print("\n" + "=" * 70)
     print("AUDIT SUMMARY RESULTS")
