@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuthModal } from './components/AuthModal';
+import { OnboardingWizardModal } from './components/OnboardingWizardModal';
+import { MyProfileModal } from './components/MyProfileModal';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -29,6 +31,10 @@ function AppContent() {
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
   const [revisionTasks, setRevisionTasks] = useState<RevisionTask[]>([]);
   const [focusedConceptId, setFocusedConceptId] = useState<string | null>(null);
+
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [diagnosticInitialMode, setDiagnosticInitialMode] = useState<'quick' | 'comprehensive'>('comprehensive');
 
   const { user } = useAuth();
 
@@ -89,6 +95,12 @@ function AppContent() {
   }, [user, fetchProfileAndHealth]);
 
   useEffect(() => {
+    if (user && profile && profile.onboarding_completed === false) {
+      setIsOnboardingOpen(true);
+    }
+  }, [user, profile]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       fetchProfileAndHealth();
     }, 25000);
@@ -145,6 +157,7 @@ function AppContent() {
         onReset={handleReset}
         onRefresh={() => fetchProfileAndHealth(true)}
         isRefreshing={isRetrying}
+        onOpenMyProfile={() => setIsProfileModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -295,13 +308,17 @@ function AppContent() {
               <DashboardPage
                 profile={profile}
                 revisionTasks={revisionTasks}
-                onStartDiagnostic={() => setActiveTab('diagnostic')}
+                onStartDiagnostic={() => {
+                  setDiagnosticInitialMode('comprehensive');
+                  setActiveTab('diagnostic');
+                }}
                 onStartQuiz={() => {
                   setFocusedConceptId(null);
                   setActiveTab('quiz');
                 }}
                 onViewGraph={() => setActiveTab('graph')}
                 onOpenRevision={() => setActiveTab('revision')}
+                onOpenProfile={() => setIsProfileModalOpen(true)}
               />
             )}
           </>
@@ -310,6 +327,7 @@ function AppContent() {
         {/* Tab 2: Diagnostic Assessment */}
         {activeTab === 'diagnostic' && (
           <DiagnosticPage
+            initialMode={diagnosticInitialMode}
             onComplete={() => {
               fetchProfileAndHealth();
             }}
@@ -348,6 +366,34 @@ function AppContent() {
 
       {/* Global Auth Modal */}
       <AuthModal />
+
+      {/* Onboarding Wizard Modal */}
+      <OnboardingWizardModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        initialProfile={profile?.onboarding_data}
+        onCompleted={(updatedProfile) => {
+          setProfile(updatedProfile);
+          setIsOnboardingOpen(false);
+          fetchProfileAndHealth();
+        }}
+        onStartDiagnostic={(chosenMode) => {
+          setDiagnosticInitialMode(chosenMode);
+          setActiveTab('diagnostic');
+        }}
+      />
+
+      {/* My Learning Profile Modal */}
+      <MyProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        profile={profile}
+        onOpenEditWizard={() => setIsOnboardingOpen(true)}
+        onStartDiagnostic={(chosenMode) => {
+          setDiagnosticInitialMode(chosenMode || 'comprehensive');
+          setActiveTab('diagnostic');
+        }}
+      />
 
       {/* Educational Platform Footer */}
       <footer className="bg-white border-t border-[#E6E9EF] py-6 text-center text-xs text-[#667085] font-sans">

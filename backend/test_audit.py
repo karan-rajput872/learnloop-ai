@@ -787,6 +787,100 @@ def run_audit():
         failed_tests.append(f"Production Authentication Failed: {e}")
         print(f"  [FAIL] Production Authentication FAILED: {e}")
 
+    # AUDIT 12: Personalized Learner Onboarding & Skill-Level Assessment Testing
+    print("\n[AUDIT 12] Personalized Learner Onboarding & Skill-Level Assessment Testing...")
+    try:
+        # 12.1 Diagnostic question mode selection
+        r_comp = client.get(f"{BASE_URL}/diagnostic/questions?mode=comprehensive")
+        assert r_comp.status_code == 200
+        comp_data = r_comp.json()
+        assert comp_data["total"] == 12
+        r_quick = client.get(f"{BASE_URL}/diagnostic/questions?mode=quick")
+        assert r_quick.status_code == 200
+        quick_data = r_quick.json()
+        assert quick_data["total"] == 6
+        passed_tests.append("12.1 Diagnostic mode selection verified (Comprehensive 12 Qs vs Quick 6 Qs)")
+
+        # 12.2 Multi-category onboarding questionnaire submission & profile persistence
+        student_onboard_id = f"onboard_audit_{int(time.time())}"
+        onboarding_payload = {
+            "learner_category": "Working Professional",
+            "category_details": {
+                "job_title": "Software Engineer",
+                "industry": "FinTech",
+                "years_experience": "2-4 years"
+            },
+            "programming_experience": "Advanced (3+ years)",
+            "dsa_experience": "Comfortable with basic data structures",
+            "programming_languages": ["Python", "Java"],
+            "preferred_language": "Python",
+            "previously_studied_concepts": ["arrays", "linked_lists", "stacks"],
+            "primary_goals": ["Interview Preparation", "Professional Upskilling"],
+            "target_timeline": "Within 3 months",
+            "daily_availability": "1–2 hours",
+            "self_assessed_skill_level": "Intermediate",
+            "learning_preferences": ["visual_diagrams", "code_demonstrations", "step_by_step"],
+            "diagnostic_mode": "quick"
+        }
+        r_save_onboard = client.post(
+            f"{BASE_URL}/learner/onboarding?student_id={student_onboard_id}",
+            json=onboarding_payload
+        )
+        assert r_save_onboard.status_code == 200
+        save_data = r_save_onboard.json()
+        assert save_data["onboarding_completed"] is True
+        assert save_data["profile"]["learner_category"] == "Working Professional"
+        passed_tests.append("12.2 Multi-category onboarding submission and profile category update verified")
+
+        # 12.3 Personalized learning path generation with DAG prerequisite analysis
+        r_path = client.get(f"{BASE_URL}/learner/learning-path?student_id={student_onboard_id}")
+        assert r_path.status_code == 200
+        lp = r_path.json()["learning_path"]
+        assert "missing_prerequisites" in lp
+        assert "recommended_next_concepts" in lp
+        assert "suggested_question_difficulty" in lp
+        passed_tests.append("12.3 Personalized learning path with DAG prerequisite dependency analysis verified")
+
+        # 12.4 Dynamic daily practice quota calibration based on learner availability
+        assert "daily_question_target" in lp
+        assert lp["daily_question_target"] >= 3
+        passed_tests.append("12.4 Dynamic daily practice quota calibration based on learner availability verified")
+
+        # 12.5 Verified proficiency level calculation (Levels 1–5) and diagnostic scoring persistence
+        submissions = []
+        for q in quick_data["questions"]:
+            submissions.append({
+                "question_id": q["id"],
+                "concept_id": q["concept_id"],
+                "selected_option": "A",
+                "student_reasoning": "Reasoned choice"
+            })
+        r_sub = client.post(f"{BASE_URL}/diagnostic/submit", json={
+            "student_id": student_onboard_id,
+            "submissions": submissions
+        })
+        assert r_sub.status_code == 200
+        sub_res = r_sub.json()
+        assert "verified_proficiency" in sub_res
+        vp_info = sub_res["verified_proficiency"]
+        assert 1 <= vp_info["level_number"] <= 5
+        passed_tests.append("12.5 Verified proficiency calculation (Levels 1-5) & diagnostic scoring persistence verified")
+
+        # 12.6 Learner proficiency API retrieval and profile status consistency
+        r_prof = client.get(f"{BASE_URL}/learner/proficiency?student_id={student_onboard_id}")
+        assert r_prof.status_code == 200
+        p_data = r_prof.json()
+        assert p_data["verified_proficiency_level"] == vp_info["level_number"]
+        assert p_data["diagnostic_completed"] is True
+        passed_tests.append("12.6 Learner proficiency REST retrieval and profile state consistency verified")
+
+        print("  [PASS] Personalized Learner Onboarding & Skill-Level Assessment PASSED")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        failed_tests.append(f"Personalized Onboarding Failed: {e}")
+        print(f"  [FAIL] Personalized Onboarding FAILED: {e}")
+
     # Summary
     print("\n" + "=" * 70)
     print("AUDIT SUMMARY RESULTS")

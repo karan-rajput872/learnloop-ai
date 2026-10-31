@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   User as UserIcon,
-  LogIn
+  LogIn,
+  Award
 } from 'lucide-react';
 import { HealthInfo, LearnerProfile } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +27,7 @@ interface NavbarProps {
   onReset: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  onOpenMyProfile?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -35,7 +37,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   profile,
   onReset,
   onRefresh,
-  isRefreshing = false
+  isRefreshing = false,
+  onOpenMyProfile
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, openAuthModal } = useAuth();
@@ -150,18 +153,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* 3. Account / User Profile Controls */}
             {isAuthenticated && user ? (
-              <button
-                onClick={() => openAuthModal('profile')}
-                className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-xs text-indigo-900 transition-colors shadow-xs"
-                title={`Signed in as ${user.full_name} (${user.email})`}
-              >
-                <div className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-[10px]">
-                  {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
-                </div>
-                <span className="font-semibold hidden md:inline truncate max-w-[120px]">
-                  {user.full_name}
-                </span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                {onOpenMyProfile && (
+                  <button
+                    onClick={onOpenMyProfile}
+                    className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EEF0FD] hover:bg-indigo-100 border border-[#C7D2FE] text-xs font-semibold text-[#5B5CE2] transition-colors shadow-xs"
+                    title="View Personalized Learning Profile"
+                  >
+                    <Award className="w-3.5 h-3.5" />
+                    <span>Learning Profile</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => openAuthModal('profile')}
+                  className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-xs text-indigo-900 transition-colors shadow-xs"
+                  title={`Signed in as ${user.full_name} (${user.email})`}
+                >
+                  <div className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-[10px]">
+                    {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <span className="font-semibold hidden md:inline truncate max-w-[120px]">
+                    {user.full_name}
+                  </span>
+                </button>
+              </div>
             ) : (
               <div className="flex items-center gap-1.5">
                 <button

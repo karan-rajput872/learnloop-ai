@@ -17,7 +17,11 @@ import {
   HelpCircle,
   RefreshCw,
   BookOpen,
-  Check
+  Check,
+  Award,
+  Target,
+  Zap,
+  Clock
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -36,13 +40,16 @@ interface DiagnosticPageProps {
   onComplete?: () => void;
   onNavigateToDashboard?: () => void;
   onRefreshProfile?: () => void;
+  initialMode?: 'quick' | 'comprehensive';
 }
 
 export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
   onComplete,
   onNavigateToDashboard,
-  onRefreshProfile
+  onRefreshProfile,
+  initialMode = 'comprehensive'
 }) => {
+  const [testMode, setTestMode] = useState<'quick' | 'comprehensive'>(initialMode);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, { option: string; reasoning: string }>>({});
@@ -61,17 +68,22 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
   const [attemptsHistory, setAttemptsHistory] = useState<DiagnosticAttemptSummary[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const loadQuestions = () => {
+  const loadQuestions = (selectedMode: 'quick' | 'comprehensive' = testMode) => {
     setLoading(true);
-    api.getDiagnosticQuestions()
-      .then((data) => setQuestions(data.questions))
+    setAnswers({});
+    setCurrentIndex(0);
+    api.getDiagnosticQuestions(selectedMode)
+      .then((data) => {
+        setQuestions(data.questions);
+        setTestMode(selectedMode);
+      })
       .catch((err) => console.error('Failed to load diagnostic', err))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    loadQuestions();
-  }, []);
+    loadQuestions(initialMode);
+  }, [initialMode]);
 
   const handleSelectOption = (optionId: string) => {
     if (!questions[currentIndex]) return;
@@ -176,7 +188,7 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
           Could not load the 12 diagnostic onboarding questions. The backend server may still be spinning up from cold sleep.
         </p>
         <button
-          onClick={loadQuestions}
+          onClick={() => loadQuestions()}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs transition-all shadow-sm"
         >
           <RefreshCw className="w-4 h-4" />
@@ -368,6 +380,70 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
             <div className="text-[11px] text-rose-800">Flagged for targeted revision</div>
           </div>
         </div>
+
+        {/* Verified Proficiency Level & Personalized Learning Path Banner */}
+        {result.verified_proficiency && (
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/60 border border-indigo-200 shadow-card space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-indigo-100 pb-4">
+              <div className="space-y-1">
+                <div className="text-xs font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5 font-mono">
+                  <Award className="w-4 h-4 text-indigo-600" />
+                  Verified Algorithmic Proficiency Established
+                </div>
+                <h3 className="text-xl sm:text-2xl font-extrabold text-indigo-950 font-sans">
+                  {result.verified_proficiency.level_title || result.verified_proficiency.title}
+                </h3>
+                <p className="text-xs text-indigo-900/80 leading-relaxed max-w-2xl">
+                  {result.verified_proficiency.description}
+                </p>
+              </div>
+
+              <div className="text-left sm:text-right shrink-0">
+                <div className="text-3xl font-black text-indigo-600 font-mono">
+                  {result.verified_proficiency.proficiency_score || result.verified_proficiency.score}%
+                </div>
+                <span className="text-[10px] font-mono uppercase bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-bold">
+                  Level {result.verified_proficiency.level_number || 1} Calibrated
+                </span>
+              </div>
+            </div>
+
+            {/* Personalized Learning Path Highlights */}
+            {result.learning_path && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+                <div className="p-3 bg-white/80 rounded-xl border border-indigo-100 space-y-1">
+                  <span className="text-[#667085] font-semibold flex items-center gap-1 text-[11px]">
+                    <Target className="w-3.5 h-3.5 text-indigo-600" />
+                    Target Strategy
+                  </span>
+                  <p className="font-semibold text-slate-800 leading-snug">
+                    {result.learning_path.focus_strategy}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-white/80 rounded-xl border border-indigo-100 space-y-1">
+                  <span className="text-[#667085] font-semibold flex items-center gap-1 text-[11px]">
+                    <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                    Recommended Daily Target
+                  </span>
+                  <p className="font-semibold text-slate-800 leading-snug">
+                    {result.learning_path.daily_question_target} questions/day ({result.learning_path.daily_practice_target?.pace || 'Optimal pace'})
+                  </p>
+                </div>
+
+                <div className="p-3 bg-white/80 rounded-xl border border-indigo-100 space-y-1">
+                  <span className="text-[#667085] font-semibold flex items-center gap-1 text-[11px]">
+                    <Zap className="w-3.5 h-3.5 text-amber-600" />
+                    First Recommended Target
+                  </span>
+                  <p className="font-semibold text-slate-800 leading-snug">
+                    {result.learning_path.recommended_next_concepts?.[0]?.concept_name || 'Arrays & Invariants'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -842,14 +918,42 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
       <div className="text-center space-y-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF0FD] border border-[#C7D2FE] text-[#5B5CE2] text-xs font-mono font-medium">
           <GraduationCap className="w-3.5 h-3.5" />
-          Initial Diagnostic Assessment
+          Initial Diagnostic Assessment ({testMode === 'quick' ? 'Quick Mode' : 'Comprehensive Mode'})
         </div>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-[#172033] font-sans tracking-tight">
           DSA Knowledge Baseline Test
         </h2>
         <p className="text-xs sm:text-sm text-[#667085] max-w-xl mx-auto font-sans">
-          12 calibrated questions spanning the core DSA syllabus. This establishes your persistent concept mastery baseline and reveals prior misconceptions.
+          {testMode === 'quick'
+            ? '6 high-signal questions covering core foundational topics for a rapid skill estimate (~5 mins).'
+            : '12 calibrated questions spanning the complete DSA syllabus for maximum precision (~12 mins).'}
         </p>
+
+        {/* Mode Selector */}
+        <div className="flex items-center justify-center gap-2 pt-1.5">
+          <button
+            type="button"
+            onClick={() => loadQuestions('quick')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs transition-all ${
+              testMode === 'quick'
+                ? 'bg-[#5B5CE2] text-white shadow-xs font-semibold'
+                : 'bg-white border border-[#E6E9EF] text-slate-600 hover:bg-slate-50 font-medium'
+            }`}
+          >
+            Quick Mode (6 Qs)
+          </button>
+          <button
+            type="button"
+            onClick={() => loadQuestions('comprehensive')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs transition-all ${
+              testMode === 'comprehensive'
+                ? 'bg-[#5B5CE2] text-white shadow-xs font-semibold'
+                : 'bg-white border border-[#E6E9EF] text-slate-600 hover:bg-slate-50 font-medium'
+            }`}
+          >
+            Comprehensive Mode (12 Qs)
+          </button>
+        </div>
       </div>
 
       {/* Progress & Jump Navigator */}

@@ -8,7 +8,10 @@ import {
   RevisionTask,
   TeacherDashboardData,
   DiagnosticResult,
-  DiagnosticAttemptSummary
+  DiagnosticAttemptSummary,
+  OnboardingProfile,
+  PersonalizedLearningPath,
+  ProficiencyInfo
 } from '../types';
 
 // Always use same-origin '/api' in browser environment.
@@ -100,9 +103,44 @@ export const api = {
     }
   },
 
-  async getDiagnosticQuestions(): Promise<{ questions: Question[]; total: number }> {
-    const res = await fetchWithTimeout(`${API_BASE}/diagnostic/questions`);
-    return await handleResponse<{ questions: Question[]; total: number }>(res, 'Failed to fetch diagnostic questions');
+  async getDiagnosticQuestions(mode: 'quick' | 'comprehensive' = 'comprehensive', studentId?: string): Promise<{ questions: Question[]; total: number; mode: string }> {
+    const qParams = new URLSearchParams({ mode });
+    if (studentId) qParams.set('student_id', studentId);
+    const res = await fetchWithTimeout(`${API_BASE}/diagnostic/questions?${qParams.toString()}`);
+    return await handleResponse<{ questions: Question[]; total: number; mode: string }>(res, 'Failed to fetch diagnostic questions');
+  },
+
+  async getOnboardingProfile(studentId?: string): Promise<{ student_id: string; onboarding_completed: boolean; onboarding_data: OnboardingProfile }> {
+    const url = studentId ? `${API_BASE}/learner/onboarding?student_id=${studentId}` : `${API_BASE}/learner/onboarding`;
+    const res = await fetchWithTimeout(url);
+    return await handleResponse<any>(res, 'Failed to fetch onboarding profile');
+  },
+
+  async saveOnboardingProfile(payload: OnboardingProfile, studentId?: string): Promise<{
+    status: string;
+    onboarding_completed: boolean;
+    profile: LearnerProfile;
+    learning_path: PersonalizedLearningPath;
+  }> {
+    const url = studentId ? `${API_BASE}/learner/onboarding?student_id=${studentId}` : `${API_BASE}/learner/onboarding`;
+    const res = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await handleResponse<any>(res, 'Failed to save onboarding profile');
+  },
+
+  async getPersonalizedLearningPath(studentId?: string): Promise<{ learning_path: PersonalizedLearningPath }> {
+    const url = studentId ? `${API_BASE}/learner/learning-path?student_id=${studentId}` : `${API_BASE}/learner/learning-path`;
+    const res = await fetchWithTimeout(url);
+    return await handleResponse<{ learning_path: PersonalizedLearningPath }>(res, 'Failed to fetch personalized learning path');
+  },
+
+  async getProficiencyInfo(studentId?: string): Promise<ProficiencyInfo> {
+    const url = studentId ? `${API_BASE}/learner/proficiency?student_id=${studentId}` : `${API_BASE}/learner/proficiency`;
+    const res = await fetchWithTimeout(url);
+    return await handleResponse<ProficiencyInfo>(res, 'Failed to fetch proficiency information');
   },
 
   async submitDiagnostic(

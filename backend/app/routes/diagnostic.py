@@ -6,6 +6,11 @@ from pydantic import BaseModel
 from app.dsa.question_bank import get_diagnostic_questions, get_question_by_id
 from app.dsa.syllabus import DSA_CONCEPTS
 from app.dsa.misconceptions import MISCONCEPTION_CATALOG
+from app.dsa.personalization import (
+    select_personalized_diagnostic_questions,
+    calculate_verified_proficiency,
+    generate_personalized_learning_path
+)
 from app.storage.db import storage
 from app.tools.repetition_scheduler import schedule_spaced_repetition
 from app.auth.security import get_current_user_optional, resolve_student_id
@@ -23,12 +28,22 @@ class DiagnosticBatchSubmission(BaseModel):
     submissions: List[DiagnosticSubmissionItem]
 
 @router.get("/questions")
-def get_diagnostic_test():
+def get_diagnostic_test(
+    mode: str = "comprehensive",
+    student_id: Optional[str] = None,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     """
-    Retrieve the 12 diagnostic assessment questions (1 per DSA concept).
+    Retrieve personalized diagnostic assessment questions.
+    Supports mode='quick' (6 high-signal questions) or mode='comprehensive' (12 questions).
+    Difficulty is calibrated based on self-assessed skill level from onboarding if available.
     Security guarantee: Strips all answer keys, explanations, and misconception triggers.
     """
-    questions = get_diagnostic_questions()
+    effective_id = resolve_student_id(user, student_id)
+    onboarding = storage.get_learner_onboarding(effective_id) if effective_id else None
+    self_level = onboarding.get("self_assessed_skill_level", "Intermediate") if onboarding else "Intermediate"
+
+    questions = select_personalized_diagnostic_questions(mode=mode, onboarding_data=onboarding)
     safe_list = []
     for q in questions:
         safe_list.append({
@@ -38,7 +53,7 @@ def get_diagnostic_test():
             "question_text": q["question_text"],
             "options": q["options"]
         })
-    return {"questions": safe_list, "total": len(safe_list)}
+    return {"questions": safe_list, "total": len(safe_list), "mode": mode}
 
 @router.post("/submit")
 def submit_diagnostic_test(
@@ -168,6 +183,33 @@ def submit_diagnostic_test(
     attempt_id = f"diag_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:6]}"
     completed_at = datetime.utcnow().isoformat()
 
+    # Calculate and persist Verified Proficiency Level (Levels 1-5)
+    onboarding_data = storage.get_learner_onboarding(student_id)
+    verified_proficiency = calculate_verified_proficiency(
+        accuracy_percentage=accuracy_percentage,
+        score=score,
+        total_questions=total_questions,
+        concept_breakdown=concept_breakdown,
+        question_reviews=question_reviews,
+        onboarding_profile=onboarding_data
+    )
+    storage.update_verified_proficiency(
+        student_id=student_id,
+        level=verified_proficiency["level_number"],
+        score=verified_proficiency["proficiency_score"]
+    )
+
+    # Refresh profile with updated proficiency
+    profile = storage.get_learner_profile(student_id)
+
+    # Generate and save personalized learning path
+    learning_path = generate_personalized_learning_path(
+        student_id=student_id,
+        learner_profile=profile,
+        verified_proficiency=verified_proficiency
+    )
+    storage.save_learning_path(student_id, learning_path)
+
     attempt_record = {
         "id": attempt_id,
         "student_id": student_id,
@@ -193,7 +235,9 @@ def submit_diagnostic_test(
         "overall_mastery": profile.get("overall_mastery", 0.0),
         "concept_breakdown": concept_breakdown,
         "question_reviews": question_reviews,
-        "results": results
+        "results": results,
+        "verified_proficiency": verified_proficiency,
+        "learning_path": learning_path
     }
 
 @router.get("/attempts")

@@ -41,9 +41,63 @@ export interface LearnerProfile {
   target_exam: string;
   overall_mastery: number;
   diagnostic_completed: boolean;
+  onboarding_completed?: boolean;
+  onboarding_completed_at?: string | null;
+  learner_category?: string;
+  verified_proficiency_level?: number | string;
+  verified_proficiency_score?: number;
+  onboarding_data?: OnboardingProfile;
+  learning_path?: PersonalizedLearningPath;
   concepts: Record<string, ConceptMastery>;
   created_at: string;
   updated_at: string;
+}
+
+export interface OnboardingProfile {
+  learner_category: string;
+  category_details?: Record<string, any>;
+  programming_experience: string;
+  dsa_experience: string;
+  programming_languages: string[];
+  preferred_language: string;
+  previously_studied_concepts: string[];
+  primary_goals: string[];
+  target_timeline: string;
+  daily_availability: string;
+  self_assessed_skill_level: string;
+  learning_preferences: string[];
+  diagnostic_mode?: 'quick' | 'comprehensive';
+  onboarding_completed?: boolean;
+}
+
+export interface PersonalizedLearningPath {
+  student_id: string;
+  learner_category: string;
+  primary_goals: string[];
+  verified_proficiency_level: string;
+  focus_strategy: string;
+  strong_concepts: Array<{ concept_id: string; concept_name: string; category: string; mastery: number }>;
+  learning_concepts: Array<{ concept_id: string; concept_name: string; category: string; mastery: number }>;
+  weak_concepts: Array<{ concept_id: string; concept_name: string; category: string; mastery: number; reason?: string }>;
+  missing_prerequisites: Array<{ prerequisite_id: string; prerequisite_name: string; needed_for: string; current_mastery: number }>;
+  recommended_next_concepts: Array<{ concept_id: string; concept_name: string; reason: string }>;
+  suggested_question_difficulty: 'novice' | 'intermediate' | 'advanced';
+  daily_practice_target?: { questions_per_day: number; estimated_study_hours_week: number; pace: string };
+  daily_question_target: number;
+  target_timeline: string;
+  target_completion_date: string;
+  learning_preferences: string[];
+  generated_at: string;
+}
+
+export interface ProficiencyInfo {
+  student_id: string;
+  verified_proficiency_level: number;
+  verified_proficiency_score: number;
+  level_title: string;
+  level_description: string;
+  diagnostic_completed: boolean;
+  overall_mastery: number;
 }
 
 export interface QuestionOption {
@@ -186,6 +240,16 @@ export interface DiagnosticResult {
   overall_mastery: number;
   concept_breakdown: DiagnosticConceptAnalysis[];
   question_reviews: DiagnosticQuestionReview[];
+  verified_proficiency?: {
+    level_number: number;
+    level_title: string;
+    title: string;
+    description: string;
+    score: number;
+    proficiency_score: number;
+    raw_accuracy: number;
+  };
+  learning_path?: PersonalizedLearningPath;
 }
 
 export interface DiagnosticAttemptSummary {

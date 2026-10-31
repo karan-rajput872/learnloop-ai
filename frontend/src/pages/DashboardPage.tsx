@@ -10,9 +10,14 @@ import {
   BrainCircuit,
   Network,
   Clock,
-  BookOpen
+  BookOpen,
+  Award,
+  Target,
+  User,
+  Zap,
+  Check
 } from 'lucide-react';
-import { LearnerProfile, RevisionTask } from '../types';
+import { LearnerProfile, RevisionTask, OnboardingProfile } from '../types';
 import { MasteryGauge } from '../components/MasteryGauge';
 
 interface DashboardPageProps {
@@ -22,6 +27,7 @@ interface DashboardPageProps {
   onStartQuiz: () => void;
   onViewGraph: () => void;
   onOpenRevision: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -30,7 +36,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onStartDiagnostic,
   onStartQuiz,
   onViewGraph,
-  onOpenRevision
+  onOpenRevision,
+  onOpenProfile
 }) => {
   const conceptsList = Object.values(profile.concepts || {});
   const completedDiagnostic = profile.diagnostic_completed;
@@ -42,6 +49,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const pendingRevisions = revisionTasks.filter(t => t.status === 'pending');
 
+  const onboarding: Partial<OnboardingProfile> = profile.onboarding_data || {};
+  const category = profile.learner_category || onboarding.learner_category || 'General Learner';
+  const verifiedLevel = profile.verified_proficiency_level || 1;
+  const verifiedScore = profile.verified_proficiency_score || 0;
+  const learningPath = profile.learning_path;
+
+  const levelName = typeof verifiedLevel === 'number'
+    ? { 1: 'Level 1 — Beginner', 2: 'Level 2 — Elementary', 3: 'Level 3 — Intermediate', 4: 'Level 4 — Advanced', 5: 'Level 5 — Proficient' }[verifiedLevel] || 'Level 1 — Beginner'
+    : String(verifiedLevel);
+
   return (
     <div className="space-y-6 animate-fade-in">
 
@@ -49,10 +66,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="relative overflow-hidden rounded-2xl bg-white border border-[#E6E9EF] p-6 sm:p-8 shadow-card">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2.5 max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF0FD] border border-[#C7D2FE] text-[#5B5CE2] text-xs font-mono font-medium">
-              <Sparkles className="w-3.5 h-3.5" />
-              Continuous Learner Modeling Engine
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF0FD] border border-[#C7D2FE] text-[#5B5CE2] text-xs font-mono font-medium">
+                <Sparkles className="w-3.5 h-3.5" />
+                Continuous Learner Modeling Engine
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-sans font-semibold">
+                <User className="w-3 h-3" />
+                {category}
+              </span>
             </div>
+
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#172033] font-sans">
               Welcome back, <span className="text-[#5B5CE2]">{profile.name}</span>
             </h1>
@@ -62,6 +86,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+            {onOpenProfile && (
+              <button
+                onClick={onOpenProfile}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors shadow-xs"
+              >
+                <Award className="w-4 h-4 text-[#5B5CE2]" />
+                My Learning Profile
+              </button>
+            )}
+
             {!completedDiagnostic ? (
               <button
                 onClick={onStartDiagnostic}
@@ -94,6 +128,63 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {/* Subtle accent corner glow */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+      </div>
+
+      {/* Personalized Skill Level & Learning Path Highlight Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Verified Proficiency Level Card */}
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-white to-purple-50/50 border border-indigo-100 shadow-card flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+              <Award className="w-3.5 h-3.5" />
+              Verified Proficiency Level
+            </div>
+            <div className="text-base font-bold text-indigo-950 font-sans">
+              {levelName}
+            </div>
+            <div className="text-[11px] text-[#667085]">
+              {completedDiagnostic
+                ? `Calibrated Score: ${verifiedScore.toFixed(1)}%`
+                : 'Provisional (Pending Diagnostic)'}
+            </div>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-[#5B5CE2] text-white flex items-center justify-center font-bold text-lg shadow-sm">
+            L{typeof verifiedLevel === 'number' ? verifiedLevel : 1}
+          </div>
+        </div>
+
+        {/* Focus Strategy Card */}
+        <div className="p-4 rounded-2xl bg-white border border-[#E6E9EF] shadow-card space-y-1">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#667085] flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-[#5B5CE2]" />
+            Personalized Focus Strategy
+          </div>
+          <div className="text-xs font-semibold text-[#172033] line-clamp-2">
+            {learningPath?.focus_strategy || 'Curriculum-Aligned: Reinforce core invariants and prerequisite mastery.'}
+          </div>
+          <div className="text-[11px] text-[#667085] flex items-center gap-1 pt-0.5">
+            <Clock className="w-3 h-3 text-[#5B5CE2]" />
+            Pacing: {onboarding.daily_availability || '30–60 minutes'} / day
+          </div>
+        </div>
+
+        {/* Next Concept & Prerequisites Card */}
+        <div className="p-4 rounded-2xl bg-white border border-[#E6E9EF] shadow-card space-y-1">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#667085] flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-amber-600" />
+            Recommended Next Concept
+          </div>
+          <div className="text-xs font-semibold text-[#172033]">
+            {learningPath?.recommended_next_concepts && learningPath.recommended_next_concepts[0]
+              ? learningPath.recommended_next_concepts[0].concept_name
+              : weakestConcepts[0]?.concept_name || 'Arrays & Invariants'}
+          </div>
+          <div className="text-[11px] text-[#667085] truncate">
+            {learningPath?.recommended_next_concepts && learningPath.recommended_next_concepts[0]
+              ? learningPath.recommended_next_concepts[0].reason
+              : 'Core foundational prerequisite'}
+          </div>
+        </div>
       </div>
 
       {/* Main Stats Grid */}

@@ -174,12 +174,18 @@ class TutorAgentOrchestrator:
         recent_m = profile.get("concepts", {}).get(inspection["weakest_concept"], {}).get("last_misconception")
 
         # Step 4: Pedagogical response generation via Gemini API / Local Fallback
+        onboarding = profile.get("onboarding_data") or {}
         response_text = await gemini_tutor.generate_tutor_response(
             student_query=raw_transcript,
             cleaned_query=speech_data["cleaned_query"],
             learner_context={
                 "overall_mastery": profile.get("overall_mastery", 0.0),
-                "weakest_concept": inspection["weakest_concept"]
+                "weakest_concept": inspection["weakest_concept"],
+                "learner_category": profile.get("learner_category") or onboarding.get("learner_category", "Student"),
+                "preferred_language": onboarding.get("preferred_language", "Python"),
+                "learning_preferences": onboarding.get("learning_preferences", []),
+                "primary_goals": onboarding.get("primary_goals", []),
+                "verified_level": profile.get("verified_proficiency_level", 1)
             },
             recent_misconception=recent_m
         )

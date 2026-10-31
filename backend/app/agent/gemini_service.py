@@ -26,19 +26,31 @@ class GeminiTutorService:
 
         endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
 
+        category = learner_context.get("learner_category", "Student")
+        pref_lang = learner_context.get("preferred_language", "Python")
+        goals = ", ".join(learner_context.get("primary_goals", [])) or "DSA Mastery"
+        prefs = ", ".join(learner_context.get("learning_preferences", [])) or "Standard"
+        verified_lvl = learner_context.get("verified_level", 1)
+
         system_instruction = (
             "You are LearnLoop AI, an elite adaptive computer science tutor specialized in Data Structures and Algorithms. "
             "Tagline: 'Don't just learn the answers. Master the concepts.'\n"
+            f"Personalization target: You are tutoring a {category} (Proficiency Level {verified_lvl}) whose preferred language is {pref_lang}.\n"
+            f"Their primary goals are: {goals}. Their preferred learning styles: {prefs}.\n"
             "Your goal is to guide students to conceptual mastery using the Socratic method.\n"
             "Rules:\n"
             "1. When answering, focus on underlying memory invariants, pointers, or asymptotic mechanics.\n"
             "2. If the student has a recent misconception, gently help them resolve it without shaming them.\n"
             "3. If their input contained conversational speech fillers or digressions, acknowledge them warmly but focus on the DSA core.\n"
-            "4. Keep explanations concise, clear, and structured with bullet points or brief code snippets when helpful."
+            f"4. Provide code snippets in {pref_lang} when illustrating examples.\n"
+            "5. Keep explanations concise, clear, and structured with bullet points or brief code snippets when helpful."
         )
 
         prompt = f"""
 Student Profile Context:
+- Learner Category: {category}
+- Proficiency Level: Level {verified_lvl}
+- Primary Language: {pref_lang}
 - Overall Mastery: {learner_context.get('overall_mastery', 0)}%
 - Weakest Concept: {learner_context.get('weakest_concept', 'None')}
 - Recent Misconception: {recent_misconception or 'None'}

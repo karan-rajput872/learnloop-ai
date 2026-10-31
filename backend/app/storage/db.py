@@ -183,12 +183,30 @@ class StorageManager:
             if "rotated_at" not in session_cols:
                 cursor.execute("ALTER TABLE user_sessions ADD COLUMN rotated_at TEXT")
 
+            # Schema upgrade for learners onboarding & verified proficiency
+            cursor.execute("PRAGMA table_info(learners)")
+            learner_cols = [c[1] for c in cursor.fetchall()]
+            if "onboarding_completed" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN onboarding_completed INTEGER DEFAULT 0")
+            if "onboarding_completed_at" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN onboarding_completed_at TEXT")
+            if "learner_category" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN learner_category TEXT")
+            if "onboarding_data" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN onboarding_data TEXT")
+            if "verified_proficiency_level" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN verified_proficiency_level TEXT DEFAULT 'Level 1 — Beginner'")
+            if "verified_proficiency_score" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN verified_proficiency_score REAL DEFAULT 0.0")
+            if "learning_path_json" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN learning_path_json TEXT")
+
             conn.commit()
 
     def ensure_default_learner(self):
-        self.ensure_learner("student_default", "Alex Chen")
+        self.ensure_learner("student_default", "Alex Chen", onboarding_completed=1)
 
-    def ensure_learner(self, student_id: str, name: str = None):
+    def ensure_learner(self, student_id: str, name: str = None, onboarding_completed: int = 0):
         """Ensure learner and 12 concept mastery rows exist for any given student ID."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -198,9 +216,9 @@ class StorageManager:
                 display_name = name or (f"Student {student_id}" if student_id != "student_default" else "Alex Chen")
                 cursor.execute("""
                     INSERT OR REPLACE INTO learners
-                    (student_id, name, target_exam, overall_mastery, diagnostic_completed, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (student_id, display_name, "Data Structures & Algorithms Exam", 0.0, 0, now, now))
+                    (student_id, name, target_exam, overall_mastery, diagnostic_completed, onboarding_completed, verified_proficiency_level, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (student_id, display_name, "Data Structures & Algorithms Exam", 0.0, 0, onboarding_completed, "Level 1 — Beginner", now, now))
 
                 for cid, cdata in DSA_CONCEPTS.items():
                     cursor.execute("""
@@ -278,7 +296,23 @@ class StorageManager:
                 })
 
             profile = dict(learner_row)
-            profile["diagnostic_completed"] = bool(profile["diagnostic_completed"])
+            profile["diagnostic_completed"] = bool(profile.get("diagnostic_completed", 0))
+            profile["onboarding_completed"] = bool(profile.get("onboarding_completed", 0))
+            profile["onboarding_completed_at"] = profile.get("onboarding_completed_at")
+            profile["learner_category"] = profile.get("learner_category")
+            profile["verified_proficiency_level"] = profile.get("verified_proficiency_level") or "Level 1 — Beginner"
+            profile["verified_proficiency_score"] = float(profile.get("verified_proficiency_score") or 0.0)
+
+            try:
+                profile["onboarding_data"] = json.loads(profile.get("onboarding_data") or "{}")
+            except Exception:
+                profile["onboarding_data"] = {}
+
+            try:
+                profile["learning_path"] = json.loads(profile.get("learning_path_json") or "{}")
+            except Exception:
+                profile["learning_path"] = {}
+
             profile["concepts"] = concepts
             profile["mastered_count"] = mastered_count
             profile["learning_count"] = learning_count
@@ -322,6 +356,91 @@ class StorageManager:
                 }
 
             return profile
+
+    def save_learner_onboarding(self, student_id: str, onboarding_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Save onboarding profile data and mark onboarding completed."""
+        self.ensure_learner(student_id)
+        now = datetime.utcnow().isoformat()
+        category = onboarding_dict.get("learner_category", "Independent Learner")
+        onboarding_json = json.dumps(onboarding_dict)
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE learners
+                SET onboarding_completed = 1,
+                    onboarding_completed_at = ?,
+                    learner_category = ?,
+                    onboarding_data = ?,
+                    updated_at = ?
+                WHERE student_id = ?
+            """, (now, category, onboarding_json, now, student_id))
+            conn.commit()
+
+        # Generate initial personalized learning path
+        from app.dsa.personalization import generate_personalized_learning_path
+        profile = self.get_learner_profile(student_id)
+        learning_path = generate_personalized_learning_path(student_id, profile, onboarding_dict)
+        self.save_learning_path(student_id, learning_path)
+        return self.get_learner_profile(student_id)
+
+    def get_learner_onboarding(self, student_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve onboarding profile data for a student."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT onboarding_data, onboarding_completed, learner_category FROM learners WHERE student_id = ?", (student_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            try:
+                data = json.loads(row["onboarding_data"] or "{}")
+            except Exception:
+                data = {}
+            data["onboarding_completed"] = bool(row["onboarding_completed"])
+            data["learner_category"] = row["learner_category"]
+            return data
+
+    def update_verified_proficiency(self, student_id: str, level: str, score: float):
+        """Update verified proficiency level and score from diagnostic evaluation."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE learners
+                SET verified_proficiency_level = ?,
+                    verified_proficiency_score = ?,
+                    updated_at = ?
+                WHERE student_id = ?
+            """, (level, score, now, student_id))
+            conn.commit()
+
+    def save_learning_path(self, student_id: str, learning_path_dict: Dict[str, Any]):
+        """Persist personalized learning path JSON."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE learners
+                SET learning_path_json = ?,
+                    updated_at = ?
+                WHERE student_id = ?
+            """, (json.dumps(learning_path_dict), now, student_id))
+            conn.commit()
+
+    def get_learning_path(self, student_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve personalized learning path for student."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT learning_path_json FROM learners WHERE student_id = ?", (student_id,))
+            row = cursor.fetchone()
+            if not row or not row["learning_path_json"]:
+                from app.dsa.personalization import generate_personalized_learning_path
+                profile = self.get_learner_profile(student_id)
+                return generate_personalized_learning_path(student_id, profile)
+            try:
+                return json.loads(row["learning_path_json"])
+            except Exception:
+                return {}
 
     def update_concept_mastery(self, student_id: str, concept_id: str, mastery_data: Dict[str, Any]):
         self.ensure_learner(student_id)
