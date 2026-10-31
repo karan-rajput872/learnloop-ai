@@ -550,11 +550,11 @@ def run_audit():
         assert "access-control-allow-origin" not in r_bad_get.headers
         passed_tests.append("10.3 Untrusted external origin rejected with HTTP 400 Disallowed CORS in preflight")
 
-        # 10.4 OPTIONS Preflight Returns Valid CORS Headers with Credentials Disabled
+        # 10.4 OPTIONS Preflight Returns Valid CORS Headers with Credentials Enabled for Allowed Origins
         assert "access-control-allow-methods" in r_prod_opt.headers
         assert "access-control-allow-headers" in r_prod_opt.headers
-        assert r_prod_opt.headers.get("access-control-allow-credentials") != "true"
-        passed_tests.append("10.4 OPTIONS preflight returns correct CORS headers with credentials safely disabled")
+        assert r_prod_opt.headers.get("access-control-allow-credentials") == "true"
+        passed_tests.append("10.4 OPTIONS preflight returns correct CORS headers with credentials enabled for allowed origin")
         print("  [PASS] CORS Preflight & Origin Security PASSED")
     except Exception as e:
         failed_tests.append(f"CORS Preflight & Origin Security Failed: {e}")
@@ -663,7 +663,7 @@ def run_audit():
 
         # 11.5 Persistent Session, Token Rotation & Concurrency Grace Window
         # Session restoration via HttpOnly cookie (no payload body required)
-        r_refresh = client.post(f"{BASE_URL}/auth/refresh", json={})
+        r_refresh = client.post(f"{BASE_URL}/auth/refresh", json={}, cookies={"refresh_token": refresh_cookie_a})
         assert r_refresh.status_code == 200, f"Session restoration via cookie failed: {r_refresh.status_code}"
         refresh_data = r_refresh.json()
         new_access_a = refresh_data["access_token"]

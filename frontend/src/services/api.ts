@@ -14,6 +14,12 @@ import {
 // If VITE_API_BASE is provided in build env, use it.
 // Default to same-origin '/api' routed via Vite proxy (local dev) or Vercel proxy (production).
 export const getApiBase = (): string => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host.endsWith('vercel.app') || host === 'localhost' || host === '127.0.0.1') {
+      return '/api';
+    }
+  }
   const envBase = import.meta.env.VITE_API_BASE;
   if (envBase && typeof envBase === 'string' && envBase.trim() !== '') {
     return envBase.trim().replace(/\/+$/, '');

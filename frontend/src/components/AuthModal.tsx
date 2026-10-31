@@ -130,9 +130,16 @@ export const AuthModal: React.FC = () => {
   };
 
   const handleGoogleDemo = async () => {
-    // If Google Client ID is configured, this would invoke GIS.
-    // As a clean preview experience:
-    setErrorMessage('Google Sign-In requires GOOGLE_CLIENT_ID configured in .env. You can sign in using email & password or create a new account instantly.');
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleClientId) {
+      setErrorMessage('Google Sign-In requires VITE_GOOGLE_CLIENT_ID configured in Vercel and GOOGLE_CLIENT_ID in Render. You can create an account or sign in with email & password right now.');
+      return;
+    }
+    if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+      (window as any).google.accounts.id.prompt();
+    } else {
+      setErrorMessage('Google Identity Services initializing. Please try again or sign in with email & password.');
+    }
   };
 
   return (
