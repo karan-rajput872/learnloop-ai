@@ -52,3 +52,12 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px -2px rgba(16, 24, 40, 0.08);
 }
+
+/* Hide scrollbar for clean horizontal tab rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
