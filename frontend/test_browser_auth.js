@@ -193,7 +193,7 @@ async function runBrowserAuthTests() {
 
   } catch (err) {
     console.error('Browser test failed:', err);
-    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'error_state.png') }).catch(() => {});
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'error_state.png') }).catch(() => { });
     throw err;
   } finally {
     await browser.close();

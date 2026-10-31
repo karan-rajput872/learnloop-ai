@@ -18,3 +18,4 @@ for t in tables:
     cols = [col[1] for col in c.fetchall()]
     print(f"  [{t}] - {count} rows. Columns: {cols}")
 conn.close()
+
