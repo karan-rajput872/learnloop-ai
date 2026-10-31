@@ -79,7 +79,8 @@ def build_public_user(user: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def set_refresh_cookie(response: Response, raw_token: str):
-    """Set HttpOnly secure session cookie."""
+    """Set HttpOnly secure session cookie with both max_age and expires for cross-session persistence."""
+    expire_dt = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     response.set_cookie(
         key="refresh_token",
         value=raw_token,
@@ -87,6 +88,7 @@ def set_refresh_cookie(response: Response, raw_token: str):
         secure=COOKIE_SECURE,
         samesite=COOKIE_SAMESITE,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
+        expires=expire_dt,
         path="/api/auth"
     )
 
@@ -198,6 +200,13 @@ def login(payload: LoginRequest, response: Response):
     """
     norm_email = payload.email.strip().lower()
     user = storage.get_user_by_email(norm_email)
+
+    # If account was created with Google Sign-In and does not yet have a password set, guide the learner
+    if user and not user.get("hashed_password") and user.get("google_sub"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account was registered using Google Sign-In. Please sign in by clicking 'Continue with Google'."
+        )
 
     # Safe credential verification preventing user enumeration
     if not user or not user.get("hashed_password") or not verify_password(payload.password, user["hashed_password"]):
@@ -499,12 +508,17 @@ def update_profile(payload: ProfileUpdateRequest, user: Dict[str, Any] = Depends
 
 @router.post("/change-password")
 def change_password(payload: ChangePasswordRequest, user: Dict[str, Any] = Depends(get_current_user)):
-    """Change account password verifying existing Argon2id hash."""
-    if user.get("auth_provider") == "google" and not user.get("hashed_password"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Google-authenticated accounts do not use a password. You can set one by linking a password."
-        )
+    """Change account password verifying existing Argon2id hash, or set initial password for Google users."""
+    # If account was created via Google and has no password yet, allow setting the initial password
+    if not user.get("hashed_password"):
+        if payload.new_password != payload.confirm_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password and confirmation do not match."
+            )
+        new_hash = hash_password(payload.new_password)
+        storage.update_user_password(user["id"], new_hash)
+        return {"status": "success", "message": "Account password set successfully. You can now sign in using either Google or your email and password."}
 
     if not verify_password(payload.old_password, user.get("hashed_password", "")):
         raise HTTPException(

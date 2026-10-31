@@ -73,9 +73,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (response.learner) setLearner(response.learner);
           localStorage.setItem(USER_CACHE_KEY, JSON.stringify(response.user));
         }
-      } catch {
-        // Not authenticated or refresh expired - clear local UI state
-        if (isMounted) {
+      } catch (err: any) {
+        // Only clear user credentials if the server explicitly rejected the refresh token (401/expired).
+        // If there was a temporary cold-boot delay or network glitch, preserve cached user info.
+        const isNetworkError = err && (
+          err.message?.includes('Failed to fetch') ||
+          err.message?.includes('NetworkError') ||
+          err.message?.includes('timeout')
+        );
+        if (isMounted && !isNetworkError) {
           setUser(null);
           setLearner(null);
           try {

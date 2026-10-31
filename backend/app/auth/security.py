@@ -33,12 +33,14 @@ def hash_password(password: str) -> str:
     return pwd_hasher.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against Argon2id hash."""
-    if not hashed_password:
+    """Verify password against Argon2id hash with full exception safety."""
+    if not hashed_password or not plain_password:
         return False
     try:
         return pwd_hasher.verify(hashed_password, plain_password)
     except (VerifyMismatchError, VerificationError, InvalidHashError):
+        return False
+    except Exception:
         return False
 
 def hash_token(raw_token: str) -> str:

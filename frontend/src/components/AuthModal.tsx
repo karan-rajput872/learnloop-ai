@@ -47,6 +47,11 @@ export const AuthModal: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+  }, [authModal]);
+
   if (!authModal) return null;
 
   const handleLoginSubmit = async (e: React.FormEvent) => {

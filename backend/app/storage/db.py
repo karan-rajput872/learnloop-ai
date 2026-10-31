@@ -5,8 +5,15 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from app.dsa.syllabus import DSA_CONCEPTS
 
-DB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data"))
-DB_PATH = os.path.join(DB_DIR, "learnloop.db")
+# Database Storage Configuration
+# Supports custom persistent path (e.g. Render Persistent Disk mounted at /var/data/learnloop.db)
+CUSTOM_DB_PATH = os.getenv("DATABASE_PATH") or os.getenv("SQLITE_PATH")
+if CUSTOM_DB_PATH:
+    DB_PATH = os.path.abspath(CUSTOM_DB_PATH)
+    DB_DIR = os.path.dirname(DB_PATH)
+else:
+    DB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data"))
+    DB_PATH = os.path.join(DB_DIR, "learnloop.db")
 JSON_FALLBACK = os.path.join(DB_DIR, "learner_store.json")
 
 class StorageManager:
