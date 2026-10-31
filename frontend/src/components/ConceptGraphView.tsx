@@ -40,9 +40,13 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
   const conceptMap = new Map(concepts.map(c => [c.id, c]));
 
   const getMasteryColor = (pct: number) => {
-    if (pct >= 70) return { stroke: '#10B981', fill: '#064E3B', text: '#34D399', bg: 'bg-emerald-950/80', border: 'border-emerald-600' };
-    if (pct >= 40) return { stroke: '#F59E0B', fill: '#78350F', text: '#FBBF24', bg: 'bg-amber-950/80', border: 'border-amber-600' };
-    return { stroke: '#A855F7', fill: '#4C1D95', text: '#C084FC', bg: 'bg-purple-950/80', border: 'border-purple-600' };
+    if (pct >= 70) {
+      return { stroke: '#0F9F91', fill: '#FFFFFF', text: '#0F9F91', pillBg: '#E6F7F5', pillBorder: '#99F6E4' };
+    }
+    if (pct >= 40) {
+      return { stroke: '#D99027', fill: '#FFFFFF', text: '#D99027', pillBg: '#FEF7ED', pillBorder: '#FED7AA' };
+    }
+    return { stroke: '#5B5CE2', fill: '#FFFFFF', text: '#5B5CE2', pillBg: '#EEF0FD', pillBorder: '#C7D2FE' };
   };
 
   const selectedConcept = selectedId ? conceptMap.get(selectedId) : null;
@@ -83,15 +87,15 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
   });
 
   return (
-    <div className="bg-edu-900/90 rounded-2xl border border-edu-700/80 p-5 shadow-xl space-y-4">
+    <div className="bg-white rounded-2xl border border-[#E6E9EF] p-5 shadow-card space-y-4">
       {/* Header with Mode Toggle & Legend */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edu-800 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E6E9EF] pb-3">
         <div>
-          <h3 className="text-sm font-bold font-mono uppercase text-white tracking-wider flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-loop-purple" />
+          <h3 className="text-sm font-bold font-sans text-[#172033] tracking-tight flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#5B5CE2]" />
             DSA Syllabus Prerequisite Hierarchy (12 Concepts)
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-[#667085] mt-0.5 font-sans">
             {viewMode === 'graph'
               ? 'Pan, zoom, or click any node to inspect prerequisite relations and mastery state.'
               : 'Categorized list view with prerequisite readiness indicators.'}
@@ -100,19 +104,21 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
 
         <div className="flex items-center gap-3">
           {/* View Mode Toggle Button */}
-          <div className="flex items-center p-1 bg-edu-950 border border-edu-800 rounded-xl text-xs font-mono">
+          <div className="flex items-center p-1 bg-slate-50 border border-[#E6E9EF] rounded-xl text-xs font-mono">
             <button
               onClick={() => setViewMode('graph')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${viewMode === 'graph' ? 'bg-purple-950 text-purple-300 font-bold border border-purple-800' : 'text-slate-400 hover:text-white'
-                }`}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${
+                viewMode === 'graph' ? 'bg-[#EEF0FD] text-[#5B5CE2] font-bold border border-[#C7D2FE]' : 'text-[#667085] hover:text-[#172033]'
+              }`}
             >
               <Network className="w-3.5 h-3.5" />
               Graph View
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-purple-950 text-purple-300 font-bold border border-purple-800' : 'text-slate-400 hover:text-white'
-                }`}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${
+                viewMode === 'list' ? 'bg-[#EEF0FD] text-[#5B5CE2] font-bold border border-[#C7D2FE]' : 'text-[#667085] hover:text-[#172033]'
+              }`}
             >
               <List className="w-3.5 h-3.5" />
               List View
@@ -120,9 +126,9 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
           </div>
 
           {/* Legend */}
-          <div className="hidden sm:flex items-center gap-2.5 text-[11px] font-mono text-slate-400">
+          <div className="hidden sm:flex items-center gap-2.5 text-[11px] font-mono text-[#667085]">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#5B5CE2]" />
               Novice
             </span>
             <span className="flex items-center gap-1.5">
@@ -130,7 +136,7 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
               Developing
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
               Mastered
             </span>
           </div>
@@ -139,38 +145,38 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
 
       {/* VIEW 1: Interactive SVG Graph with Pan & Zoom */}
       {viewMode === 'graph' && (
-        <div className="relative w-full overflow-hidden bg-edu-950 rounded-xl border border-edu-800 select-none">
+        <div className="relative w-full overflow-hidden bg-[#F8FAFC] rounded-xl border border-[#E6E9EF] select-none">
           {/* Zoom & Pan Floating Controls Bar */}
-          <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-edu-900/90 backdrop-blur-md border border-edu-700/80 p-1.5 rounded-xl shadow-lg text-xs font-mono">
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/95 backdrop-blur-md border border-[#E6E9EF] p-1.5 rounded-xl shadow-sm text-xs font-mono">
             <button
               onClick={handleZoomIn}
-              className="p-1.5 rounded-lg hover:bg-edu-800 text-slate-300 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
               title="Zoom In (+)"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
             <button
               onClick={handleZoomOut}
-              className="p-1.5 rounded-lg hover:bg-edu-800 text-slate-300 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
               title="Zoom Out (-)"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
             <button
               onClick={handleResetZoom}
-              className="p-1.5 rounded-lg hover:bg-edu-800 text-slate-300 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
               title="Reset Zoom (100%)"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
             <button
               onClick={handleFitScreen}
-              className="p-1.5 rounded-lg hover:bg-edu-800 text-slate-300 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
               title="Fit to Screen"
             >
               <Maximize2 className="w-4 h-4" />
             </button>
-            <span className="px-2 py-0.5 text-[10px] text-purple-300 font-bold bg-edu-950 rounded border border-purple-800">
+            <span className="px-2 py-0.5 text-[10px] text-[#5B5CE2] font-bold bg-[#EEF0FD] rounded border border-[#C7D2FE]">
               {Math.round(zoom * 100)}%
             </span>
           </div>
@@ -199,7 +205,7 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
                   refY="3"
                   orient="auto"
                 >
-                  <polygon points="0 0, 8 3, 0 6" fill="#475569" />
+                  <polygon points="0 0, 8 3, 0 6" fill="#94A3B8" />
                 </marker>
               </defs>
 
@@ -224,8 +230,8 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
                     key={idx}
                     d={`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`}
                     fill="none"
-                    stroke="#334155"
-                    strokeWidth="2"
+                    stroke="#CBD5E1"
+                    strokeWidth="1.75"
                     strokeDasharray="4 3"
                     markerEnd="url(#arrowhead)"
                   />
@@ -254,20 +260,20 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
                       width="110"
                       height="50"
                       rx="10"
-                      fill="#0B1120"
-                      stroke={isSelected ? '#C084FC' : colors.stroke}
-                      strokeWidth={isSelected ? '3' : '2'}
-                      filter={isSelected ? 'drop-shadow(0 0 10px rgba(168, 85, 247, 0.5))' : ''}
-                      className="transition-all duration-200 group-hover:brightness-125"
+                      fill="#FFFFFF"
+                      stroke={isSelected ? '#5B5CE2' : colors.stroke}
+                      strokeWidth={isSelected ? '2.5' : '1.5'}
+                      filter="drop-shadow(0 1px 2px rgba(16, 24, 40, 0.05))"
+                      className="transition-all duration-150"
                     />
 
                     <text
                       x="55"
                       y="22"
                       textAnchor="middle"
-                      fill="#F8FAFC"
+                      fill="#172033"
                       fontSize="11"
-                      fontWeight="bold"
+                      fontWeight="600"
                       fontFamily="Inter, sans-serif"
                     >
                       {concept.name}
@@ -296,8 +302,8 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
       {viewMode === 'list' && (
         <div className="space-y-4 animate-fade-in">
           {Object.entries(categories).map(([catName, catConcepts]) => (
-            <div key={catName} className="p-4 rounded-xl bg-edu-950 border border-edu-800 space-y-3">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-purple-300">
+            <div key={catName} className="p-4 rounded-xl bg-slate-50/70 border border-[#E6E9EF] space-y-3">
+              <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#5B5CE2]">
                 {catName}
               </h4>
 
@@ -311,28 +317,33 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
                         setSelectedId(c.id);
                         onSelectConcept(c.id);
                       }}
-                      className={`p-3 rounded-xl bg-edu-900 border cursor-pointer transition-all ${selectedId === c.id ? 'border-purple-500 shadow-md shadow-purple-500/20' : 'border-edu-800 hover:border-edu-700'
-                        }`}
+                      className={`p-3 rounded-xl bg-white border cursor-pointer transition-all ${
+                        selectedId === c.id ? 'border-[#5B5CE2] shadow-sm' : 'border-[#E6E9EF] hover:border-slate-300'
+                      }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-sm text-white font-mono">{c.name}</span>
-                        <span className={`text-xs font-mono font-bold ${c.mastery_percentage >= 70 ? 'text-emerald-400' :
-                            c.mastery_percentage >= 40 ? 'text-amber-400' : 'text-purple-400'
-                          }`}>
+                        <span className="font-semibold text-sm text-[#172033] font-sans">{c.name}</span>
+                        <span className={`text-xs font-mono font-bold ${
+                          c.mastery_percentage >= 70 ? 'text-teal-700' :
+                          c.mastery_percentage >= 40 ? 'text-amber-700' : 'text-[#5B5CE2]'
+                        }`}>
                           {c.mastery_percentage}%
                         </span>
                       </div>
 
-                      <div className="h-1.5 w-full bg-edu-950 rounded-full overflow-hidden my-2">
+                      <div className="h-1.5 w-full bg-[#E6E9EF] rounded-full overflow-hidden my-2">
                         <div
-                          className="h-full bg-gradient-to-r from-purple-500 to-loop-blue rounded-full"
+                          className={`h-full rounded-full ${
+                            c.mastery_percentage >= 70 ? 'bg-teal-500' :
+                            c.mastery_percentage >= 40 ? 'bg-amber-500' : 'bg-[#5B5CE2]'
+                          }`}
                           style={{ width: `${c.mastery_percentage}%` }}
                         />
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                        <span>Prereqs: <strong className="text-slate-300">{c.prerequisites.length > 0 ? c.prerequisites.join(', ') : 'None'}</strong></span>
-                        <span className="text-purple-300 uppercase">{c.current_difficulty}</span>
+                      <div className="flex items-center justify-between text-[11px] font-mono text-[#667085]">
+                        <span>Prereqs: <strong className="text-[#172033]">{c.prerequisites.length > 0 ? c.prerequisites.join(', ') : 'None'}</strong></span>
+                        <span className="text-[#5B5CE2] uppercase font-semibold">{c.current_difficulty}</span>
                       </div>
                     </div>
                   );
@@ -345,10 +356,10 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
 
       {/* Selected Concept Detail Drawer */}
       {selectedConcept && (
-        <div className="p-4 rounded-xl bg-edu-950 border border-purple-800/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in relative">
+        <div className="p-4 rounded-xl bg-slate-50 border border-[#C7D2FE] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in relative shadow-sm">
           <button
             onClick={() => setSelectedId(null)}
-            className="absolute top-3 right-3 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-edu-850 transition-colors"
+            className="absolute top-3 right-3 p-1 rounded-lg text-[#667085] hover:text-[#172033] hover:bg-slate-200/60 transition-colors"
             title="Close Drawer"
           >
             <X className="w-4 h-4" />
@@ -356,31 +367,31 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
 
           <div className="space-y-1.5 flex-1 pr-6">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold uppercase px-2.5 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-800">
+              <span className="text-xs font-mono font-semibold uppercase px-2.5 py-0.5 rounded-full bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE]">
                 {selectedConcept.category}
               </span>
-              <h4 className="text-base font-bold text-white font-mono">{selectedConcept.name}</h4>
-              <span className="text-xs font-mono text-emerald-400 font-bold">
+              <h4 className="text-base font-bold text-[#172033] font-sans">{selectedConcept.name}</h4>
+              <span className="text-xs font-mono text-teal-700 font-bold">
                 {selectedConcept.mastery_percentage}% Mastery
               </span>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed font-sans">
+            <p className="text-xs text-[#667085] leading-relaxed font-sans">
               {selectedConcept.description}
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-slate-400 pt-1">
-              <span>Prerequisites: <strong className="text-slate-200">{selectedConcept.prerequisites.length > 0 ? selectedConcept.prerequisites.join(', ') : 'None (Foundational)'}</strong></span>
+            <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-[#667085] pt-1">
+              <span>Prerequisites: <strong className="text-[#172033]">{selectedConcept.prerequisites.length > 0 ? selectedConcept.prerequisites.join(', ') : 'None (Foundational)'}</strong></span>
               <span>•</span>
-              <span>Difficulty: <strong className="text-purple-300 uppercase">{selectedConcept.current_difficulty}</strong></span>
+              <span>Difficulty: <strong className="text-[#5B5CE2] uppercase">{selectedConcept.current_difficulty}</strong></span>
               <span>•</span>
-              <span>Questions Practiced: <strong className="text-slate-200">{selectedConcept.questions_attempted}</strong></span>
+              <span>Questions Practiced: <strong className="text-[#172033]">{selectedConcept.questions_attempted}</strong></span>
             </div>
           </div>
 
           <button
             onClick={() => onPracticeConcept(selectedConcept.id)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-loop-purple to-loop-indigo hover:from-purple-500 hover:to-indigo-500 text-white font-mono font-bold text-xs shadow-lg shadow-purple-500/20 transition-all shrink-0"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all shrink-0"
           >
             Practice {selectedConcept.name}
             <ArrowRight className="w-3.5 h-3.5" />

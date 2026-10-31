@@ -49,14 +49,14 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950 border border-purple-800 text-purple-300 text-xs font-mono mb-1.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF0FD] border border-[#C7D2FE] text-[#5B5CE2] text-xs font-mono font-medium mb-1.5">
             <Calendar className="w-3.5 h-3.5" />
             Adaptive Spaced Repetition (Modified SM-2)
           </div>
-          <h2 className="text-2xl font-bold font-mono text-white tracking-tight">
+          <h2 className="text-2xl font-bold font-sans text-[#172033] tracking-tight">
             Revision Calendar & Retention Tasks
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+          <p className="text-xs sm:text-sm text-[#667085] mt-0.5 font-sans">
             Intervals dynamically calculate memory decay based on correctness, confidence, and detected misconceptions.
           </p>
         </div>
@@ -64,22 +64,22 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
         <button
           onClick={fetchTasks}
           disabled={loading}
-          className="self-start sm:self-auto p-2.5 rounded-xl bg-edu-900 hover:bg-edu-800 border border-edu-700 text-slate-300 transition-colors"
+          className="self-start sm:self-auto p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#E6E9EF] text-[#667085] transition-colors shadow-xs"
           title="Refresh Schedule"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-purple-400' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#5B5CE2]' : ''}`} />
         </button>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center justify-between bg-edu-900 rounded-xl border border-edu-800 p-1.5 text-xs font-mono">
+      <div className="flex items-center justify-between bg-white rounded-xl border border-[#E6E9EF] p-1.5 text-xs font-mono shadow-card">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setFilter('pending')}
             className={`px-3.5 py-1.5 rounded-lg transition-colors ${
               filter === 'pending'
-                ? 'bg-purple-950 text-purple-300 border border-purple-800 font-bold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-bold'
+                : 'text-[#667085] hover:text-[#172033]'
             }`}
           >
             Pending Reviews ({tasks.filter(t => t.status === 'pending').length})
@@ -88,8 +88,8 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
             onClick={() => setFilter('completed')}
             className={`px-3.5 py-1.5 rounded-lg transition-colors ${
               filter === 'completed'
-                ? 'bg-purple-950 text-purple-300 border border-purple-800 font-bold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-bold'
+                : 'text-[#667085] hover:text-[#172033]'
             }`}
           >
             Completed ({tasks.filter(t => t.status === 'completed').length})
@@ -98,15 +98,15 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
             onClick={() => setFilter('all')}
             className={`px-3.5 py-1.5 rounded-lg transition-colors ${
               filter === 'all'
-                ? 'bg-purple-950 text-purple-300 border border-purple-800 font-bold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-bold'
+                : 'text-[#667085] hover:text-[#172033]'
             }`}
           >
             All Tasks ({tasks.length})
           </button>
         </div>
 
-        <span className="text-[11px] text-slate-500 pr-2 hidden sm:inline">
+        <span className="text-[11px] text-[#667085] pr-2 hidden sm:inline font-mono">
           Dynamic Retention Engine
         </span>
       </div>
@@ -119,29 +119,29 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
               key={task.id}
               className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
                 task.status === 'completed'
-                  ? 'bg-edu-950/60 border-edu-800/60 opacity-60'
-                  : 'bg-edu-900/90 border-edu-700/80 shadow-md'
+                  ? 'bg-slate-50 border-slate-200 opacity-60'
+                  : 'bg-white border-[#E6E9EF] shadow-card'
               }`}
             >
               <div className="space-y-1.5 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
-                    task.urgency === 'high' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
-                    task.urgency === 'medium' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
-                    'bg-edu-950 text-slate-300 border border-edu-800'
+                    task.urgency === 'high' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                    task.urgency === 'medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                    'bg-slate-100 text-slate-700 border border-slate-200'
                   }`}>
                     Urgency: {task.urgency}
                   </span>
-                  <span className="text-xs font-mono font-bold text-white">
+                  <span className="text-xs font-bold text-[#172033] font-sans">
                     {task.concept_name}
                   </span>
-                  <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    Due Date: <strong className="text-loop-blue">{task.due_date}</strong>
+                  <span className="text-[11px] font-mono text-[#667085] flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-slate-400" />
+                    Due Date: <strong className="text-[#5B5CE2]">{task.due_date}</strong>
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-300 font-sans">
+                <p className="text-xs text-[#667085] font-sans">
                   {task.reason}
                 </p>
               </div>
@@ -149,7 +149,7 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => onPracticeConcept(task.concept_id)}
-                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-bold transition-all shadow-md shadow-purple-500/20 flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs transition-all shadow-xs flex items-center gap-1.5"
                 >
                   Practice Now
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
                 {task.status !== 'completed' && (
                   <button
                     onClick={() => handleComplete(task.id)}
-                    className="p-2 rounded-xl bg-edu-950 hover:bg-emerald-950 hover:text-emerald-300 border border-edu-800 text-slate-400 transition-colors"
+                    className="p-2 rounded-xl bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-[#E6E9EF] text-[#667085] transition-colors"
                     title="Mark Completed"
                   >
                     <CheckCircle2 className="w-4 h-4" />
@@ -168,8 +168,8 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
             </div>
           ))
         ) : (
-          <div className="bg-edu-900 rounded-2xl border border-edu-800 p-12 text-center text-slate-400 font-mono text-xs space-y-2">
-            <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+          <div className="bg-white rounded-2xl border border-[#E6E9EF] p-12 text-center text-[#667085] font-sans text-xs space-y-2 shadow-card">
+            <CheckCircle2 className="w-8 h-8 text-teal-600 mx-auto" />
             <div>No revision tasks match this filter. Complete adaptive quizzes to schedule new spaced reviews!</div>
           </div>
         )}

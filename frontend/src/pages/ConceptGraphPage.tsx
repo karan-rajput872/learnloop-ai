@@ -44,22 +44,22 @@ export const ConceptGraphPage: React.FC<ConceptGraphPageProps> = ({ onPracticeCo
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950 border border-purple-800 text-purple-300 text-xs font-mono mb-1.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF0FD] border border-[#C7D2FE] text-[#5B5CE2] text-xs font-mono font-medium mb-1.5">
             <Network className="w-3.5 h-3.5" />
             Topological Prerequisite Hierarchy
           </div>
-          <h2 className="text-2xl font-bold font-mono text-white tracking-tight">
+          <h2 className="text-2xl font-bold font-sans text-[#172033] tracking-tight">
             Interactive DSA Concept Graph
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+          <p className="text-xs sm:text-sm text-[#667085] mt-0.5 font-sans">
             Visual graph mapping 12 core concepts, their prerequisite dependencies, and your live mastery state.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-edu-900 border border-edu-700 text-xs font-mono">
-            <span className={`w-2 h-2 rounded-full ${isLiveSync ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-            <span className={isLiveSync ? 'text-emerald-300' : 'text-amber-300'}>
+        <div className="flex items-center gap-2.5">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 border border-[#E6E9EF] text-xs font-mono">
+            <span className={`w-2 h-2 rounded-full ${isLiveSync ? 'bg-teal-500' : 'bg-amber-500'}`} />
+            <span className={isLiveSync ? 'text-teal-800 font-medium' : 'text-amber-800 font-medium'}>
               {isLiveSync ? 'Live Mastery Sync' : 'Syllabus Standalone'}
             </span>
           </div>
@@ -67,19 +67,19 @@ export const ConceptGraphPage: React.FC<ConceptGraphPageProps> = ({ onPracticeCo
           <button
             onClick={fetchGraph}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-edu-900 hover:bg-edu-800 border border-edu-700 text-slate-300 text-xs font-mono transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-[#E6E9EF] text-[#172033] text-xs font-medium transition-colors shadow-xs"
             title="Refresh Graph"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-purple-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#5B5CE2]' : 'text-[#667085]'}`} />
             {loading ? 'Syncing...' : 'Refresh'}
           </button>
         </div>
       </div>
 
       {errorMessage && (
-        <div className="p-3 rounded-xl bg-edu-900/60 border border-edu-800 text-xs font-mono text-slate-400 flex items-center justify-between">
+        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs font-mono text-amber-800 flex items-center justify-between">
           <span>{errorMessage}</span>
-          <button onClick={fetchGraph} className="text-purple-400 hover:underline">
+          <button onClick={fetchGraph} className="text-[#5B5CE2] font-semibold hover:underline">
             Retry Connection
           </button>
         </div>

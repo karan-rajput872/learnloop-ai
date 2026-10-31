@@ -31,7 +31,6 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [customText, setCustomText] = useState('');
-  const [recError, setRecError] = useState<string | null>(null);
 
   const handleSelectPreset = (presetText: string) => {
     setCustomText(presetText);
@@ -39,9 +38,8 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
   };
 
   const toggleRecording = () => {
-    setRecError(null);
     const SpeechRec = (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
-                      (window as unknown as { webkitSpeechRecognition?: any }).webkitSpeechRecognition;
+      (window as unknown as { webkitSpeechRecognition?: any }).webkitSpeechRecognition;
 
     if (SpeechRec) {
       if (isRecording) {
@@ -70,7 +68,6 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
 
         recognition.onerror = () => {
           setIsRecording(false);
-          // Gracefully fall back to demo dictation preset on mic permission error
           const randomPreset = WISPR_FLOW_PRESETS[Math.floor(Math.random() * WISPR_FLOW_PRESETS.length)].transcript;
           setCustomText(randomPreset);
           onTranscriptReady(randomPreset);
@@ -88,7 +85,6 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
         onTranscriptReady(randomPreset);
       }
     } else {
-      // Fallback for browsers without Web Speech API
       if (!isRecording) {
         setIsRecording(true);
         setTimeout(() => {
@@ -104,21 +100,21 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
   };
 
   return (
-    <div className="bg-edu-900 rounded-2xl border border-edu-700/80 p-5 shadow-lg space-y-4">
+    <div className="bg-white rounded-2xl border border-[#E6E9EF] p-5 shadow-card space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-edu-800 pb-3">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-gradient-to-r from-loop-purple to-loop-blue text-white shadow-md shadow-purple-500/20">
+      <div className="flex items-center justify-between border-b border-[#E6E9EF] pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE]">
             <Volume2 className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#172033] flex items-center gap-1.5">
               Wispr Flow Natural Speech Dictation
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-800 font-mono">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-mono">
                 Disfluency Aware
               </span>
             </h4>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-[#667085] font-sans">
               Speak naturally with filler words (&quot;um&quot;, &quot;like&quot;), self-corrections, or digressions. LearnLoop will distill your core concept query.
             </p>
           </div>
@@ -128,21 +124,20 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
         <button
           onClick={toggleRecording}
           disabled={isLoading}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition-all shadow-md ${
-            isRecording
-              ? 'bg-rose-600 text-white animate-pulse ring-4 ring-rose-500/20'
-              : 'bg-gradient-to-r from-loop-purple to-loop-blue text-white hover:brightness-110 shadow-purple-500/20'
-          }`}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-medium text-xs transition-all shadow-xs ${isRecording
+              ? 'bg-rose-600 text-white animate-pulse ring-4 ring-rose-100'
+              : 'bg-[#5B5CE2] hover:bg-[#494AC8] text-white'
+            }`}
         >
-          {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          {isRecording ? 'Listening (Live Mic)...' : 'Record Speech'}
+          {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+          {isRecording ? 'Listening...' : 'Record Voice'}
         </button>
       </div>
 
       {/* Preset 1-Click Conversational Speech Samples */}
       <div className="space-y-2">
-        <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+        <span className="text-[11px] font-mono text-[#667085] flex items-center gap-1 font-medium">
+          <Sparkles className="w-3.5 h-3.5 text-[#5B5CE2]" />
           Sample Wispr Flow Voice Transcriptions (Click to Test):
         </span>
 
@@ -152,25 +147,25 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
               key={i}
               onClick={() => handleSelectPreset(p.transcript)}
               disabled={isLoading}
-              className="text-left p-3 rounded-xl bg-edu-950 hover:bg-edu-850 border border-edu-800 hover:border-purple-600/60 transition-all text-xs font-mono text-slate-300 flex items-start justify-between gap-2 group"
+              className="text-left p-3 rounded-xl bg-slate-50/80 hover:bg-white hover:border-[#5B5CE2]/50 border border-[#E6E9EF] transition-all text-xs font-sans text-slate-700 flex items-start justify-between gap-2 group card-hover"
             >
               <div className="space-y-1">
-                <div className="text-[11px] font-bold text-purple-400 group-hover:text-purple-300">
+                <div className="text-[11px] font-semibold text-[#5B5CE2] group-hover:text-[#494AC8]">
                   {p.label}
                 </div>
-                <div className="text-[10px] text-slate-400 font-sans italic line-clamp-2">
+                <div className="text-[10px] text-[#667085] font-sans italic line-clamp-2">
                   &quot;{p.transcript}&quot;
                 </div>
               </div>
-              <Play className="w-3.5 h-3.5 text-slate-500 group-hover:text-purple-400 shrink-0 mt-1" />
+              <Play className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#5B5CE2] shrink-0 mt-1" />
             </button>
           ))}
         </div>
       </div>
 
       {/* Custom Textarea if student prefers typing */}
-      <div className="space-y-2 pt-2 border-t border-edu-800">
-        <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+      <div className="space-y-2 pt-2 border-t border-[#E6E9EF]">
+        <div className="flex items-center justify-between text-[11px] font-mono text-[#667085]">
           <span>Or Type / Edit Transcribed Speech:</span>
           <span>{customText.length} characters</span>
         </div>
@@ -181,12 +176,12 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
             value={customText}
             onChange={(e) => setCustomText(e.target.value)}
             placeholder="Type your question with natural filler words, or speak above..."
-            className="flex-1 px-3.5 py-2.5 rounded-xl bg-edu-950 border border-edu-700 text-slate-200 text-xs font-sans placeholder-slate-600 focus:outline-none focus:border-purple-500"
+            className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E6E9EF] text-[#172033] text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-[#5B5CE2] focus:bg-white transition-colors"
           />
           <button
             onClick={() => onTranscriptReady(customText)}
             disabled={isLoading || !customText.trim()}
-            className="px-4 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-mono text-xs font-bold transition-colors"
+            className="px-5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] disabled:opacity-40 text-white font-medium text-xs shadow-xs transition-colors"
           >
             Send to Tutor
           </button>

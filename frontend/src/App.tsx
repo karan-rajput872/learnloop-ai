@@ -125,7 +125,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-edu-950 text-slate-100 flex flex-col font-sans edu-grid-pattern">
+    <div className="min-h-screen bg-[#F7F8FA] text-[#172033] flex flex-col font-sans edu-grid-pattern">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -142,9 +142,9 @@ export function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Offline Preview Notice Banner */}
         {isOfflinePreview && (
-          <div className="mb-6 p-4 rounded-2xl bg-edu-900/90 border border-purple-500/40 shadow-lg shadow-purple-500/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
-            <div className="flex items-center gap-2.5 text-purple-200">
-              <Eye className="w-4 h-4 text-loop-purple shrink-0" />
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-amber-900">
+            <div className="flex items-center gap-2.5">
+              <Eye className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
                 <strong>Demonstration Preview Mode:</strong> Viewing syllabus architecture with uninitialized baseline profile.
               </span>
@@ -152,7 +152,7 @@ export function App() {
             <button
               onClick={() => fetchProfileAndHealth(true)}
               disabled={isRetrying}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-loop-purple hover:bg-purple-600 text-white font-bold transition-all shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium transition-all shrink-0 shadow-xs"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
               Connect Live Backend
@@ -167,19 +167,19 @@ export function App() {
             {isLoading && !profile && !isOfflinePreview && (
               <div className="space-y-6 animate-pulse">
                 {/* Cold Start Status Card */}
-                <div className="p-6 rounded-3xl bg-edu-900/80 border border-edu-700 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="p-6 rounded-2xl bg-white border border-[#E6E9EF] shadow-card flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-900/60 flex items-center justify-center text-purple-300">
+                    <div className="w-12 h-12 rounded-2xl bg-[#EEF0FD] flex items-center justify-center text-[#5B5CE2]">
                       <Server className="w-6 h-6 animate-bounce" />
                     </div>
                     <div>
-                      <h2 className="text-sm sm:text-base font-bold font-mono text-white flex items-center gap-2">
+                      <h2 className="text-sm sm:text-base font-bold text-[#172033] flex items-center gap-2 font-sans">
                         <span>Connecting to LearnLoop Pedagogical Engine</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-950 text-purple-400 border border-purple-800">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-mono">
                           {bootTimer}s elapsed
                         </span>
                       </h2>
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="text-xs text-[#667085] mt-1 font-sans">
                         Render free-tier instances sleep when idle. Awakening container and verifying SQLite knowledge graph...
                       </p>
                     </div>
@@ -187,44 +187,44 @@ export function App() {
 
                   <button
                     onClick={enableOfflinePreview}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-edu-800 hover:bg-edu-700 text-slate-200 text-xs font-mono border border-edu-600 transition-colors shrink-0"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors shrink-0 shadow-xs"
                   >
-                    <Eye className="w-3.5 h-3.5 text-purple-400" />
+                    <Eye className="w-3.5 h-3.5 text-[#5B5CE2]" />
                     Explore in Preview Mode
                   </button>
                 </div>
 
                 {/* Shimmer Hero Banner Skeleton */}
-                <div className="h-44 rounded-3xl bg-edu-900/40 border border-edu-800/60 p-6 flex flex-col justify-center space-y-3">
-                  <div className="h-4 w-40 bg-edu-800/80 rounded-full" />
-                  <div className="h-8 w-80 bg-edu-800/60 rounded-xl" />
-                  <div className="h-3.5 w-full max-w-md bg-edu-800/40 rounded-full" />
+                <div className="h-44 rounded-2xl bg-white border border-[#E6E9EF] p-6 flex flex-col justify-center space-y-3 shadow-card">
+                  <div className="h-4 w-40 bg-slate-200 rounded-full" />
+                  <div className="h-8 w-80 bg-slate-200 rounded-xl" />
+                  <div className="h-3.5 w-full max-w-md bg-slate-100 rounded-full" />
                 </div>
 
                 {/* Shimmer 3-Column Stats Skeleton */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="h-72 rounded-2xl bg-edu-900/40 border border-edu-800/60 flex flex-col items-center justify-center p-6 space-y-4">
-                    <div className="w-36 h-36 rounded-full border-4 border-edu-800/80 border-t-purple-500 animate-spin" />
-                    <div className="h-4 w-28 bg-edu-800/60 rounded-full" />
+                  <div className="h-72 rounded-2xl bg-white border border-[#E6E9EF] flex flex-col items-center justify-center p-6 space-y-4 shadow-card">
+                    <div className="w-36 h-36 rounded-full border-4 border-slate-100 border-t-[#5B5CE2] animate-spin" />
+                    <div className="h-4 w-28 bg-slate-200 rounded-full" />
                   </div>
-                  <div className="h-72 rounded-2xl bg-edu-900/40 border border-edu-800/60 p-6 space-y-3">
-                    <div className="h-4 w-32 bg-edu-800/60 rounded-full" />
-                    <div className="h-16 bg-edu-950/60 rounded-xl" />
-                    <div className="h-16 bg-edu-950/60 rounded-xl" />
+                  <div className="h-72 rounded-2xl bg-white border border-[#E6E9EF] p-6 space-y-3 shadow-card">
+                    <div className="h-4 w-32 bg-slate-200 rounded-full" />
+                    <div className="h-16 bg-slate-100 rounded-xl" />
+                    <div className="h-16 bg-slate-100 rounded-xl" />
                   </div>
-                  <div className="h-72 rounded-2xl bg-edu-900/40 border border-edu-800/60 p-6 space-y-3">
-                    <div className="h-4 w-36 bg-edu-800/60 rounded-full" />
-                    <div className="h-20 bg-edu-950/60 rounded-xl" />
-                    <div className="h-20 bg-edu-950/60 rounded-xl" />
+                  <div className="h-72 rounded-2xl bg-white border border-[#E6E9EF] p-6 space-y-3 shadow-card">
+                    <div className="h-4 w-36 bg-slate-200 rounded-full" />
+                    <div className="h-20 bg-slate-100 rounded-xl" />
+                    <div className="h-20 bg-slate-100 rounded-xl" />
                   </div>
                 </div>
 
                 {/* Shimmer Concept Grid Skeleton */}
-                <div className="h-64 rounded-2xl bg-edu-900/40 border border-edu-800/60 p-6 space-y-4">
-                  <div className="h-4 w-48 bg-edu-800/60 rounded-full" />
+                <div className="h-64 rounded-2xl bg-white border border-[#E6E9EF] p-6 space-y-4 shadow-card">
+                  <div className="h-4 w-48 bg-slate-200 rounded-full" />
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} className="h-16 bg-edu-950/60 rounded-xl border border-edu-800/40" />
+                      <div key={i} className="h-16 bg-slate-100 rounded-xl border border-slate-200" />
                     ))}
                   </div>
                 </div>
@@ -233,30 +233,30 @@ export function App() {
 
             {/* Case B: Error State (Backend asleep or network error) */}
             {!isLoading && !profile && !isOfflinePreview && (
-              <div className="max-w-2xl mx-auto my-8 p-8 rounded-3xl bg-edu-900/90 border border-purple-800/70 shadow-2xl space-y-6 text-center animate-fade-in">
-                <div className="w-16 h-16 rounded-2xl bg-purple-950 border border-purple-800 flex items-center justify-center mx-auto text-purple-400">
-                  <Server className="w-8 h-8" />
+              <div className="max-w-2xl mx-auto my-8 p-8 rounded-2xl bg-white border border-[#E6E9EF] shadow-card space-y-6 text-center animate-fade-in">
+                <div className="w-14 h-14 rounded-2xl bg-[#EEF0FD] border border-[#C7D2FE] flex items-center justify-center mx-auto text-[#5B5CE2]">
+                  <Server className="w-7 h-7" />
                 </div>
 
                 <div className="space-y-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950 text-purple-300 border border-purple-800 text-xs font-mono">
-                    <Clock className="w-3.5 h-3.5 text-purple-400" />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] text-xs font-mono font-medium">
+                    <Clock className="w-3.5 h-3.5 text-[#5B5CE2]" />
                     Cloud Backend Service Notice
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold font-mono text-white">
+                  <h2 className="text-xl sm:text-2xl font-bold font-sans text-[#172033]">
                     Connecting to LearnLoop AI
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans max-w-lg mx-auto">
-                    The backend is hosted on Render’s free tier. Free instances spin down after inactivity and take approximately 20–40 seconds to complete cold boot.
+                  <p className="text-xs sm:text-sm text-[#667085] leading-relaxed font-sans max-w-lg mx-auto">
+                    The backend is hosted on Render’s free tier. Free cloud instances sleep after inactivity and require 20–40 seconds to complete a cold start.
                   </p>
                 </div>
 
                 {apiError && (
-                  <div className="p-3.5 rounded-xl bg-edu-950 border border-edu-800 text-left text-xs font-mono text-slate-400 space-y-1">
-                    <div className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-[#E6E9EF] text-left text-xs font-mono text-[#667085] space-y-1">
+                    <div className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                       Endpoint Target:
                     </div>
-                    <div className="text-purple-300 break-all">{api.getBaseUrl()}</div>
+                    <div className="text-[#5B5CE2] break-all">{api.getBaseUrl()}</div>
                   </div>
                 )}
 
@@ -264,7 +264,7 @@ export function App() {
                   <button
                     onClick={() => fetchProfileAndHealth(true)}
                     disabled={isRetrying}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-loop-purple to-loop-indigo hover:from-purple-500 hover:to-indigo-500 text-white font-mono font-bold text-xs shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02]"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all"
                   >
                     <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
                     {isRetrying ? 'Connecting to Server...' : 'Retry Connection'}
@@ -272,9 +272,9 @@ export function App() {
 
                   <button
                     onClick={enableOfflinePreview}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-edu-800 hover:bg-edu-750 text-slate-200 font-mono text-xs border border-edu-700 transition-colors"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-[#172033] font-medium text-xs border border-[#E6E9EF] transition-colors shadow-xs"
                   >
-                    <Eye className="w-4 h-4 text-purple-400" />
+                    <Eye className="w-4 h-4 text-[#5B5CE2]" />
                     Explore in Preview Mode
                   </button>
                 </div>
@@ -334,18 +334,18 @@ export function App() {
       </main>
 
       {/* Educational Platform Footer */}
-      <footer className="bg-edu-950 border-t border-edu-800 py-6 text-center text-xs text-slate-500 font-mono">
+      <footer className="bg-white border-t border-[#E6E9EF] py-6 text-center text-xs text-[#667085] font-sans">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-slate-400">
-            <GraduationCap className="w-4 h-4 text-loop-purple" />
-            <span className="font-bold text-white">LearnLoop AI</span>
+          <div className="flex items-center gap-2 text-[#667085]">
+            <GraduationCap className="w-4 h-4 text-[#5B5CE2]" />
+            <span className="font-bold text-[#172033]">LearnLoop AI</span>
             <span>—</span>
-            <span className="text-slate-400">
+            <span>
               &quot;Don&apos;t just learn the answers. Master the concepts.&quot;
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-slate-400">
+          <div className="flex items-center gap-4 text-[#667085] font-mono text-[11px]">
             <span>Adaptive Learner Model</span>
             <span>•</span>
             <span>Prerequisite Concept Graph</span>

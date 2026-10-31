@@ -41,13 +41,28 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
     });
     return res;
   } catch (err: any) {
+    const endpoint = url.split('?')[0];
     if (err.name === 'AbortError') {
-      throw new Error('Request timed out. The backend on Render may be waking up from sleep mode.');
+      throw new Error(`Request to ${endpoint} timed out after ${timeoutMs / 1000}s. The backend on Render may be waking up from cold sleep.`);
     }
-    throw err;
+    throw new Error(`Network failure calling ${endpoint}: ${err.message || 'Check connectivity and CORS'}`);
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+async function handleResponse<T>(res: Response, fallbackMessage: string): Promise<T> {
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const errJson = await res.json();
+      detail = errJson.detail || errJson.message || JSON.stringify(errJson);
+    } catch {
+      detail = res.statusText || `HTTP ${res.status}`;
+    }
+    throw new Error(`${fallbackMessage} (Status ${res.status}: ${detail})`);
+  }
+  return await res.json();
 }
 
 export const api = {
@@ -57,32 +72,30 @@ export const api = {
 
   async getHealth(): Promise<HealthInfo> {
     const res = await fetchWithTimeout(`${API_BASE}/health`, {}, 15000);
-    if (!res.ok) throw new Error('Backend health check failed');
-    return await res.json();
+    return await handleResponse<HealthInfo>(res, 'Backend health check failed');
   },
 
   async getConcepts(studentId = 'student_default'): Promise<{ concepts: ConceptNode[]; edges: ConceptEdge[] }> {
     const res = await fetchWithTimeout(`${API_BASE}/concepts?student_id=${studentId}`);
-    if (!res.ok) throw new Error('Failed to fetch concepts');
-    return await res.json();
+    return await handleResponse<{ concepts: ConceptNode[]; edges: ConceptEdge[] }>(res, 'Failed to fetch concepts');
   },
 
   async getLearnerProfile(studentId = 'student_default'): Promise<LearnerProfile> {
     const res = await fetchWithTimeout(`${API_BASE}/learner/profile?student_id=${studentId}`);
-    if (!res.ok) throw new Error('Failed to fetch learner profile');
-    const data = await res.json();
+    const data = await handleResponse<{ profile: LearnerProfile }>(res, 'Failed to fetch learner profile');
     return data.profile;
   },
 
   async resetLearnerProfile(studentId = 'student_default'): Promise<void> {
     const res = await fetchWithTimeout(`${API_BASE}/learner/reset?student_id=${studentId}`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to reset profile');
+    if (!res.ok) {
+      throw new Error(`Failed to reset profile (Status ${res.status})`);
+    }
   },
 
   async getDiagnosticQuestions(): Promise<{ questions: Question[]; total: number }> {
     const res = await fetchWithTimeout(`${API_BASE}/diagnostic/questions`);
-    if (!res.ok) throw new Error('Failed to fetch diagnostic questions');
-    return await res.json();
+    return await handleResponse<{ questions: Question[]; total: number }>(res, 'Failed to fetch diagnostic questions');
   },
 
   async submitDiagnostic(
@@ -94,8 +107,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ student_id: studentId, submissions })
     });
-    if (!res.ok) throw new Error('Failed to submit diagnostic assessment');
-    return await res.json();
+    return await handleResponse<any>(res, 'Failed to submit diagnostic assessment');
   },
 
   async getAdaptiveQuestion(conceptId?: string, studentId = 'student_default'): Promise<{
@@ -108,8 +120,7 @@ export const api = {
     let url = `${API_BASE}/quiz/adaptive?student_id=${studentId}`;
     if (conceptId) url += `&concept_id=${conceptId}`;
     const res = await fetchWithTimeout(url);
-    if (!res.ok) throw new Error('Failed to generate adaptive question');
-    return await res.json();
+    return await handleResponse<any>(res, 'Failed to generate adaptive question');
   },
 
   async submitAnswer(
@@ -132,8 +143,7 @@ export const api = {
         confidence_level: confidenceLevel
       })
     });
-    if (!res.ok) throw new Error('Failed to submit quiz answer');
-    return await res.json();
+    return await handleResponse<EvaluationResult>(res, 'Failed to submit quiz answer');
   },
 
   async tutorChat(rawTranscript: string, studentId = 'student_default'): Promise<{
@@ -146,8 +156,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ student_id: studentId, raw_transcript: rawTranscript })
     });
-    if (!res.ok) throw new Error('Tutor communication failed');
-    return await res.json();
+    return await handleResponse<any>(res, 'Tutor communication failed');
   },
 
   async tutorAction(
@@ -170,8 +179,7 @@ export const api = {
         student_id: studentId
       })
     });
-    if (!res.ok) throw new Error(`Tutor action '${actionType}' failed`);
-    return await res.json();
+    return await handleResponse<any>(res, `Tutor action '${actionType}' failed`);
   },
 
   async getChatMessages(studentId = 'student_default'): Promise<{
@@ -185,14 +193,12 @@ export const api = {
     total: number;
   }> {
     const res = await fetchWithTimeout(`${API_BASE}/tutor/messages?student_id=${studentId}`);
-    if (!res.ok) throw new Error('Failed to retrieve chat messages');
-    return await res.json();
+    return await handleResponse<any>(res, 'Failed to retrieve chat messages');
   },
 
   async getRevisionTasks(studentId = 'student_default'): Promise<{ tasks: RevisionTask[]; total: number }> {
     const res = await fetchWithTimeout(`${API_BASE}/tutor/revision/tasks?student_id=${studentId}`);
-    if (!res.ok) throw new Error('Failed to fetch revision tasks');
-    return await res.json();
+    return await handleResponse<{ tasks: RevisionTask[]; total: number }>(res, 'Failed to fetch revision tasks');
   },
 
   async completeRevisionTask(taskId: string): Promise<void> {
@@ -201,12 +207,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task_id: taskId })
     });
-    if (!res.ok) throw new Error('Failed to complete revision task');
+    if (!res.ok) {
+      throw new Error(`Failed to complete revision task (Status ${res.status})`);
+    }
   },
 
   async getTeacherDashboard(): Promise<TeacherDashboardData> {
     const res = await fetchWithTimeout(`${API_BASE}/teacher/dashboard`);
-    if (!res.ok) throw new Error('Failed to fetch teacher dashboard data');
-    return await res.json();
+    return await handleResponse<TeacherDashboardData>(res, 'Failed to fetch teacher dashboard data');
   }
 };

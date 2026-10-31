@@ -16,21 +16,26 @@ app = FastAPI(
 )
 
 # Parse CORS allowed origins from environment variable or default to local development + Vercel production
+baseline_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://learnloop-ai-one.vercel.app",
+    "https://learnloop-9h5dt8gay-priyanshukaran25-5139.vercel.app",
+    "https://learnloop-ai.vercel.app"
+]
+
 cors_origins_raw = os.getenv("CORS_ORIGINS", "")
 if cors_origins_raw.strip():
-    allowed_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
+    custom_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
+    # Ensure baseline production and development origins are preserved
+    allowed_origins = list(dict.fromkeys(baseline_origins + custom_origins))
 else:
-    allowed_origins = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://learnloop-9h5dt8gay-priyanshukaran25-5139.vercel.app",
-        "https://learnloop-ai.vercel.app"
-    ]
+    allowed_origins = baseline_origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"^https://.*\.vercel\.app$",
+    allow_origin_regex=r"^https://[a-zA-Z0-9\-]+\.vercel\.app$",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -7,24 +7,30 @@ interface MasteryGaugeProps {
 }
 
 export const MasteryGauge: React.FC<MasteryGaugeProps> = ({ score, label = "Mastery", size = 160 }) => {
-  const strokeWidth = 12;
+  const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = Math.min(100, Math.max(0, score)) / 100;
   const strokeDashoffset = circumference * (1 - progress);
 
-  let color = '#A855F7'; // purple
+  let color = '#5B5CE2'; // Brand indigo
   let level = 'Novice';
+  let badgeBg = '#EEF0FD';
+  let badgeBorder = '#C7D2FE';
+  let badgeText = '#5B5CE2';
 
-  if (score >= 80) {
-    color = '#10B981'; // emerald
+  if (score >= 70) {
+    color = '#0F9F91'; // Teal
     level = 'Mastered';
-  } else if (score >= 55) {
-    color = '#06B6D4'; // cyan
-    level = 'Proficient';
-  } else if (score >= 35) {
-    color = '#F59E0B'; // amber
+    badgeBg = '#E6F7F5';
+    badgeBorder = '#99F6E4';
+    badgeText = '#0F9F91';
+  } else if (score >= 40) {
+    color = '#D99027'; // Amber
     level = 'Developing';
+    badgeBg = '#FEF7ED';
+    badgeBorder = '#FED7AA';
+    badgeText = '#D99027';
   }
 
   return (
@@ -34,7 +40,7 @@ export const MasteryGauge: React.FC<MasteryGaugeProps> = ({ score, label = "Mast
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#1E293B"
+          stroke="#E6E9EF"
           strokeWidth={strokeWidth}
           fill="transparent"
         />
@@ -53,15 +59,15 @@ export const MasteryGauge: React.FC<MasteryGaugeProps> = ({ score, label = "Mast
       </svg>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-        <span className="text-3xl font-extrabold font-mono text-white">
+        <span className="text-3xl font-extrabold font-mono text-[#172033] tracking-tight">
           {Math.round(score)}%
         </span>
-        <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider mt-0.5">
+        <span className="text-[11px] font-mono text-[#667085] uppercase tracking-wider mt-0.5">
           {label}
         </span>
         <span
           className="text-[10px] font-semibold px-2 py-0.5 mt-1 rounded-full border font-mono"
-          style={{ color, borderColor: `${color}40`, backgroundColor: `${color}15` }}
+          style={{ color: badgeText, borderColor: badgeBorder, backgroundColor: badgeBg }}
         >
           {level}
         </span>
