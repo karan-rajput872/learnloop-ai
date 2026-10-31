@@ -109,6 +109,36 @@ export const authService = {
     return result;
   },
 
+  async startDemoSession(): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/auth/demo-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.message || 'Failed to start demo session.');
+    }
+    const result: AuthResponse = await res.json();
+    if (result.access_token) {
+      setAuthToken(result.access_token);
+    }
+    broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
+    return result;
+  },
+
+  async resetDemoSession(): Promise<void> {
+    const res = await fetch(`${API_BASE}/auth/demo-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.message || 'Failed to reset demo.');
+    }
+  },
+
   async refreshSession(): Promise<AuthResponse> {
     // Single-flight coalescing: reuse active refresh promise if already in flight
     if (activeRefreshPromise) {

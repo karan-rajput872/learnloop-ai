@@ -1,0 +1,52 @@
+{
+  "scene_01": {
+    "title": "Product Introduction & Problem Space",
+    "duration": 27.55,
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\scene_01.mp3"
+  },
+  "scene_02": {
+    "title": "Landing Page & Instant Guest Access",
+    "duration": 28.82,
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\scene_02.mp3"
+  },
+  "scene_03": {
+    "title": "Personalized Learner Onboarding",
+    "duration": 25.8,
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\scene_03.mp3"
+  },
+  "scene_04": {
+    "title": "Diagnostic Assessment & Verified Skill Level",
+    "duration": 23.52,
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\scene_04.mp3"
+  },
+  "scene_05": {
+    "title": "DSA Concept Graph & Adaptive Learning",
+    "duration": 28.06,
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\scene_05.mp3"
+  },
+  "scene_06": {
+    "title": "Adaptive Quiz & 7 Bounded Agent Tools",
+    "duration": 31.97,
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\scene_06.mp3"
+  },
+  "scene_07": {
+    "title": "Socratic AI Tutor & Wispr Flow Voice Integration",
+    "duration": 30.67,
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\scene_07.mp3"
+  },
+  "scene_08": {
+    "title": "Spaced Repetition & Progress Dashboard",
+    "duration": 25.94,
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\scene_08.mp3"
+  },
+  "scene_09": {
+    "title": "Teacher Analytics Dashboard & Closing",
+    "duration": 18.02,
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\scene_09.mp3"
+  },
+  "total": {
+    "duration": 240.36,
+    "duration_minutes": "4m 0s",
+    "file": "C:\\Users\\KIIT\\OneDrive\\Documents\\Agentic AI Hackathon\\learnloop-ai\\demo_assets\\final\\full_narration_285s.mp3"
+  }
+}

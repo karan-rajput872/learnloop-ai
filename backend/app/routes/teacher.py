@@ -12,7 +12,7 @@ def get_teacher_dashboard(user: Optional[Dict[str, Any]] = Depends(get_current_u
     If authenticated as a student, access is forbidden.
     Allows teacher/admin roles, or unauthenticated demonstration mode with clearly labeled demo cohort data.
     """
-    if user and user.get("role") == "student":
+    if user and user.get("role") == "student" and not user.get("is_demo") and user.get("id") != "usr_guest_demo":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: Student accounts are not authorized to view the Teacher Dashboard."

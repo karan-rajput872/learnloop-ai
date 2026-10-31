@@ -195,6 +195,7 @@ def get_current_user_optional(
             headers={"WWW-Authenticate": "Bearer"}
         )
 
+    user["is_demo"] = bool(user.get("is_demo", False) or payload.get("is_demo", False) or user.get("id") == "usr_guest_demo")
     return user
 
 def get_current_user(

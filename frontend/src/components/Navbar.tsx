@@ -14,7 +14,8 @@ import {
   X,
   User as UserIcon,
   LogIn,
-  Award
+  Award,
+  Sparkles
 } from 'lucide-react';
 import { HealthInfo, LearnerProfile } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -41,7 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenMyProfile
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, openAuthModal } = useAuth();
+  const { user, isAuthenticated, openAuthModal, startDemoSession } = useAuth();
 
   const isAi = healthInfo?.engine?.is_ai_configured;
   const engineModel = healthInfo?.engine?.model || (isAi ? 'Gemini 2.5 Flash' : 'Deterministic Fallback');
@@ -154,6 +155,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* 3. Account / User Profile Controls */}
             {isAuthenticated && user ? (
               <div className="flex items-center gap-1.5">
+                {user.is_demo && (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-300 text-amber-800 text-[11px] font-mono font-bold shadow-2xs">
+                    <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                    DEMO MODE
+                  </span>
+                )}
                 {onOpenMyProfile && (
                   <button
                     onClick={onOpenMyProfile}
@@ -179,6 +186,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
+                <button
+                  onClick={startDemoSession}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition-all transform hover:scale-105"
+                  title="Explore all features instantly with sample learner progress (No signup required)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+                  <span>EXPLORE LIVE DEMO</span>
+                </button>
                 <button
                   onClick={() => openAuthModal('login')}
                   className="flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-[#E6E9EF] hover:border-indigo-200 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors shadow-xs"

@@ -183,6 +183,12 @@ class StorageManager:
             if "rotated_at" not in session_cols:
                 cursor.execute("ALTER TABLE user_sessions ADD COLUMN rotated_at TEXT")
 
+            # Schema upgrade for users is_demo flag
+            cursor.execute("PRAGMA table_info(users)")
+            user_cols = [c[1] for c in cursor.fetchall()]
+            if "is_demo" not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN is_demo INTEGER DEFAULT 0")
+
             # Schema upgrade for learners onboarding & verified proficiency
             cursor.execute("PRAGMA table_info(learners)")
             learner_cols = [c[1] for c in cursor.fetchall()]
@@ -229,6 +235,149 @@ class StorageManager:
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (student_id, cid, cdata["name"], cdata["category"], 0.0, 0, 0, 0, "novice", None, None, None, None, 0))
                 conn.commit()
+
+    def populate_sample_demo_progress(self, student_id: str = "student_guest_demo"):
+        """Populate realistic sample progress for the demo learner."""
+        now = datetime.now(timezone.utc).isoformat()
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+        onboarding_json = json.dumps({
+            "learner_category": "College / University Student",
+            "institution_or_company": "Stanford University",
+            "field_or_role": "Computer Science",
+            "programming_experience": "1–2 years",
+            "dsa_experience": "Have studied basic concepts",
+            "preferred_language": "Python",
+            "previously_studied_concepts": ["arrays", "time_complexity", "linked_lists"],
+            "primary_goals": ["College exam preparation", "Technical interview readiness"],
+            "target_timeline": "Within 3 months",
+            "daily_learning_availability": "30–60 minutes",
+            "self_assessed_skill_level": "Intermediate",
+            "learning_preferences": ["Visual diagrams & memory layouts", "Code demonstrations & walkthroughs"],
+            "diagnostic_mode": "quick",
+            "onboarding_completed": True
+        })
+
+        learning_path_json = json.dumps({
+            "focus_strategy": "Concept Consolidation & Gap Bridging: Bridge intermediate structural concepts before advancing to non-linear trees and graphs.",
+            "daily_question_target": 6,
+            "recommended_next_concepts": [
+                {"concept_id": "stacks", "concept_name": "Stacks", "priority": "High: Immediate prerequisite for DFS and Graph traversals"},
+                {"concept_id": "queues", "concept_name": "Queues", "priority": "Medium: Foundation for Breadth-First Search"},
+                {"concept_id": "binary_trees", "concept_name": "Binary Trees", "priority": "Target: Core hierarchical data structure"}
+            ]
+        })
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE learners
+                SET overall_mastery = 38.5,
+                    diagnostic_completed = 1,
+                    onboarding_completed = 1,
+                    onboarding_completed_at = ?,
+                    learner_category = 'College / University Student',
+                    onboarding_data = ?,
+                    verified_proficiency_level = 'Level 2 — Developing Apprentice',
+                    verified_proficiency_score = 58.0,
+                    learning_path_json = ?,
+                    updated_at = ?
+                WHERE student_id = ?
+            """, (yesterday, onboarding_json, learning_path_json, now, student_id))
+
+            sample_mastery = {
+                "arrays": (80.0, 4, 3, 1, "intermediate", None, None),
+                "time_complexity": (65.0, 3, 2, 1, "intermediate", None, None),
+                "space_complexity": (50.0, 2, 1, 1, "novice", None, None),
+                "stacks": (40.0, 2, 1, 1, "novice", "stack_lifo_vs_fifo", "Stack LIFO vs FIFO Invariants"),
+                "queues": (35.0, 1, 0, 1, "novice", "queue_circular_wrap", "Queue Circular Buffer Array Wrapping"),
+                "linked_lists": (45.0, 2, 1, 1, "novice", None, None),
+                "recursion": (20.0, 1, 0, 1, "novice", "recursion_base_case_omission", "Base Case Omission"),
+                "binary_trees": (25.0, 1, 0, 1, "novice", "bst_left_child_ancestor_invariant", "BST Ancestor Invariant Violation")
+            }
+
+            for cid, (m, att, cor, incor, diff, misc_id, misc_name) in sample_mastery.items():
+                cursor.execute("""
+                    UPDATE concept_mastery
+                    SET mastery_percentage = ?,
+                        questions_attempted = ?,
+                        correct_answers = ?,
+                        incorrect_answers = ?,
+                        current_difficulty = ?,
+                        last_misconception = ?,
+                        last_misconception_name = ?,
+                        last_practiced_at = ?
+                    WHERE student_id = ? AND concept_id = ?
+                """, (m, att, cor, incor, diff, misc_id, misc_name, yesterday, student_id, cid))
+
+            # Sample revision tasks
+            cursor.execute("DELETE FROM revision_tasks WHERE student_id = ?", (student_id,))
+            today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            cursor.execute("""
+                INSERT INTO revision_tasks (id, student_id, concept_id, concept_name, due_date, status, reason, urgency)
+                VALUES
+                (?, ?, 'stacks', 'Stacks', ?, 'pending', 'Misconception detected: confused stack order with queue', 'high'),
+                (?, ?, 'binary_trees', 'Binary Trees', ?, 'pending', 'Prerequisite concept for balanced AVL trees', 'medium')
+            """, (f"rev_demo_1_{student_id}", student_id, today_str, f"rev_demo_2_{student_id}", student_id, today_str))
+
+            # Sample diagnostic attempt for history review
+            cursor.execute("DELETE FROM diagnostic_attempts WHERE student_id = ?", (student_id,))
+            diag_attempt_id = f"diag_demo_{student_id[:8]}"
+            concept_results = json.dumps([
+                {"concept_id": "arrays", "concept_name": "Arrays", "category": "Linear Structures", "accuracy": 100, "status": "Strong", "calibrated_mastery": 80.0, "total_questions": 1, "correct_answers": 1, "incorrect_answers": 0},
+                {"concept_id": "time_complexity", "concept_name": "Time Complexity", "category": "Analysis", "accuracy": 100, "status": "Strong", "calibrated_mastery": 65.0, "total_questions": 1, "correct_answers": 1, "incorrect_answers": 0},
+                {"concept_id": "linked_lists", "concept_name": "Linked Lists", "category": "Linear Structures", "accuracy": 100, "status": "Strong", "calibrated_mastery": 55.0, "total_questions": 1, "correct_answers": 1, "incorrect_answers": 0},
+                {"concept_id": "stacks", "concept_name": "Stacks", "category": "Linear Structures", "accuracy": 0, "status": "Needs Improvement", "calibrated_mastery": 30.0, "total_questions": 1, "correct_answers": 0, "incorrect_answers": 1},
+                {"concept_id": "recursion", "concept_name": "Recursion", "category": "Algorithms", "accuracy": 0, "status": "Needs Improvement", "calibrated_mastery": 20.0, "total_questions": 1, "correct_answers": 0, "incorrect_answers": 1},
+                {"concept_id": "binary_trees", "concept_name": "Binary Trees", "category": "Hierarchical Structures", "accuracy": 50, "status": "Developing", "calibrated_mastery": 25.0, "total_questions": 1, "correct_answers": 0, "incorrect_answers": 1}
+            ])
+            cursor.execute("""
+                INSERT INTO diagnostic_attempts (id, student_id, score, total_questions, percentage, concept_results, question_details, timestamp)
+                VALUES (?, ?, 3, 6, 50.0, ?, '[]', ?)
+            """, (diag_attempt_id, student_id, concept_results, yesterday))
+
+            conn.commit()
+
+    def get_or_create_demo_user(self):
+        """Create or retrieve isolated demo user with rich sample learning progress."""
+        demo_user_id = "usr_guest_demo"
+        demo_student_id = "student_guest_demo"
+        demo_email = "demo.learner@learnloop.ai"
+        now = datetime.now(timezone.utc).isoformat()
+
+        user = self.get_user_by_id(demo_user_id)
+        if not user:
+            user_data = {
+                "id": demo_user_id,
+                "student_id": demo_student_id,
+                "full_name": "Demo Learner (Guest Explorer)",
+                "email": demo_email,
+                "normalized_email": demo_email,
+                "hashed_password": None,
+                "google_sub": None,
+                "auth_provider": "demo",
+                "role": "student",
+                "is_email_verified": 1,
+                "is_active": 1,
+                "is_demo": 1,
+                "created_at": now,
+                "updated_at": now,
+                "last_login_at": now
+            }
+            user = self.create_user(user_data)
+
+        self.ensure_learner(demo_student_id, "Demo Learner (Guest Explorer)", onboarding_completed=1)
+        profile = self.get_learner_profile(demo_student_id)
+        if not profile or profile.get("overall_mastery", 0) == 0:
+            self.populate_sample_demo_progress(demo_student_id)
+            profile = self.get_learner_profile(demo_student_id)
+
+        return user, profile
+
+    def reset_demo_learner(self):
+        """Reset the demo user profile and progress back to baseline sample state."""
+        demo_student_id = "student_guest_demo"
+        self.populate_sample_demo_progress(demo_student_id)
+        return self.get_learner_profile(demo_student_id)
 
     def get_learner_profile(self, student_id: str = "student_default") -> Optional[Dict[str, Any]]:
         self.ensure_learner(student_id)
@@ -666,14 +815,15 @@ class StorageManager:
     def create_user(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new authenticated user record."""
         now = datetime.utcnow().isoformat()
+        is_demo_val = 1 if user_data.get("is_demo") else 0
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO users (
                     id, student_id, full_name, email, normalized_email,
                     hashed_password, google_sub, auth_provider, role,
-                    is_email_verified, is_active, created_at, updated_at, last_login_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    is_email_verified, is_active, created_at, updated_at, last_login_at, is_demo
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 user_data["id"],
                 user_data["student_id"],
@@ -688,7 +838,8 @@ class StorageManager:
                 1 if user_data.get("is_active", True) else 0,
                 user_data.get("created_at", now),
                 user_data.get("updated_at", now),
-                user_data.get("last_login_at", now)
+                user_data.get("last_login_at", now),
+                is_demo_val
             ))
             conn.commit()
             return self.get_user_by_id(user_data["id"])

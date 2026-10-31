@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { LearnerProfile, RevisionTask, OnboardingProfile } from '../types';
 import { MasteryGauge } from '../components/MasteryGauge';
+import { useAuth } from '../context/AuthContext';
 
 interface DashboardPageProps {
   profile: LearnerProfile;
@@ -28,6 +29,7 @@ interface DashboardPageProps {
   onViewGraph: () => void;
   onOpenRevision: () => void;
   onOpenProfile?: () => void;
+  onOpenOnboarding?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -37,8 +39,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onStartQuiz,
   onViewGraph,
   onOpenRevision,
-  onOpenProfile
+  onOpenProfile,
+  onOpenOnboarding
 }) => {
+  const { user, isAuthenticated, startDemoSession, resetDemoSession } = useAuth();
   const conceptsList = Object.values(profile.concepts || {});
   const completedDiagnostic = profile.diagnostic_completed;
 
@@ -86,6 +90,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+            {!isAuthenticated && (
+              <button
+                onClick={startDemoSession}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition-all transform hover:scale-105"
+              >
+                <Sparkles className="w-4 h-4 text-amber-200 animate-pulse" />
+                EXPLORE LIVE DEMO
+              </button>
+            )}
+
             {onOpenProfile && (
               <button
                 onClick={onOpenProfile}
@@ -129,6 +143,44 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* Subtle accent corner glow */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
       </div>
+
+      {/* Live Demo Explorer Notification Banner */}
+      {user?.is_demo && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-50 via-indigo-50/80 to-purple-50 border border-amber-200 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs animate-fade-in">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white font-mono text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+                Live Demo Explorer
+              </span>
+              <span className="font-bold text-slate-900 text-sm font-sans">
+                Full System Demonstration Active (No Account Required)
+              </span>
+            </div>
+            <p className="text-slate-600 leading-relaxed font-sans max-w-2xl">
+              You are exploring LearnLoop AI with isolated sample progress. You can take diagnostic assessments, launch adaptive quizzes, inspect 7 agent tools, chat with the Socratic AI Tutor, and review class-wide teacher analytics.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenOnboarding && (
+              <button
+                onClick={onOpenOnboarding}
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold shadow-xs transition-colors"
+              >
+                Onboarding Wizard
+              </button>
+            )}
+            <button
+              onClick={async () => {
+                await resetDemoSession();
+                window.location.reload();
+              }}
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-xs transition-colors"
+            >
+              Reset Demo State
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Personalized Skill Level & Learning Path Highlight Bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -234,7 +286,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-[#172033] font-sans">{c.concept_name}</span>
                     <span className={`text-xs font-mono font-bold ${c.mastery_percentage >= 70 ? 'text-teal-700' :
-                        c.mastery_percentage >= 40 ? 'text-amber-700' : 'text-[#5B5CE2]'
+                      c.mastery_percentage >= 40 ? 'text-amber-700' : 'text-[#5B5CE2]'
                       }`}>
                       {c.mastery_percentage}%
                     </span>
@@ -243,7 +295,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="h-1.5 w-full bg-[#E6E9EF] rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${c.mastery_percentage >= 70 ? 'bg-teal-500' :
-                          c.mastery_percentage >= 40 ? 'bg-amber-500' : 'bg-[#5B5CE2]'
+                        c.mastery_percentage >= 40 ? 'bg-amber-500' : 'bg-[#5B5CE2]'
                         }`}
                       style={{ width: `${c.mastery_percentage}%` }}
                     />
@@ -291,8 +343,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-[#172033] font-sans">{task.concept_name}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold uppercase ${task.urgency === 'high' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-                          task.urgency === 'medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                            'bg-slate-100 text-slate-600 border border-slate-200'
+                        task.urgency === 'medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                          'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}>
                         Due: {task.due_date}
                       </span>
@@ -344,10 +396,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#172033] font-sans truncate">{concept.concept_name}</span>
-                <span className={`text-xs font-mono font-bold ${
-                    concept.questions_attempted === 0 ? 'text-slate-500' :
+                <span className={`text-xs font-mono font-bold ${concept.questions_attempted === 0 ? 'text-slate-500' :
                     concept.mastery_percentage >= 70 ? 'text-teal-700' :
-                    concept.mastery_percentage >= 40 ? 'text-amber-700' : 'text-[#5B5CE2]'
+                      concept.mastery_percentage >= 40 ? 'text-amber-700' : 'text-[#5B5CE2]'
                   }`}>
                   {concept.questions_attempted === 0 ? 'Not Assessed' : `${concept.mastery_percentage}%`}
                 </span>
@@ -356,7 +407,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <div className="h-1.5 w-full bg-[#E6E9EF] rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full ${concept.mastery_percentage >= 70 ? 'bg-teal-500' :
-                      concept.mastery_percentage >= 40 ? 'bg-amber-500' : 'bg-[#5B5CE2]'
+                    concept.mastery_percentage >= 40 ? 'bg-amber-500' : 'bg-[#5B5CE2]'
                     }`}
                   style={{ width: `${concept.mastery_percentage}%` }}
                 />

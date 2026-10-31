@@ -319,6 +319,7 @@ function AppContent() {
                 onViewGraph={() => setActiveTab('graph')}
                 onOpenRevision={() => setActiveTab('revision')}
                 onOpenProfile={() => setIsProfileModalOpen(true)}
+                onOpenOnboarding={() => setIsOnboardingOpen(true)}
               />
             )}
           </>

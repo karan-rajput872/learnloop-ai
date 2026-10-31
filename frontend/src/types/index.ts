@@ -268,8 +268,9 @@ export interface User {
   email: string;
   normalized_email?: string;
   role: 'student' | 'teacher' | 'admin';
-  auth_provider: 'local' | 'google';
+  auth_provider: 'local' | 'google' | 'demo';
   is_email_verified?: boolean;
+  is_demo?: boolean;
   avatar_url?: string;
   created_at?: string;
   last_login_at?: string;

@@ -20,6 +20,8 @@ interface AuthContextType {
     terms_accepted: boolean;
   }) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
+  startDemoSession: () => Promise<void>;
+  resetDemoSession: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   setLearnerProfile: (profile: LearnerProfile) => void;
@@ -172,6 +174,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthModal(null);
   };
 
+  const startDemoSession = async () => {
+    setIsLoading(true);
+    try {
+      const response = await authService.startDemoSession();
+      setUser(response.user);
+      if (response.learner) setLearner(response.learner);
+      try {
+        localStorage.setItem(USER_CACHE_KEY, JSON.stringify(response.user));
+      } catch {
+        // Ignore
+      }
+      setAuthModal(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetDemoSession = async () => {
+    setIsLoading(true);
+    try {
+      await authService.resetDemoSession();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await authService.logout();
@@ -211,6 +239,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         loginWithGoogle,
+        startDemoSession,
+        resetDemoSession,
         logout,
         updateUser,
         setLearnerProfile: setLearner

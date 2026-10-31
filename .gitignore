@@ -72,3 +72,15 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Large Video & Audio Media Recordings (Retained Locally & Deliverable Reports)
+*.mp4
+*.webm
+*.mp3
+demo_assets/raw_video/
+demo_assets/test_video/
+demo_assets/final/raw_video/
+demo_assets/final/*.mp4
+demo_assets/final/*.webm
+demo_assets/final/*.mp3
+demo_assets/*.mp3

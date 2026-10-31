@@ -1,0 +1,13 @@
+{
+  "scenes": {
+    "scene_01_intro": 38.4,
+    "scene_02_auth": 27.79,
+    "scene_03_onboarding": 40.3,
+    "scene_04_diagnostic": 37.8,
+    "scene_05_adaptive_quiz": 44.45,
+    "scene_06_ai_tutor": 34.66,
+    "scene_07_graph_revision": 33.26,
+    "scene_08_closing": 27.38
+  },
+  "total": 284.04
+}

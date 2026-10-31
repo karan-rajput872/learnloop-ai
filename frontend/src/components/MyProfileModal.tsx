@@ -44,8 +44,14 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
         .then(res => setLearningPath(res.learning_path))
         .catch(err => console.warn('Could not load learning path', err))
         .finally(() => setLoadingPath(false));
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -85,6 +91,7 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -267,3 +274,4 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
     </div>
   );
 };
+

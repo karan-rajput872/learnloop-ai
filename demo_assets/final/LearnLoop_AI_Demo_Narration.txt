@@ -1,0 +1,26 @@
+[SCENE 1: Product Introduction & Problem Space | 0:00 - 0:25]
+Welcome to LearnLoop AI, an adaptive exam-preparation tutor built for the Product Space and Wispr Flow Agentic AI Hackathon. Traditional DSA exam preparation forces students into rote memorization—grinding hundreds of disjointed problems without understanding the core invariants. LearnLoop AI transforms preparation into genuine conceptual mastery through an evidence-based knowledge DAG and bounded agent architecture.
+
+[SCENE 2: Landing Page & Instant Guest Access | 0:25 - 0:50]
+For hackathon evaluators and prospective students, exploring LearnLoop AI requires zero registration, zero passwords, and zero authentication barriers. With a single click on "Explore Live Demo", an isolated guest session initializes with realistic sample progress. Normal multi-user registration and Argon2id security remain fully operational, but demo explorers get instant, frictionless access.
+
+[SCENE 3: Personalized Learner Onboarding | 0:50 - 1:25]
+Effective tutoring begins by understanding the learner. LearnLoop's multi-step onboarding captures academic background, target exam timelines, and daily availability. Whether you are a university student preparing for finals, a career switcher, or a competitive programmer, our system calibrates question difficulty, daily practice targets, and concept recommendations to your personal learning profile.
+
+[SCENE 4: Diagnostic Assessment & Verified Skill Level | 1:25 - 2:00]
+Next, our calibrated diagnostic assessment establishes an empirical skill baseline across the syllabus. Rather than guessing, the engine calculates your Verified Algorithmic Proficiency Level from Level 1 to 5. Upon completion, the learner receives an evidence-backed proficiency credential and a tailored focus strategy targeting their exact prerequisite gaps.
+
+[SCENE 5: DSA Concept Graph & Adaptive Learning | 2:00 - 2:35]
+Here is our 12-concept Knowledge DAG. Computer science concepts are not isolated lists; they build strictly upon foundational prerequisites. The interactive graph reveals how array contiguous memory underpins stacks and circular queues, while binary search trees enforce hierarchical invariants. Learners can inspect prerequisites, track mastery progression, and launch targeted practice directly from any node.
+
+[SCENE 6: Adaptive Quiz & 7 Bounded Agent Tools | 2:35 - 3:20]
+In the Adaptive Quiz, questions are dynamically calibrated based on prerequisite mastery. Crucially, LearnLoop requires learners to explain their reasoning alongside their choice. When submitted, our agent pipeline executes specialized bounded tools: retrieving learner profiles, inspecting prerequisite masteries, diagnosing misconceptions, atomically updating the learner model, and calculating the next review interval. You see the transparent tool execution trace in real time.
+
+[SCENE 7: Socratic AI Tutor & Wispr Flow Voice Integration | 3:20 - 4:00]
+Our AI Tutor engages in true Socratic dialogue rather than simply handing out answers. Integrated with Wispr Flow conversational voice input, learners can speak naturally. Notice how the agent automatically removes filler words, resolves mid-sentence corrections, and filters out off-topic exam stress—distilling the pure algorithmic inquiry. Socratic quick actions then generate tailored analogies, worked examples, and comprehension challenges.
+
+[SCENE 8: Spaced Repetition & Progress Dashboard | 4:00 - 4:30]
+To ensure long-term retention, LearnLoop implements a modified SuperMemo SM-2 spaced repetition engine. Concepts where misconceptions were detected are scheduled for prioritized review. Returning to the Dashboard, learners see their overall syllabus mastery gauge, urgent review tasks, and verified proficiency tier—providing clear, continuous visibility into their exam readiness.
+
+[SCENE 9: Teacher Analytics Dashboard & Closing | 4:30 - 4:45]
+For educators, our Teacher Dashboard aggregates class-wide mastery and highlights students needing intervention. LearnLoop AI delivers an end-to-end, agentic exam-prep experience. Don't just learn the answers—master the concepts. Thank you.

@@ -74,6 +74,7 @@ def build_public_user(user: Dict[str, Any]) -> Dict[str, Any]:
         "role": user.get("role", "student"),
         "auth_provider": user.get("auth_provider", "local"),
         "is_email_verified": bool(user.get("is_email_verified")),
+        "is_demo": bool(user.get("is_demo", False)),
         "created_at": user.get("created_at"),
         "last_login_at": user.get("last_login_at")
     }
@@ -254,6 +255,60 @@ def login(payload: LoginRequest, response: Response):
         "token_type": "bearer",
         "user": build_public_user(user),
         "learner": learner_profile
+    }
+
+@router.post("/demo-session")
+def start_demo_session(response: Response):
+    """
+    Instantly create or restore an isolated guest demonstration session.
+    No registration, credentials, or Google authentication required.
+    Allows hackathon judges and prospective learners to test the complete application.
+    """
+    user, learner = storage.get_or_create_demo_user()
+
+    raw_refresh_token, token_hash, expires_at = create_refresh_token()
+    session_id = f"sess_demo_{uuid.uuid4().hex[:8]}"
+    storage.create_user_session({
+        "id": session_id,
+        "user_id": user["id"],
+        "refresh_token_hash": token_hash,
+        "expires_at": expires_at,
+        "device_info": "guest_demo_session"
+    })
+
+    access_token = create_access_token({
+        "sub": user["id"],
+        "student_id": user["student_id"],
+        "email": user["email"],
+        "name": user["full_name"],
+        "role": user.get("role", "student"),
+        "is_demo": True
+    })
+
+    set_refresh_cookie(response, raw_refresh_token)
+
+    return {
+        "status": "success",
+        "message": "Demo session started successfully. Welcome to LearnLoop AI!",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": build_public_user(user),
+        "learner": learner
+    }
+
+@router.post("/demo-reset")
+def reset_demo_session(response: Response, user: Dict[str, Any] = Depends(get_current_user)):
+    """Reset the demo user profile and progress back to baseline sample state."""
+    if not user.get("is_demo") and user.get("id") != "usr_guest_demo":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only demo sessions can be reset."
+        )
+    learner = storage.reset_demo_learner()
+    return {
+        "status": "success",
+        "message": "Demo profile reset to initial sample state.",
+        "learner": learner
     }
 
 @router.post("/google")
