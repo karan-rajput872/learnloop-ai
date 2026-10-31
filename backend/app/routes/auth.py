@@ -21,10 +21,15 @@ from app.auth.security import (
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
-COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() in ["true", "1", "yes"]
-COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "none").lower()
+COOKIE_SECURE_ENV = os.getenv("COOKIE_SECURE")
+if COOKIE_SECURE_ENV is not None:
+    COOKIE_SECURE = COOKIE_SECURE_ENV.lower() in ["true", "1", "yes"]
+else:
+    COOKIE_SECURE = False if os.getenv("ENVIRONMENT") == "development" else True
+
+COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").lower()
 if COOKIE_SAMESITE not in ["none", "lax", "strict"]:
-    COOKIE_SAMESITE = "none"
+    COOKIE_SAMESITE = "lax"
 
 # --------------------------------------------------------------------------
 # Request & Response Schemas
@@ -180,7 +185,6 @@ def register(payload: RegisterRequest, response: Response):
         "status": "success",
         "message": "Account created successfully.",
         "access_token": access_token,
-        "refresh_token": raw_refresh_token,
         "token_type": "bearer",
         "user": build_public_user(user),
         "learner": learner_profile
@@ -238,7 +242,6 @@ def login(payload: LoginRequest, response: Response):
         "status": "success",
         "message": "Signed in successfully.",
         "access_token": access_token,
-        "refresh_token": raw_refresh_token,
         "token_type": "bearer",
         "user": build_public_user(user),
         "learner": learner_profile
@@ -335,7 +338,6 @@ def google_sign_in(payload: GoogleLoginRequest, response: Response):
         "status": "success",
         "message": "Signed in with Google successfully.",
         "access_token": access_token,
-        "refresh_token": raw_refresh_token,
         "token_type": "bearer",
         "user": build_public_user(user),
         "learner": learner_profile
@@ -377,14 +379,52 @@ def refresh_session(request: Request, response: Response, payload: Optional[Refr
             detail="User account inactive or not found."
         )
 
-    # Token Reuse Detection: If session was revoked, revoke ALL user sessions
+    # Token Reuse Detection: If session was already revoked, clear cookie and reject
     if session.get("revoked_at"):
-        storage.revoke_all_user_sessions(user_id)
+        storage.revoke_session(session["id"])
         clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session security invalidation: token reuse detected. Please sign in again."
         )
+
+    # Handle Previous Token Presentation (Concurrency Grace Window vs Actual Token Replay)
+    if session.get("is_previous"):
+        rotated_at_str = session.get("rotated_at")
+        is_within_grace = False
+        if rotated_at_str:
+            rotated_dt = datetime.fromisoformat(rotated_at_str)
+            if rotated_dt.tzinfo is None:
+                rotated_dt = rotated_dt.replace(tzinfo=timezone.utc)
+            elapsed = (datetime.now(timezone.utc) - rotated_dt).total_seconds()
+            if 0 <= elapsed <= 15:
+                is_within_grace = True
+
+        if is_within_grace:
+            # Legitimate concurrent in-flight request race: Return access token for current active session
+            access_token = create_access_token({
+                "sub": user["id"],
+                "student_id": user["student_id"],
+                "email": user["normalized_email"],
+                "name": user["full_name"],
+                "role": user.get("role", "student")
+            })
+            learner_profile = storage.get_learner_profile(user["student_id"])
+            return {
+                "status": "success",
+                "access_token": access_token,
+                "token_type": "bearer",
+                "user": build_public_user(user),
+                "learner": learner_profile
+            }
+        else:
+            # Replay attack after grace window: Revoke this specific session family
+            storage.revoke_session(session["id"])
+            clear_refresh_cookie(response)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session security invalidation: token reuse detected. Please sign in again."
+            )
 
     # Check expiration
     expires_dt = datetime.fromisoformat(session["expires_at"])
@@ -400,7 +440,7 @@ def refresh_session(request: Request, response: Response, payload: Optional[Refr
 
     # Rotate refresh token
     new_raw_token, new_token_hash, new_expires_at = create_refresh_token()
-    storage.update_session_token_hash(session["id"], new_token_hash, new_expires_at)
+    storage.update_session_token_hash(session["id"], new_token_hash, new_expires_at, current_token_hash=token_hash)
 
     access_token = create_access_token({
         "sub": user["id"],
@@ -416,7 +456,6 @@ def refresh_session(request: Request, response: Response, payload: Optional[Refr
     return {
         "status": "success",
         "access_token": access_token,
-        "refresh_token": new_raw_token,
         "token_type": "bearer",
         "user": build_public_user(user),
         "learner": learner_profile

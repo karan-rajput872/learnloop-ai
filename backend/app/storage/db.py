@@ -1,7 +1,7 @@
 import os
 import json
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from app.dsa.syllabus import DSA_CONCEPTS
 
@@ -167,6 +167,15 @@ class StorageManager:
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             """)
+
+            # Schema upgrade for concurrent refresh coordination & grace window
+            cursor.execute("PRAGMA table_info(user_sessions)")
+            session_cols = [c[1] for c in cursor.fetchall()]
+            if "previous_token_hash" not in session_cols:
+                cursor.execute("ALTER TABLE user_sessions ADD COLUMN previous_token_hash TEXT")
+            if "rotated_at" not in session_cols:
+                cursor.execute("ALTER TABLE user_sessions ADD COLUMN rotated_at TEXT")
+
             conn.commit()
 
     def ensure_default_learner(self):
@@ -641,32 +650,40 @@ class StorageManager:
                 session_data["user_id"],
                 session_data["refresh_token_hash"],
                 session_data.get("device_info", "browser"),
-                session_data.get("created_at", datetime.utcnow().isoformat()),
+                session_data.get("created_at", datetime.now(timezone.utc).isoformat()),
                 session_data["expires_at"],
-                session_data.get("last_used_at", datetime.utcnow().isoformat())
+                session_data.get("last_used_at", datetime.now(timezone.utc).isoformat())
             ))
             conn.commit()
 
     def get_session_by_token_hash(self, token_hash: str) -> Optional[Dict[str, Any]]:
-        """Lookup session by SHA-256 hash of refresh token."""
+        """Lookup session by SHA-256 hash of active OR previous refresh token."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM user_sessions WHERE refresh_token_hash = ?", (token_hash,))
+            cursor.execute("""
+                SELECT *,
+                       CASE WHEN refresh_token_hash = ? THEN 1 ELSE 0 END AS is_current,
+                       CASE WHEN previous_token_hash = ? THEN 1 ELSE 0 END AS is_previous
+                FROM user_sessions
+                WHERE refresh_token_hash = ? OR previous_token_hash = ?
+            """, (token_hash, token_hash, token_hash, token_hash))
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def update_session_token_hash(self, session_id: str, new_token_hash: str, new_expires_at: str):
-        """Rotate refresh token hash and update session activity."""
-        now = datetime.utcnow().isoformat()
+    def update_session_token_hash(self, session_id: str, new_token_hash: str, new_expires_at: str, current_token_hash: Optional[str] = None):
+        """Rotate refresh token hash, archive previous hash with timestamp, and update session activity."""
+        now = datetime.now(timezone.utc).isoformat()
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE user_sessions
-                SET refresh_token_hash = ?,
+                SET previous_token_hash = COALESCE(?, refresh_token_hash),
+                    rotated_at = ?,
+                    refresh_token_hash = ?,
                     expires_at = ?,
                     last_used_at = ?
                 WHERE id = ?
-            """, (new_token_hash, new_expires_at, now, session_id))
+            """, (current_token_hash, now, new_token_hash, new_expires_at, now, session_id))
             conn.commit()
 
     def revoke_session(self, session_id: str):

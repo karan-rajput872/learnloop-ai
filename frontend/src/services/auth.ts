@@ -1,7 +1,45 @@
 import { getApiBase, setAuthToken } from './api';
-import { AuthResponse, User } from '../types';
+import { AuthResponse, User, LearnerProfile } from '../types';
 
 const API_BASE = getApiBase();
+
+export type AuthSyncMessage =
+  | { type: 'LOGIN'; user: User; learner?: LearnerProfile }
+  | { type: 'LOGOUT' }
+  | { type: 'REFRESH'; user: User; learner?: LearnerProfile };
+
+// Safe cross-tab synchronization channel
+const authChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('learnloop_auth_sync')
+  : null;
+
+export const broadcastAuthSync = (message: AuthSyncMessage) => {
+  try {
+    authChannel?.postMessage(message);
+  } catch {
+    // Ignore postMessage errors if channel is closed or unsupported
+  }
+};
+
+export const subscribeAuthSync = (callback: (message: AuthSyncMessage) => void): (() => void) => {
+  if (!authChannel) return () => { };
+  const handler = (event: MessageEvent<AuthSyncMessage>) => {
+    if (event.data && event.data.type) {
+      callback(event.data);
+    }
+  };
+  authChannel.addEventListener('message', handler);
+  return () => {
+    try {
+      authChannel.removeEventListener('message', handler);
+    } catch {
+      // Ignore cleanup error
+    }
+  };
+};
+
+// Single-flight refresh request coalescing to prevent race conditions & duplicate requests
+let activeRefreshPromise: Promise<AuthResponse> | null = null;
 
 export const authService = {
   async register(data: {
@@ -25,6 +63,7 @@ export const authService = {
     if (result.access_token) {
       setAuthToken(result.access_token);
     }
+    broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
     return result;
   },
 
@@ -47,6 +86,7 @@ export const authService = {
     if (result.access_token) {
       setAuthToken(result.access_token);
     }
+    broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
     return result;
   },
 
@@ -65,40 +105,52 @@ export const authService = {
     if (result.access_token) {
       setAuthToken(result.access_token);
     }
+    broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
     return result;
   },
 
-  async refreshSession(refreshToken?: string | null): Promise<AuthResponse> {
-    const body = refreshToken ? JSON.stringify({ refresh_token: refreshToken }) : JSON.stringify({});
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      credentials: 'include'
-    });
-    if (!res.ok) {
-      throw new Error('Session expired.');
+  async refreshSession(): Promise<AuthResponse> {
+    // Single-flight coalescing: reuse active refresh promise if already in flight
+    if (activeRefreshPromise) {
+      return activeRefreshPromise;
     }
-    const result: AuthResponse = await res.json();
-    if (result.access_token) {
-      setAuthToken(result.access_token);
-    }
-    return result;
+
+    activeRefreshPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+          credentials: 'include'
+        });
+        if (!res.ok) {
+          throw new Error('Session expired.');
+        }
+        const result: AuthResponse = await res.json();
+        if (result.access_token) {
+          setAuthToken(result.access_token);
+        }
+        return result;
+      } finally {
+        activeRefreshPromise = null;
+      }
+    })();
+
+    return activeRefreshPromise;
   },
 
   async logout(): Promise<void> {
     try {
-      const refreshToken = typeof localStorage !== 'undefined' ? localStorage.getItem('learnloop_refresh_token') : null;
       await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: refreshToken ? JSON.stringify({ refresh_token: refreshToken }) : undefined,
         credentials: 'include'
       });
     } catch {
       // Ignore network errors on logout
     } finally {
       setAuthToken(null);
+      broadcastAuthSync({ type: 'LOGOUT' });
     }
   },
 
@@ -150,4 +202,3 @@ export const authService = {
     return await res.json();
   }
 };
-

@@ -609,7 +609,8 @@ def run_audit():
         assert r_reg_a.status_code == 201, f"Expected 201 Created for registration, got {r_reg_a.status_code}"
         data_a = r_reg_a.json()
         assert "access_token" in data_a and len(data_a["access_token"]) > 20
-        assert "refresh_token" in data_a and len(data_a["refresh_token"]) > 20
+        assert "refresh_token" not in data_a, "Refresh token must NOT be returned in response body"
+        assert "refresh_token" in r_reg_a.cookies, "Refresh token must be set in HttpOnly cookie"
         user_a = data_a["user"]
         student_id_a = user_a["student_id"]
         assert user_a["role"] == "student"
@@ -642,7 +643,9 @@ def run_audit():
         assert r_login_a.status_code == 200, f"Expected 200 on login, got {r_login_a.status_code}"
         login_data_a = r_login_a.json()
         token_a = login_data_a["access_token"]
-        refresh_a = login_data_a["refresh_token"]
+        assert "refresh_token" not in login_data_a, "Refresh token must NOT be returned in login JSON response"
+        refresh_cookie_a = r_login_a.cookies.get("refresh_token")
+        assert refresh_cookie_a is not None, "Refresh token must be delivered via cookie"
 
         # Safe rejection of invalid credentials without user enumeration
         r_bad_pwd = client.post(f"{BASE_URL}/auth/login", json={
@@ -658,17 +661,23 @@ def run_audit():
         assert r_bad_pwd.json()["detail"] == r_bad_email.json()["detail"], "Login error must be identical to prevent enumeration"
         passed_tests.append("11.4 Login authentication with case-insensitive normalization & enumeration safety verified")
 
-        # 11.5 Persistent Session & Refresh Token Rotation
-        r_refresh = client.post(f"{BASE_URL}/auth/refresh", json={"refresh_token": refresh_a})
-        assert r_refresh.status_code == 200
+        # 11.5 Persistent Session, Token Rotation & Concurrency Grace Window
+        # Session restoration via HttpOnly cookie (no payload body required)
+        r_refresh = client.post(f"{BASE_URL}/auth/refresh", json={})
+        assert r_refresh.status_code == 200, f"Session restoration via cookie failed: {r_refresh.status_code}"
         refresh_data = r_refresh.json()
         new_access_a = refresh_data["access_token"]
-        new_refresh_a = refresh_data["refresh_token"]
-        assert new_refresh_a != refresh_a, "Refresh token must rotate upon use"
+        assert "refresh_token" not in refresh_data, "Refresh token must NOT be returned in refresh JSON body"
+        new_refresh_cookie = r_refresh.cookies.get("refresh_token")
+        assert new_refresh_cookie != refresh_cookie_a, "Refresh token cookie must rotate upon use"
 
-        # Token reuse detection: Reusing old rotated refresh token triggers security revocation
-        r_reuse = client.post(f"{BASE_URL}/auth/refresh", json={"refresh_token": refresh_a})
-        assert r_reuse.status_code == 401, f"Reused refresh token must be rejected with 401, got {r_reuse.status_code}"
+        # Concurrency grace window: Replaying the immediate previous token within 15s succeeds (simulating multi-tab race)
+        r_grace = client.post(f"{BASE_URL}/auth/refresh", cookies={"refresh_token": refresh_cookie_a})
+        assert r_grace.status_code == 200, f"Concurrent refresh within grace window must succeed, got {r_grace.status_code}"
+
+        # Token reuse detection: Replaying an unknown/revoked token returns 401
+        r_invalid = client.post(f"{BASE_URL}/auth/refresh", cookies={"refresh_token": "revoked_or_invalid_token_xyz"})
+        assert r_invalid.status_code == 401, f"Invalid refresh token must be rejected with 401, got {r_invalid.status_code}"
         passed_tests.append("11.5 Session persistence, token rotation, and reuse attack invalidation verified")
 
         # 11.6 Register User B & Verify Complete 12-Point Cross-Account Isolation
@@ -757,11 +766,18 @@ def run_audit():
         assert r_teacher_denied.status_code == 403, f"Expected 403 Forbidden for student role on teacher dashboard, got {r_teacher_denied.status_code}"
         passed_tests.append("11.7 Role-based access control verified (student role rejected from teacher analytics)")
 
-        # 11.8 Explicit Logout invalidates corresponding session
-        r_logout = client.post(f"{BASE_URL}/auth/logout", json={"refresh_token": new_refresh_a}, headers=headers_a)
+        # 11.8 Explicit Logout invalidates corresponding session and clears cookie
+        r_logout = client.post(
+            f"{BASE_URL}/auth/logout",
+            cookies={"refresh_token": new_refresh_cookie},
+            headers=headers_a
+        )
         assert r_logout.status_code == 200
-        # 12. Refresh with logged out token rejected
-        r_refresh_after_logout = client.post(f"{BASE_URL}/auth/refresh", json={"refresh_token": new_refresh_a})
+        # Refresh with logged-out cookie or previously rotated token rejected with 401
+        r_refresh_after_logout = client.post(
+            f"{BASE_URL}/auth/refresh",
+            cookies={"refresh_token": new_refresh_cookie}
+        )
         assert r_refresh_after_logout.status_code == 401
         passed_tests.append("11.8 Explicit logout and active session revocation verified")
         print("  [PASS] Production Authentication & Multi-User Isolation PASSED")

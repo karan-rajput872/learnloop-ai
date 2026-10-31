@@ -32,7 +32,9 @@ def test_full_auth_lifecycle():
     user_a = data_a["user"]
     student_id_a = user_a["student_id"]
     token_a = data_a["access_token"]
-    refresh_a = data_a["refresh_token"]
+    assert "refresh_token" not in data_a, "Refresh token must not be in JSON response"
+    refresh_cookie_a = r_reg_a.cookies.get("refresh_token")
+    assert refresh_cookie_a is not None, "Refresh token cookie must be present"
     print(f"  -> Created Account A: {user_a['email']} (Student ID: {student_id_a})")
 
     # 2. Verify Initialized Profile for Account A
@@ -44,14 +46,15 @@ def test_full_auth_lifecycle():
     assert len(prof_a["concepts"]) == 12
     print(f"  -> Profile verified: {len(prof_a['concepts'])} concepts initialized, mastery: {prof_a['overall_mastery']}%")
 
-    # 3. Session Persistence & Token Rotation
-    print("\n[STEP 3] Testing token rotation & session refresh...")
-    r_ref = client.post(f"{BASE_URL}/auth/refresh", json={"refresh_token": refresh_a})
+    # 3. Session Persistence & Token Rotation via HttpOnly Cookie
+    print("\n[STEP 3] Testing token rotation & session refresh via HttpOnly cookie...")
+    r_ref = client.post(f"{BASE_URL}/auth/refresh", json={}, cookies={"refresh_token": refresh_cookie_a})
     assert r_ref.status_code == 200
     ref_data = r_ref.json()
     new_token_a = ref_data["access_token"]
-    new_refresh_a = ref_data["refresh_token"]
-    assert new_refresh_a != refresh_a, "Refresh token must rotate"
+    assert "refresh_token" not in ref_data, "Refresh token must not be in JSON body"
+    new_refresh_cookie_a = r_ref.cookies.get("refresh_token")
+    assert new_refresh_cookie_a != refresh_cookie_a, "Refresh token cookie must rotate"
     print("  -> Refresh token rotated successfully.")
 
     # 4. Registration - Account B
@@ -167,16 +170,17 @@ def test_full_auth_lifecycle():
     })
     assert r_new_login.status_code == 200, "New password must succeed"
     print("  -> New password accepted (200 OK).")
-    latest_refresh = r_new_login.json()["refresh_token"]
+    latest_refresh = r_new_login.cookies.get("refresh_token")
+    assert latest_refresh is not None, "Refresh cookie must be present on login"
 
     # 9. Logout Workflow
     print("\n[STEP 8] Testing Explicit Logout & Session Invalidation...")
-    r_logout = client.post(f"{BASE_URL}/auth/logout", json={"refresh_token": latest_refresh})
+    r_logout = client.post(f"{BASE_URL}/auth/logout", cookies={"refresh_token": latest_refresh})
     assert r_logout.status_code == 200
     print("  -> Logout succeeded.")
 
     # Refreshing with logged out token must fail
-    r_revoked = client.post(f"{BASE_URL}/auth/refresh", json={"refresh_token": latest_refresh})
+    r_revoked = client.post(f"{BASE_URL}/auth/refresh", cookies={"refresh_token": latest_refresh})
     assert r_revoked.status_code == 401
     print("  -> Revoked refresh token rejected (401 Unauthorized).")
 

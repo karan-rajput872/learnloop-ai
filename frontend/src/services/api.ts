@@ -11,23 +11,14 @@ import {
   DiagnosticAttemptSummary
 } from '../types';
 
-const isBrowser = typeof window !== 'undefined';
-const isLocalhost = isBrowser && (
-  window.location.hostname === 'localhost' ||
-  window.location.hostname === '127.0.0.1' ||
-  window.location.hostname === ''
-);
-
 // If VITE_API_BASE is provided in build env, use it.
-// Otherwise, detect if running on the web (e.g. Vercel) and route to production Render backend automatically.
+// Default to same-origin '/api' routed via Vite proxy (local dev) or Vercel proxy (production).
 export const getApiBase = (): string => {
   const envBase = import.meta.env.VITE_API_BASE;
   if (envBase && typeof envBase === 'string' && envBase.trim() !== '') {
     return envBase.trim().replace(/\/+$/, '');
   }
-  return isLocalhost
-    ? 'http://localhost:8000/api'
-    : 'https://learnloop-ai-backend.onrender.com/api';
+  return '/api';
 };
 
 const API_BASE = getApiBase();

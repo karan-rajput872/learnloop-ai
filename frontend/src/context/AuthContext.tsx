@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, LearnerProfile } from '../types';
-import { authService } from '../services/auth';
+import { authService, subscribeAuthSync, AuthSyncMessage } from '../services/auth';
 import { setAuthToken } from '../services/api';
 
 interface AuthContextType {
@@ -27,7 +27,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const REFRESH_TOKEN_KEY = 'learnloop_refresh_token';
+// Note: Refresh tokens are NEVER stored in localStorage or sessionStorage.
+// They are held exclusively in HttpOnly, SameSite=Lax cookies managed by the browser.
 const USER_CACHE_KEY = 'learnloop_cached_user';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -51,28 +52,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthModal(null);
   }, []);
 
-  // Restore session on mount
+  // Restore session on mount via HttpOnly cookie
   useEffect(() => {
     let isMounted = true;
 
+    // Defensive cleanup of any legacy JavaScript refresh token in localStorage
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('learnloop_refresh_token')) {
+        localStorage.removeItem('learnloop_refresh_token');
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+
     async function restoreSession() {
-      const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
       try {
-        const response = await authService.refreshSession(storedRefreshToken);
+        const response = await authService.refreshSession();
         if (isMounted && response && response.access_token) {
           setUser(response.user);
           if (response.learner) setLearner(response.learner);
           localStorage.setItem(USER_CACHE_KEY, JSON.stringify(response.user));
-          if (response.refresh_token) {
-            localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
-          }
         }
-      } catch (err) {
-        // Not authenticated or refresh expired - clear cached state
+      } catch {
+        // Not authenticated or refresh expired - clear local UI state
         if (isMounted) {
           setUser(null);
-          localStorage.removeItem(USER_CACHE_KEY);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          setLearner(null);
+          try {
+            localStorage.removeItem(USER_CACHE_KEY);
+          } catch {
+            // Ignore
+          }
           setAuthToken(null);
         }
       } finally {
@@ -84,8 +94,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     restoreSession();
 
+    // Cross-tab synchronization via BroadcastChannel
+    const unsubscribe = subscribeAuthSync((message: AuthSyncMessage) => {
+      if (!isMounted) return;
+      if (message.type === 'LOGIN' || message.type === 'REFRESH') {
+        setUser(message.user);
+        if (message.learner) setLearner(message.learner);
+        try {
+          localStorage.setItem(USER_CACHE_KEY, JSON.stringify(message.user));
+        } catch {
+          // Ignore
+        }
+      } else if (message.type === 'LOGOUT') {
+        setUser(null);
+        setLearner(null);
+        try {
+          localStorage.removeItem(USER_CACHE_KEY);
+        } catch {
+          // Ignore
+        }
+        setAuthToken(null);
+        setAuthModal(null);
+      }
+    });
+
     return () => {
       isMounted = false;
+      unsubscribe();
     };
   }, []);
 
@@ -93,9 +128,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authService.login({ email, password, remember_me: rememberMe });
     setUser(res.user);
     if (res.learner) setLearner(res.learner);
-    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.user));
-    if (res.refresh_token) {
-      localStorage.setItem(REFRESH_TOKEN_KEY, res.refresh_token);
+    try {
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.user));
+    } catch {
+      // Ignore
     }
     setAuthModal(null);
   };
@@ -110,9 +146,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authService.register(data);
     setUser(res.user);
     if (res.learner) setLearner(res.learner);
-    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.user));
-    if (res.refresh_token) {
-      localStorage.setItem(REFRESH_TOKEN_KEY, res.refresh_token);
+    try {
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.user));
+    } catch {
+      // Ignore
     }
     setAuthModal(null);
   };
@@ -121,9 +158,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authService.loginWithGoogle(idToken);
     setUser(res.user);
     if (res.learner) setLearner(res.learner);
-    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.user));
-    if (res.refresh_token) {
-      localStorage.setItem(REFRESH_TOKEN_KEY, res.refresh_token);
+    try {
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.user));
+    } catch {
+      // Ignore
     }
     setAuthModal(null);
   };
@@ -134,8 +172,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setUser(null);
       setLearner(null);
-      localStorage.removeItem(USER_CACHE_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      try {
+        localStorage.removeItem(USER_CACHE_KEY);
+        localStorage.removeItem('learnloop_refresh_token');
+      } catch {
+        // Ignore
+      }
       setAuthToken(null);
       setAuthModal(null);
     }
@@ -143,7 +185,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUser = (updated: User) => {
     setUser(updated);
-    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(updated));
+    try {
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(updated));
+    } catch {
+      // Ignore
+    }
   };
 
   return (
@@ -176,4 +222,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
