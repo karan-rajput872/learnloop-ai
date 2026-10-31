@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Question } from '../types';
 import { api } from '../services/api';
-import { GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, HelpCircle } from 'lucide-react';
+import { GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, HelpCircle, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface DiagnosticPageProps {
   onComplete: () => void;
@@ -14,11 +14,16 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({ onComplete }) =>
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadQuestions = () => {
+    setLoading(true);
     api.getDiagnosticQuestions()
       .then((data) => setQuestions(data.questions))
-      .catch(console.error)
+      .catch((err) => console.error('Failed to load diagnostic', err))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadQuestions();
   }, []);
 
   const currentQ = questions[currentIndex];
@@ -72,8 +77,19 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({ onComplete }) =>
 
   if (questions.length === 0) {
     return (
-      <div className="p-12 text-center text-slate-400 font-mono text-sm">
-        No diagnostic questions loaded. Please verify backend service.
+      <div className="max-w-xl mx-auto p-12 text-center text-slate-400 font-mono text-sm bg-edu-900 rounded-2xl border border-edu-800 space-y-4 animate-fade-in">
+        <GraduationCap className="w-10 h-10 text-purple-400 mx-auto" />
+        <div className="text-white font-bold text-base">Diagnostic Battery Pending</div>
+        <p className="text-xs text-slate-400 leading-relaxed font-sans">
+          Could not load the 12 diagnostic onboarding questions. The backend server on Render may still be spinning up from cold sleep.
+        </p>
+        <button
+          onClick={loadQuestions}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-loop-purple hover:bg-purple-600 text-white font-bold text-xs transition-all shadow-md"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Retry Loading Questions
+        </button>
       </div>
     );
   }

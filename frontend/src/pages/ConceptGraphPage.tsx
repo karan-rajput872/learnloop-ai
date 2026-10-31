@@ -2,25 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { ConceptNode, ConceptEdge } from '../types';
 import { api } from '../services/api';
 import { ConceptGraphView } from '../components/ConceptGraphView';
-import { Network, Sparkles, RefreshCw } from 'lucide-react';
+import { FALLBACK_CONCEPTS, FALLBACK_EDGES } from '../services/syllabusData';
+import { Network, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ConceptGraphPageProps {
   onPracticeConcept: (conceptId: string) => void;
 }
 
 export const ConceptGraphPage: React.FC<ConceptGraphPageProps> = ({ onPracticeConcept }) => {
-  const [concepts, setConcepts] = useState<ConceptNode[]>([]);
-  const [edges, setEdges] = useState<ConceptEdge[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [concepts, setConcepts] = useState<ConceptNode[]>(FALLBACK_CONCEPTS);
+  const [edges, setEdges] = useState<ConceptEdge[]>(FALLBACK_EDGES);
+  const [loading, setLoading] = useState(false);
+  const [isLiveSync, setIsLiveSync] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fetchGraph = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const data = await api.getConcepts();
-      setConcepts(data.concepts);
-      setEdges(data.edges);
-    } catch (err) {
-      console.error('Failed to load concept graph', err);
+      if (data && Array.isArray(data.concepts) && data.concepts.length > 0) {
+        setConcepts(data.concepts);
+        setEdges(data.edges || FALLBACK_EDGES);
+        setIsLiveSync(true);
+      }
+    } catch (err: any) {
+      console.warn('Backend sync failed, using topological fallback graph', err);
+      setIsLiveSync(false);
+      setErrorMessage('Displaying standard DSA syllabus topology (offline mode).');
     } finally {
       setLoading(false);
     }
@@ -47,29 +56,42 @@ export const ConceptGraphPage: React.FC<ConceptGraphPageProps> = ({ onPracticeCo
           </p>
         </div>
 
-        <button
-          onClick={fetchGraph}
-          disabled={loading}
-          className="self-start sm:self-auto p-2.5 rounded-xl bg-edu-900 hover:bg-edu-800 border border-edu-700 text-slate-300 transition-colors"
-          title="Refresh Graph"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-purple-400' : ''}`} />
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-edu-900 border border-edu-700 text-xs font-mono">
+            <span className={`w-2 h-2 rounded-full ${isLiveSync ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+            <span className={isLiveSync ? 'text-emerald-300' : 'text-amber-300'}>
+              {isLiveSync ? 'Live Mastery Sync' : 'Syllabus Standalone'}
+            </span>
+          </div>
+
+          <button
+            onClick={fetchGraph}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-edu-900 hover:bg-edu-800 border border-edu-700 text-slate-300 text-xs font-mono transition-colors"
+            title="Refresh Graph"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-purple-400' : ''}`} />
+            {loading ? 'Syncing...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
-      {/* Graph Visualizer */}
-      {loading ? (
-        <div className="p-16 text-center text-slate-400 font-mono text-sm bg-edu-900 rounded-2xl border border-edu-800 animate-pulse">
-          Rendering interactive topological graph...
+      {errorMessage && (
+        <div className="p-3 rounded-xl bg-edu-900/60 border border-edu-800 text-xs font-mono text-slate-400 flex items-center justify-between">
+          <span>{errorMessage}</span>
+          <button onClick={fetchGraph} className="text-purple-400 hover:underline">
+            Retry Connection
+          </button>
         </div>
-      ) : (
-        <ConceptGraphView
-          concepts={concepts}
-          edges={edges}
-          onSelectConcept={(cid) => console.log('Selected concept', cid)}
-          onPracticeConcept={onPracticeConcept}
-        />
       )}
+
+      {/* Graph Visualizer */}
+      <ConceptGraphView
+        concepts={concepts}
+        edges={edges}
+        onSelectConcept={(cid) => console.log('Selected concept', cid)}
+        onPracticeConcept={onPracticeConcept}
+      />
     </div>
   );
 };

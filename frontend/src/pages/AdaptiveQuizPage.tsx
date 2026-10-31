@@ -94,8 +94,19 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
 
   if (!question) {
     return (
-      <div className="max-w-3xl mx-auto p-12 text-center text-slate-400 font-mono text-sm bg-edu-900 rounded-2xl border border-edu-800">
-        No question available. Please refresh.
+      <div className="max-w-xl mx-auto p-12 text-center text-slate-400 font-mono text-sm bg-edu-900 rounded-2xl border border-edu-800 space-y-4 animate-fade-in">
+        <BrainCircuit className="w-10 h-10 text-purple-400 mx-auto" />
+        <div className="text-white font-bold text-base">Adaptive Practice Pending</div>
+        <p className="text-xs text-slate-400 leading-relaxed font-sans">
+          The agent could not calibrate a question. The backend server on Render may still be spinning up from cold sleep.
+        </p>
+        <button
+          onClick={() => fetchNextQuestion()}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-loop-purple hover:bg-purple-600 text-white font-bold text-xs transition-all shadow-md"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Retry Generating Question
+        </button>
       </div>
     );
   }
@@ -171,9 +182,8 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
                 disabled={Boolean(evalResult)}
                 className={`w-full text-left p-3.5 rounded-xl border text-xs sm:text-sm font-sans flex items-start gap-3 transition-all ${optStyle}`}
               >
-                <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
-                  isSelected ? 'bg-purple-600 text-white' : 'bg-edu-900 text-slate-400 border border-edu-800'
-                }`}>
+                <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${isSelected ? 'bg-purple-600 text-white' : 'bg-edu-900 text-slate-400 border border-edu-800'
+                  }`}>
                   {opt.id}
                 </span>
                 <span className="leading-snug pt-0.5">{opt.text}</span>
@@ -209,11 +219,10 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
                     key={level}
                     type="button"
                     onClick={() => setConfidence(level)}
-                    className={`px-2.5 py-1 rounded text-[11px] uppercase font-mono font-semibold transition-colors border ${
-                      confidence === level
+                    className={`px-2.5 py-1 rounded text-[11px] uppercase font-mono font-semibold transition-colors border ${confidence === level
                         ? 'bg-purple-950 text-purple-300 border-purple-600'
                         : 'bg-edu-950 text-slate-400 border-edu-800 hover:text-slate-200'
-                    }`}
+                      }`}
                   >
                     {level}
                   </button>
@@ -235,11 +244,10 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
         {evalResult && (
           <div className="space-y-4 pt-4 border-t border-edu-800 animate-fade-in">
             {/* Verdict Banner */}
-            <div className={`p-4 rounded-xl border flex items-start gap-3 ${
-              evalResult.is_correct
+            <div className={`p-4 rounded-xl border flex items-start gap-3 ${evalResult.is_correct
                 ? 'bg-emerald-950/80 border-emerald-700/80 text-emerald-200'
                 : 'bg-rose-950/80 border-rose-700/80 text-rose-200'
-            }`}>
+              }`}>
               {evalResult.is_correct ? (
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               ) : (

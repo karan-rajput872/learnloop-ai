@@ -29,14 +29,17 @@ const PIE_COLORS = ['#A855F7', '#EC4899', '#38BDF8', '#F59E0B', '#10B981', '#636
 export const TeacherDashboardPage: React.FC = () => {
   const [data, setData] = useState<TeacherDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchTeacherData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.getTeacherDashboard();
       setData(res);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load teacher dashboard', err);
+      setError(err?.message || 'Failed to aggregate class metrics. Server may still be waking up.');
     } finally {
       setLoading(false);
     }
@@ -46,11 +49,30 @@ export const TeacherDashboardPage: React.FC = () => {
     fetchTeacherData();
   }, []);
 
-  if (loading || !data) {
+  if (loading) {
     return (
-      <div className="max-w-7xl mx-auto p-16 text-center text-slate-400 font-mono text-sm bg-edu-900 rounded-2xl border border-edu-800 animate-pulse space-y-2">
+      <div className="max-w-7xl mx-auto p-16 text-center text-slate-400 font-mono text-sm bg-edu-900 rounded-2xl border border-edu-800 animate-pulse space-y-3">
         <Users className="w-8 h-8 text-purple-400 animate-bounce mx-auto" />
         <div>Aggregating class-wide learner models & misconception distributions...</div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="max-w-xl mx-auto p-12 text-center text-slate-400 font-mono text-sm bg-edu-900 rounded-2xl border border-edu-800 space-y-4 animate-fade-in">
+        <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
+        <div className="text-white font-bold text-base">Teacher Analytics Pending</div>
+        <p className="text-xs text-slate-400 leading-relaxed font-sans">
+          {error || 'Unable to retrieve cohort metrics. The backend server on Render may still be spinning up from sleep mode.'}
+        </p>
+        <button
+          onClick={fetchTeacherData}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-loop-purple hover:bg-purple-600 text-white font-bold text-xs transition-all shadow-md"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Retry Class Aggregation
+        </button>
       </div>
     );
   }
