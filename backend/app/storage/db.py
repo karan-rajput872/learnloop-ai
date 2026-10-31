@@ -421,6 +421,13 @@ class StorageManager:
             """, (student_id,))
             return [dict(r) for r in cursor.fetchall()]
 
+    def get_revision_task_by_id(self, task_id: str) -> Optional[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM revision_tasks WHERE id = ?", (task_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
     def complete_revision_task(self, task_id: str):
         with self.get_connection() as conn:
             cursor = conn.cursor()

@@ -88,9 +88,11 @@ export const authService = {
 
   async logout(): Promise<void> {
     try {
+      const refreshToken = typeof localStorage !== 'undefined' ? localStorage.getItem('learnloop_refresh_token') : null;
       await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: refreshToken ? JSON.stringify({ refresh_token: refreshToken }) : undefined,
         credentials: 'include'
       });
     } catch {
@@ -129,12 +131,16 @@ export const authService = {
   async changePassword(data: {
     old_password: string;
     new_password: string;
-    confirm_new_password: string;
+    confirm_password: string;
   }): Promise<{ message: string }> {
     const res = await fetch(`${API_BASE}/auth/change-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        old_password: data.old_password,
+        new_password: data.new_password,
+        confirm_password: data.confirm_password
+      }),
       credentials: 'include'
     });
     if (!res.ok) {
@@ -144,3 +150,4 @@ export const authService = {
     return await res.json();
   }
 };
+

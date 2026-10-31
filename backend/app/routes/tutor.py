@@ -147,6 +147,17 @@ def mark_revision_completed(
     payload: CompleteRevisionPayload,
     user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
 ):
-    """Mark a spaced repetition task as completed."""
+    """Mark a spaced repetition task as completed, enforcing student ownership."""
+    task = storage.get_revision_task_by_id(payload.task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail=f"Revision task '{payload.task_id}' not found.")
+
+    if user and user.get("role") not in ["teacher", "admin"]:
+        if task.get("student_id") != user.get("student_id"):
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: You cannot complete another student's revision task."
+            )
+
     storage.complete_revision_task(payload.task_id)
     return {"status": "success", "message": f"Task {payload.task_id} completed."}

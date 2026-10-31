@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/auth';
 import {
   X,
   Lock,
@@ -33,6 +34,12 @@ export const AuthModal: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Change password states
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
   // Status
   const [isLoading, setIsLoading] = useState(false);
@@ -84,6 +91,39 @@ export const AuthModal: React.FC = () => {
       closeAuthModal();
     } catch (err: any) {
       setErrorMessage(err.message || 'Registration failed.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    if (newPassword.length < 8) {
+      setErrorMessage('New password must be at least 8 characters long.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setErrorMessage('New passwords do not match.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await authService.changePassword({
+        old_password: oldPassword,
+        new_password: newPassword,
+        confirm_password: confirmNewPassword
+      });
+      setSuccessMessage('Password changed successfully.');
+      setShowChangePassword(false);
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to update password.');
     } finally {
       setIsLoading(false);
     }
@@ -401,6 +441,72 @@ export const AuthModal: React.FC = () => {
                 </div>
               </div>
 
+              {/* Change Password Collapsible Section */}
+              {user.auth_provider === 'local' && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowChangePassword(!showChangePassword)}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>{showChangePassword ? 'Cancel Change Password' : 'Change Password'}</span>
+                  </button>
+
+                  {showChangePassword && (
+                    <form onSubmit={handleChangePasswordSubmit} className="mt-3 space-y-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Current Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={oldPassword}
+                          onChange={(e) => setOldPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          New Password (min 8 chars)
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          minLength={8}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Update Password</span>}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+
               <div className="pt-2">
                 <button
                   type="button"
@@ -421,3 +527,4 @@ export const AuthModal: React.FC = () => {
     </div>
   );
 };
+

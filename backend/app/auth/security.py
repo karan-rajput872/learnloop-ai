@@ -170,7 +170,8 @@ def get_current_user_optional(
 ) -> Optional[Dict[str, Any]]:
     """
     Retrieve currently authenticated user if token is valid.
-    Returns None if no token or token is invalid, allowing preview mode compatibility.
+    Returns None if no credentials were provided (enabling preview mode for visitors).
+    Raises HTTP 401 Unauthorized if credentials were provided but are invalid or expired.
     """
     raw_token = extract_token_from_request(request, credentials)
     if not raw_token:
@@ -178,11 +179,19 @@ def get_current_user_optional(
 
     payload = decode_access_token(raw_token)
     if not payload or not payload.get("sub"):
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
     user = storage.get_user_by_id(payload["sub"])
     if not user or not user.get("is_active"):
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account associated with this token is inactive or not found.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
     return user
 

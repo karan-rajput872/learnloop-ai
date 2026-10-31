@@ -1,8 +1,67 @@
 import httpx
 import json
 import time
+import sys
+import os
+import subprocess
 
 BASE_URL = "http://localhost:8000/api"
+
+def ensure_server_running(client: httpx.Client):
+    """
+    Verify backend server is accessible at BASE_URL.
+    If not accessible, attempt to auto-launch it in background,
+    or display the required startup procedure.
+    """
+    try:
+        health = client.get(f"{BASE_URL}/health")
+        if health.status_code == 200:
+            print("[PREFLIGHT] Connected to LearnLoop backend at http://localhost:8000/api (Status: 200 OK)")
+            return None
+    except (httpx.ConnectError, httpx.TimeoutException):
+        pass
+
+    print("[PREFLIGHT] No running server detected on http://localhost:8000.")
+    print("[PREFLIGHT] Attempting to auto-start local Uvicorn background test server...")
+
+    try:
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+            cwd=backend_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+        for _ in range(15):
+            time.sleep(0.5)
+            try:
+                h = client.get(f"{BASE_URL}/health")
+                if h.status_code == 200:
+                    print(f"[PREFLIGHT] Background test server successfully started (PID: {proc.pid})")
+                    return proc
+            except Exception:
+                pass
+
+        if proc:
+            proc.terminate()
+    except Exception as e:
+        print(f"[PREFLIGHT WARNING] Auto-launch failed: {e}")
+
+    # If server could not be started, output prominent diagnostic instructions
+    print("=" * 70)
+    print("CRITICAL: LEARNLOOP AI BACKEND SERVER IS NOT RUNNING")
+    print("=" * 70)
+    print("All audits requiring HTTP communication will fail with WinError 10061.")
+    print("\nREQUIRED SERVER STARTUP PROCEDURE:")
+    print("1. Open a terminal in the backend directory:")
+    print("   cd learnloop-ai/backend")
+    print("2. Run the Uvicorn server:")
+    print("   .\\.venv\\Scripts\\uvicorn.exe app.main:app --host 127.0.0.1 --port 8000 --reload")
+    print("3. Verify the server is running by opening: http://127.0.0.1:8000/api/health")
+    print("4. Re-run this audit script: python test_audit.py")
+    print("=" * 70 + "\n")
+    return None
 
 def run_audit():
     print("=" * 70)
@@ -14,6 +73,7 @@ def run_audit():
     bugs_found = []
 
     client = httpx.Client(timeout=10.0)
+    server_proc = ensure_server_running(client)
 
     # -------------------------------------------------------------
     # 1. DIAGNOSTIC ASSESSMENT AUDIT
@@ -313,8 +373,19 @@ def run_audit():
     # -------------------------------------------------------------
     print("\n[AUDIT 7] Agent Execution & Tool Verification...")
     try:
-        # Check tool execution array in previous submission response
-        tools = stack_eval.get("tools_executed", [])
+        # 1. Independent Agent Cycle: Submit answer to trigger the evaluation pipeline
+        agent_sub_res = client.post(f"{BASE_URL}/quiz/submit", json={
+            "student_id": "student_agent_audit",
+            "question_id": "q_stack_01",
+            "concept_id": "stacks",
+            "selected_option": "C",
+            "student_reasoning": "The first element entered is served first like a queue, first in first out.",
+            "confidence_level": "high"
+        })
+        assert agent_sub_res.status_code == 200, f"Agent evaluation failed: {agent_sub_res.status_code}"
+        agent_sub_data = agent_sub_res.json()
+
+        tools = agent_sub_data.get("tools_executed", [])
         tool_names = [t["tool_name"] for t in tools]
         expected_tools = [
             "LearnerProfileRetriever",
@@ -328,13 +399,19 @@ def run_audit():
         for et in expected_tools:
             assert et in tool_names, f"Tool {et} not executed in agent pipeline"
 
-        # Check question generation tool execution
-        adapt_tools = adapt_data.get("tools_executed", [])
+        # 2. Independent Agent Cycle: Fetch adaptive question to trigger question generation tool
+        agent_adapt_res = client.get(f"{BASE_URL}/quiz/adaptive?student_id=student_agent_audit")
+        assert agent_adapt_res.status_code == 200, f"Agent adaptive fetch failed: {agent_adapt_res.status_code}"
+        agent_adapt_data = agent_adapt_res.json()
+
+        adapt_tools = agent_adapt_data.get("tools_executed", [])
         adapt_tool_names = [t["tool_name"] for t in adapt_tools]
         assert "AdaptiveQuestionGenerator" in adapt_tool_names, "AdaptiveQuestionGenerator not executed in question cycle"
 
-        # Check execution metrics
-        for t in tools + adapt_tools:
+        # 3. Check execution metrics across all 7 tools
+        all_executed = tools + adapt_tools
+        assert len(all_executed) >= 7, f"Expected at least 7 tool execution logs, got {len(all_executed)}"
+        for t in all_executed:
             assert t["execution_time_ms"] >= 0, f"Invalid execution time for {t['tool_name']}"
             assert len(t["input_summary"]) > 0, f"Empty input summary in {t['tool_name']}"
             assert len(t["output_summary"]) > 0, f"Empty output summary in {t['tool_name']}"
@@ -594,7 +671,7 @@ def run_audit():
         assert r_reuse.status_code == 401, f"Reused refresh token must be rejected with 401, got {r_reuse.status_code}"
         passed_tests.append("11.5 Session persistence, token rotation, and reuse attack invalidation verified")
 
-        # 11.6 Register User B for User Data Isolation Audit
+        # 11.6 Register User B & Verify Complete 12-Point Cross-Account Isolation
         r_reg_b = client.post(f"{BASE_URL}/auth/register", json={
             "full_name": "Bob Martinez",
             "email": email_b,
@@ -607,20 +684,44 @@ def run_audit():
         student_id_b = user_b["student_id"]
         token_b = r_reg_b.json()["access_token"]
 
-        # User A authenticated requests
+        # 1. Unique Student IDs
+        assert student_id_a.startswith("student_"), "Account A student_id must have valid prefix"
+        assert student_id_b.startswith("student_"), "Account B student_id must have valid prefix"
+        assert student_id_a != student_id_b, "Accounts A and B must receive unique student IDs"
+
+        # Headers for User A and User B
         headers_a = {"Authorization": f"Bearer {new_access_a}"}
         headers_b = {"Authorization": f"Bearer {token_b}"}
 
-        # User A reads own profile -> returns User A's student_id
+        # 2. Account A always retrieves Account A's profile
         r_prof_a = client.get(f"{BASE_URL}/learner/profile", headers=headers_a)
         assert r_prof_a.status_code == 200
         assert r_prof_a.json()["profile"]["student_id"] == student_id_a
 
-        # User A attempts to access User B's profile by explicitly supplying User B's student_id -> HTTP 403 Forbidden!
-        r_spoof = client.get(f"{BASE_URL}/learner/profile?student_id={student_id_b}", headers=headers_a)
-        assert r_spoof.status_code == 403, f"Expected 403 Forbidden for cross-user profile access, got {r_spoof.status_code}"
+        # 3. Account B always retrieves Account B's profile
+        r_prof_b = client.get(f"{BASE_URL}/learner/profile", headers=headers_b)
+        assert r_prof_b.status_code == 200
+        assert r_prof_b.json()["profile"]["student_id"] == student_id_b
 
-        # User B submits a diagnostic test
+        # 4. Account A cannot access Account B's mastery data (403 Forbidden)
+        r_spoof_mastery = client.get(f"{BASE_URL}/learner/profile?student_id={student_id_b}", headers=headers_a)
+        assert r_spoof_mastery.status_code == 403, f"Expected 403 on cross-user profile access, got {r_spoof_mastery.status_code}"
+
+        # 5. Account A cannot access Account B's quiz history or attempts (403 Forbidden)
+        r_spoof_hist = client.get(f"{BASE_URL}/learner/history?student_id={student_id_b}", headers=headers_a)
+        assert r_spoof_hist.status_code == 403, f"Expected 403 on cross-user history, got {r_spoof_hist.status_code}"
+        r_spoof_misc = client.get(f"{BASE_URL}/learner/misconceptions?student_id={student_id_b}", headers=headers_a)
+        assert r_spoof_misc.status_code == 403, f"Expected 403 on cross-user misconceptions, got {r_spoof_misc.status_code}"
+
+        # 6. Account A cannot access Account B's revision schedule (403 Forbidden)
+        r_spoof_rev = client.get(f"{BASE_URL}/tutor/revision/tasks?student_id={student_id_b}", headers=headers_a)
+        assert r_spoof_rev.status_code == 403, f"Expected 403 on cross-user revision schedule, got {r_spoof_rev.status_code}"
+
+        # 7. Account A cannot access Account B's chat history (403 Forbidden)
+        r_spoof_chat = client.get(f"{BASE_URL}/tutor/messages?student_id={student_id_b}", headers=headers_a)
+        assert r_spoof_chat.status_code == 403, f"Expected 403 on cross-user chat history, got {r_spoof_chat.status_code}"
+
+        # 8. User B submits a diagnostic assessment
         sub_b = client.post(f"{BASE_URL}/diagnostic/submit", json={
             "student_id": student_id_b,
             "submissions": [{
@@ -633,10 +734,22 @@ def run_audit():
         assert sub_b.status_code == 200
         attempt_id_b = sub_b.json()["attempt_id"]
 
-        # User A attempts to view User B's diagnostic attempt -> HTTP 403 Forbidden!
+        # 9. Account A cannot access Account B's diagnostic history or individual attempts (403 Forbidden)
+        r_spoof_diag_hist = client.get(f"{BASE_URL}/diagnostic/attempts?student_id={student_id_b}", headers=headers_a)
+        assert r_spoof_diag_hist.status_code == 403, f"Expected 403 on cross-user diagnostic history, got {r_spoof_diag_hist.status_code}"
         r_view_b = client.get(f"{BASE_URL}/diagnostic/attempt/{attempt_id_b}", headers=headers_a)
         assert r_view_b.status_code == 403, f"Expected 403 Forbidden for cross-user diagnostic review, got {r_view_b.status_code}"
-        passed_tests.append("11.6 Strict cross-user data isolation verified (profile, attempts, and reviews protected)")
+
+        # 10. Supplying another student ID through query parameters cannot override authenticated ownership
+        r_spoof_param = client.get(f"{BASE_URL}/learner/profile?student_id=student_default", headers=headers_a)
+        assert r_spoof_param.status_code == 200
+        assert r_spoof_param.json()["profile"]["student_id"] == student_id_a, "Query parameter must not override authenticated identity"
+
+        # 11. Refreshing a session does not change the associated user
+        assert refresh_data["user"]["id"] == user_a["id"], "Session refresh must preserve user ID"
+        assert refresh_data["user"]["student_id"] == student_id_a, "Session refresh must preserve student ID"
+
+        passed_tests.append("11.6 Strict cross-user data isolation verified across profiles, history, attempts, revision, and chat")
 
         # 11.7 Role-Based Access Control: Teacher Portal Protection
         # User A (student role) attempts to access /api/teacher/dashboard with their token -> HTTP 403 Forbidden!
@@ -644,10 +757,10 @@ def run_audit():
         assert r_teacher_denied.status_code == 403, f"Expected 403 Forbidden for student role on teacher dashboard, got {r_teacher_denied.status_code}"
         passed_tests.append("11.7 Role-based access control verified (student role rejected from teacher analytics)")
 
-        # 11.8 Explicit Logout
+        # 11.8 Explicit Logout invalidates corresponding session
         r_logout = client.post(f"{BASE_URL}/auth/logout", json={"refresh_token": new_refresh_a}, headers=headers_a)
         assert r_logout.status_code == 200
-        # Refresh with logged out token rejected
+        # 12. Refresh with logged out token rejected
         r_refresh_after_logout = client.post(f"{BASE_URL}/auth/refresh", json={"refresh_token": new_refresh_a})
         assert r_refresh_after_logout.status_code == 401
         passed_tests.append("11.8 Explicit logout and active session revocation verified")
@@ -669,6 +782,14 @@ def run_audit():
     for f in failed_tests:
         print(f"  [FAIL] {f}")
     print("=" * 70)
+
+    if server_proc:
+        print("\n[CLEANUP] Stopping auto-spawned test server...")
+        try:
+            server_proc.terminate()
+            server_proc.wait(timeout=3)
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     run_audit()
