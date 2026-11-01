@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 
 interface LandingPageProps {
-  onStartDemo: () => void;
   onOpenRegister: () => void;
   onOpenLogin: () => void;
   onOpenLiveVideo?: () => void;
@@ -28,7 +27,6 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
-  onStartDemo,
   onOpenRegister,
   onOpenLogin,
   onOpenLiveVideo,
@@ -62,28 +60,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </p>
 
           {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
             <button
               onClick={onOpenRegister}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-bold text-sm shadow-md shadow-[#5B5CE2]/25 transition-all transform hover:-translate-y-0.5"
+              className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-bold text-base shadow-lg shadow-[#5B5CE2]/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
             >
               <span>Get Started Free</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={onStartDemo}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-bold text-sm shadow-md shadow-amber-500/20 transition-all transform hover:-translate-y-0.5"
-            >
-              <Sparkles className="w-4 h-4 text-amber-200" />
-              <span>Explore Live Demo (No Signup)</span>
             </button>
 
             {onOpenLiveVideo && (
               <button
                 type="button"
                 onClick={onOpenLiveVideo}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#EEF0FD] hover:bg-indigo-100 text-[#5B5CE2] border border-[#C7D2FE] font-bold text-sm shadow-xs transition-all transform hover:-translate-y-0.5"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#EEF0FD] hover:bg-indigo-100 text-[#5B5CE2] border border-[#C7D2FE] font-bold text-sm shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer"
               >
                 <Camera className="w-4 h-4" />
                 <span>Explore Live Video</span>
@@ -92,7 +82,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <button
               onClick={onOpenLogin}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-[#172033] border border-[#E6E9EF] font-semibold text-sm shadow-xs transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-[#172033] border border-[#E6E9EF] font-semibold text-sm shadow-xs transition-colors cursor-pointer"
             >
               <span>Sign In</span>
             </button>
@@ -317,22 +307,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Ready to master your concepts?
           </h2>
           <p className="text-xs sm:text-sm text-indigo-100 max-w-xl mx-auto leading-relaxed">
-            Start with our 12-question diagnostic test or explore the entire platform live with zero registration required.
+            Start with our 12-question diagnostic test to get a personalized concept mastery radar and adaptive curriculum.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
             onClick={onOpenRegister}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white text-[#5B5CE2] font-bold text-sm shadow-lg hover:bg-slate-50 transition-all transform hover:scale-105"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white text-[#5B5CE2] font-bold text-sm shadow-lg hover:bg-slate-50 transition-all transform hover:scale-105 flex items-center justify-center gap-2 cursor-pointer"
           >
-            Create Free Account
+            <span>Create Free Account</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
+          {onOpenLiveVideo && (
+            <button
+              onClick={onOpenLiveVideo}
+              className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Camera className="w-4 h-4" />
+              <span>Explore Live Video</span>
+            </button>
+          )}
           <button
-            onClick={onStartDemo}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-xs transition-all"
+            onClick={onOpenLogin}
+            className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm backdrop-blur-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            Explore Live Demo Now
+            <span>Sign In</span>
           </button>
         </div>
       </section>

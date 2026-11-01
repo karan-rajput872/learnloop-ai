@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { DashboardPage } from './pages/DashboardPage';
 import { DiagnosticPage } from './pages/DiagnosticPage';
@@ -60,6 +60,11 @@ function AppContent() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [isOfflinePreview, setIsOfflinePreview] = useState<boolean>(false);
   const [bootTimer, setBootTimer] = useState<number>(0);
+  const profileRef = useRef<LearnerProfile | null>(profile);
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   const fetchProfileAndHealth = useCallback(async (isManualRetry = false) => {
     if (isManualRetry) {
@@ -86,7 +91,7 @@ function AppContent() {
         setProfile(p);
         setIsOfflinePreview(false);
         setApiError(null);
-      } else if (!profile && !isOfflinePreview) {
+      } else if (!profileRef.current && !isOfflinePreview) {
         setApiError(
           'Connecting to LearnLoop AI backend on Render. Free-tier cloud instances sleep when inactive and may take 20–40 seconds to complete a cold start.'
         );
@@ -97,18 +102,18 @@ function AppContent() {
       }
     } catch (e: any) {
       console.error('Error fetching profile or health', e);
-      if (!profile && !isOfflinePreview) {
+      if (!profileRef.current && !isOfflinePreview) {
         setApiError(e?.message || 'Network connection failed.');
       }
     } finally {
       setIsLoading(false);
       setIsRetrying(false);
     }
-  }, [profile, isOfflinePreview]);
+  }, [isOfflinePreview]);
 
   useEffect(() => {
     fetchProfileAndHealth();
-  }, [user, fetchProfileAndHealth]);
+  }, [user]);
 
   useEffect(() => {
     if (user && profile && profile.onboarding_completed === false && !onboardingDismissed) {
@@ -238,7 +243,6 @@ function AppContent() {
             {/* Case 0: Unauthenticated visitor sees professional Landing Page */}
             {!isAuthenticated && !user ? (
               <LandingPage
-                onStartDemo={startDemoSession}
                 onOpenRegister={() => openAuthModal('register')}
                 onOpenLogin={() => openAuthModal('login')}
                 onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}

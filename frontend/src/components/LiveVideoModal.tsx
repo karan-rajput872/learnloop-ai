@@ -14,7 +14,9 @@ import {
   Send,
   Layers,
   Clock,
-  ChevronDown
+  ChevronDown,
+  FlipHorizontal,
+  RotateCw
 } from 'lucide-react';
 import { useLiveVideo } from '../hooks/useLiveVideo';
 import { api } from '../services/api';
@@ -40,7 +42,7 @@ const DSA_CONCEPTS_LIST = [
 ];
 
 const QUICK_PROMPTS = [
-  'Check if my diagram satisfies all ordering invariants',
+  'Check if my binary search tree satisfies ordering invariants',
   'Is my recursion base case properly positioned?',
   'Verify pointer connections for any memory leaks',
   'Does this whiteboard trace match the expected time complexity?'
@@ -55,13 +57,16 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
   const {
     videoRef,
     isStreaming,
+    isLoading: isCameraLoading,
     permissionState,
     errorMessage,
     availableDevices,
     selectedDeviceId,
-    setSelectedDeviceId,
+    isMirrored,
+    toggleMirror,
     startVideo,
     stopVideo,
+    switchCamera,
     captureFrameBase64
   } = useLiveVideo();
 
@@ -77,7 +82,7 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
   const autoAnalyzeTimerRef = useRef<any>(null);
   const countdownIntervalRef = useRef<any>(null);
 
-  // Sync initial concept
+  // Sync initial concept when prop changes
   useEffect(() => {
     if (initialConceptId) {
       setSelectedConcept(initialConceptId);
@@ -110,11 +115,13 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, stopVideo]);
 
-  // Execute frame analysis
+  // Execute frame analysis with multimodal AI
   const handleAnalyzeFrame = useCallback(async () => {
+    console.log('[LiveVideoModal] handleAnalyzeFrame called, isAnalyzing:', isAnalyzing, 'isStreaming:', isStreaming);
     if (isAnalyzing || !isStreaming) return;
 
     const frameBase64 = captureFrameBase64();
+    console.log('[LiveVideoModal] captureFrameBase64 length:', frameBase64 ? frameBase64.length : 0);
     if (!frameBase64) {
       setAnalysisError('Could not capture frame from video feed. Please ensure camera is active and well-lit.');
       return;
@@ -207,7 +214,7 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                   stopVideo();
                   onClose();
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-semibold transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-semibold transition-colors cursor-pointer"
               >
                 <VideoOff className="w-3.5 h-3.5 text-rose-600" />
                 <span>End Video Session</span>
@@ -220,7 +227,7 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                 onClose();
               }}
               aria-label="Close Live Video"
-              className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+              className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -255,11 +262,11 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-left text-xs text-amber-800 space-y-2">
                   <div className="flex items-center gap-2 font-bold text-amber-900">
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Camera Permission Required</span>
+                    <span>Camera Permission or Device Issue</span>
                   </div>
                   <p className="leading-relaxed">{errorMessage}</p>
                   <p className="text-[11px] text-amber-700 font-mono">
-                    Tip: Look for the camera icon in your browser URL bar to change permission.
+                    Tip: If you have OBS Virtual Camera, try selecting your physical camera (e.g. HP 5MP Camera) or allow browser permissions.
                   </p>
                 </div>
               )}
@@ -268,11 +275,16 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
                   type="button"
-                  onClick={startVideo}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 rounded-2xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-bold text-sm shadow-lg shadow-[#5B5CE2]/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                  onClick={() => startVideo()}
+                  disabled={isCameraLoading}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 rounded-2xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-bold text-sm shadow-lg shadow-[#5B5CE2]/25 transition-all transform hover:-translate-y-0.5 cursor-pointer disabled:opacity-60"
                 >
-                  <Video className="w-4 h-4" />
-                  <span>Start Live Video</span>
+                  {isCameraLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Video className="w-4 h-4" />
+                  )}
+                  <span>{isCameraLoading ? 'Connecting Camera...' : 'Start Live Video'}</span>
                 </button>
               </div>
 
@@ -285,15 +297,15 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                 <p className="text-[#667085] leading-relaxed text-[11px]">
                   • <strong>Local Processing:</strong> Camera preview runs entirely locally in your browser sandbox.
                   <br />
-                  • <strong>Zero Automatic Recording:</strong> Video is never recorded or streamed to long-term storage.
+                  • <strong>Zero Long-Term Storage:</strong> Video is never recorded or stored to cloud buckets.
                   <br />
-                  • <strong>User-Initiated Frames:</strong> Single frames are only sent to Gemini 2.5 Flash when you explicitly click &quot;Analyze Visual Problem&quot; or toggle auto-analyze.
+                  • <strong>User-Initiated Frames:</strong> Single frames are only sent to Gemini 2.5 Flash when you explicitly click &quot;Analyze&quot; or enable auto-analyze.
                 </p>
               </div>
             </div>
           ) : (
             /* ------------------------------------------------------- */
-            /* STATE C & D: ACTIVE VIDEO STREAM + AI VISUAL ANALYSIS   */
+            /* STATE B: ACTIVE VIDEO STREAM + MULTIMODAL AI FEEDBACK   */
             /* ------------------------------------------------------- */
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
               {/* Left Column: Video Viewport & Controls (7 Cols) */}
@@ -305,7 +317,7 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                     autoPlay
                     playsInline
                     muted
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover transition-transform ${isMirrored ? 'scale-x-[-1]' : ''}`}
                   />
 
                   {/* Scanning Animation Bar when Analyzing */}
@@ -334,20 +346,49 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                     )}
                   </div>
 
-                  {/* Camera Selector (if multiple) */}
-                  {availableDevices.length > 1 && (
-                    <div className="absolute bottom-3 left-3">
-                      <select
-                        value={selectedDeviceId}
-                        onChange={(e) => setSelectedDeviceId(e.target.value)}
-                        className="px-2 py-1 rounded-lg bg-black/70 border border-white/20 text-white text-[11px] font-mono focus:outline-none"
-                      >
-                        {availableDevices.map((d, i) => (
-                          <option key={d.deviceId || i} value={d.deviceId}>
-                            {d.label || `Camera ${i + 1}`}
-                          </option>
-                        ))}
-                      </select>
+                  {/* Top Right Quick Controls: Mirror & Reconnect */}
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={toggleMirror}
+                      className={`p-1.5 rounded-lg backdrop-blur-md border text-xs transition-colors cursor-pointer ${
+                        isMirrored
+                          ? 'bg-indigo-600/80 border-indigo-400 text-white'
+                          : 'bg-black/60 border-white/20 text-white/80 hover:text-white'
+                      }`}
+                      title={isMirrored ? 'Disable Mirror View (natural reading)' : 'Enable Mirror View'}
+                    >
+                      <FlipHorizontal className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startVideo(selectedDeviceId)}
+                      disabled={isCameraLoading}
+                      className="p-1.5 rounded-lg bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
+                      title="Reconnect / Refresh Video Feed"
+                    >
+                      <RotateCw className={`w-4 h-4 ${isCameraLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Bottom Left Camera Selector (Instant Switching) */}
+                  {availableDevices.length > 0 && (
+                    <div className="absolute bottom-3 left-3 max-w-[80%]">
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/75 backdrop-blur-md border border-white/20 text-white text-[11px] font-mono">
+                        <Camera className="w-3.5 h-3.5 text-indigo-300 shrink-0" />
+                        <select
+                          value={selectedDeviceId}
+                          onChange={(e) => switchCamera(e.target.value)}
+                          className="bg-transparent text-white text-[11px] font-mono focus:outline-none cursor-pointer truncate"
+                          title="Switch camera device"
+                        >
+                          {availableDevices.map((d, i) => (
+                            <option key={d.deviceId || i} value={d.deviceId} className="bg-slate-900 text-white">
+                              {d.label || `Camera ${i + 1}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -398,6 +439,7 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                     />
                     <button
                       type="button"
+                      data-testid="analyze-frame-button"
                       onClick={handleAnalyzeFrame}
                       disabled={isAnalyzing}
                       className="absolute right-1 top-1 bottom-1 px-3 rounded-lg bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
@@ -417,10 +459,8 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => {
-                          setCustomPrompt(p);
-                        }}
-                        className="text-[11px] px-2.5 py-1 rounded-lg bg-white border border-[#E6E9EF] text-slate-600 hover:text-[#5B5CE2] hover:border-indigo-200 transition-colors"
+                        onClick={() => setCustomPrompt(p)}
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-white border border-[#E6E9EF] text-slate-600 hover:text-[#5B5CE2] hover:border-indigo-200 transition-colors cursor-pointer"
                       >
                         {p}
                       </button>
@@ -529,7 +569,7 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
               stopVideo();
               onClose();
             }}
-            className="px-4 py-1.5 rounded-xl border border-[#E6E9EF] bg-white text-slate-700 hover:bg-slate-50 font-semibold shadow-xs transition-colors"
+            className="px-4 py-1.5 rounded-xl border border-[#E6E9EF] bg-white text-slate-700 hover:bg-slate-50 font-semibold shadow-xs transition-colors cursor-pointer"
           >
             Close
           </button>

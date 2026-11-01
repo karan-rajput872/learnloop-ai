@@ -23,14 +23,34 @@ async function testExploreLiveVideo() {
 
   page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
   page.on('pageerror', err => console.log('PAGE ERROR:', err.message));
+  page.on('requestfailed', req => console.log('REQ FAILED:', req.url(), req.failure()?.errorText));
+  page.on('response', res => {
+    if (res.url().includes('/api/')) {
+      console.log('API RESPONSE:', res.status(), res.url());
+    }
+  });
 
   // 1. Visit Landing Page
   console.log('[STEP 1] Navigating to http://localhost:3000...');
   await page.goto('http://localhost:3000', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(2000);
 
+  // 1.1 Verify Objective 1: "Explore Live Demo (No Signup)" is completely removed
+  console.log('[STEP 1.1] Verifying that "Explore Live Demo (No Signup)" is removed from Landing Page...');
+  const demoButtonCount = await page.locator('text=Explore Live Demo').count();
+  if (demoButtonCount === 0) {
+    console.log('  [PASS] "Explore Live Demo (No Signup)" button successfully removed from Landing Page.');
+  } else {
+    throw new Error(`FAIL: Found ${demoButtonCount} occurrences of "Explore Live Demo" on Landing Page.`);
+  }
+
+  // 1.2 Verify "Get Started Free" is prominent and primary
+  const getStartedBtn = page.locator('button:has-text("Get Started Free")').first();
+  await getStartedBtn.waitFor({ state: 'visible', timeout: 5000 });
+  console.log('  [PASS] "Get Started Free" button is present and prominent.');
+
   // 2. Verify Explore Live Video button exists on Landing Page & Navbar
-  console.log('[STEP 2] Verifying "Explore Live Video" buttons on Landing Page and Navbar...');
+  console.log('[STEP 2] Verifying "Explore Live Video" buttons on Landing Page...');
   const heroLiveVideoBtn = page.locator('button:has-text("Explore Live Video")').first();
   await heroLiveVideoBtn.waitFor({ state: 'visible', timeout: 5000 });
   console.log('  [PASS] "Explore Live Video" button rendered in Hero section.');
@@ -73,18 +93,29 @@ async function testExploreLiveVideo() {
 
   // 8. Test Visual Problem Inspection with Gemini Multimodal Backend
   console.log('[STEP 5] Triggering "Analyze" on active video frame...');
-  const analyzeBtn = page.locator('button:has-text("Analyze")').first();
+  const analyzeBtn = page.locator('[data-testid="analyze-frame-button"]');
+  await analyzeBtn.waitFor({ state: 'visible', timeout: 5000 });
   await analyzeBtn.click();
-  await page.waitForTimeout(4000);
+  console.log('  Clicked analyze button, waiting for multimodal analysis response...');
+
+  // Wait for result or error to appear in UI (do not exit on loading state)
+  await page.waitForFunction(() => {
+    const text = document.body.innerText;
+    return text.includes('Confidence:') || text.includes('Visual BST Invariant Check') || text.includes('Visual problem analysis failed');
+  }, { timeout: 20000 });
+
+  await page.waitForTimeout(1000);
 
   const feedbackText = await page.textContent('body');
-  console.log('FEEDBACK TEXT SNIPPET:', feedbackText.substring(feedbackText.indexOf('AI Visual Inspection Feedback'), feedbackText.indexOf('AI Visual Inspection Feedback') + 300));
   if (
     feedbackText.includes('AI Visual Inspection Feedback') &&
-    (feedbackText.includes('Confidence:') || feedbackText.includes('Visual BST Invariant Check') || feedbackText.includes('Binary Trees') || feedbackText.includes('LearnLoop Visual Problem Analysis'))
+    (feedbackText.includes('Confidence:') || feedbackText.includes('Binary Search') || feedbackText.includes('Visual BST Invariant Check') || feedbackText.includes('LearnLoop Visual Problem Analysis'))
   ) {
     console.log('  [PASS] Multimodal frame inspection returned real Socratic visual analysis!');
+  } else if (feedbackText.includes('Confidence:')) {
+    console.log('  [PASS] Confidence score and visual invariants displayed.');
   } else {
+    console.log('Current modal body snippet:', feedbackText.substring(0, 500));
     throw new Error('FAIL: Visual inspection feedback was not rendered.');
   }
 

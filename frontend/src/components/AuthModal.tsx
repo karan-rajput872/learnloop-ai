@@ -220,26 +220,6 @@ export const AuthModal: React.FC = () => {
             </div>
           )}
 
-          {/* 1-Click Instant Demo Access */}
-          {authModal !== 'profile' && (
-            <div className="mb-5 p-3.5 bg-gradient-to-r from-amber-50 to-indigo-50 border border-amber-200/90 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-xs">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500 shrink-0 animate-pulse" />
-                <span className="text-slate-800 font-medium">Reviewing for Hackathon?</span>
-              </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  await startDemoSession();
-                  closeAuthModal();
-                }}
-                className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white rounded-xl font-bold text-[11px] shadow-xs transition-all transform hover:scale-105 shrink-0"
-              >
-                Explore Live Demo
-              </button>
-            </div>
-          )}
-
           {/* VIEW: LOGIN */}
           {authModal === 'login' && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">

@@ -19,18 +19,26 @@ async function runFullProductJourneys() {
   const page = await context.newPage();
 
   // --------------------------------------------------------------------
-  // JOURNEY A: PUBLIC VISITOR & EXPLORE DEMO
+  // JOURNEY A: PUBLIC VISITOR & EXPLORE LIVE VIDEO
   // --------------------------------------------------------------------
-  console.log('\n--- [JOURNEY A] PUBLIC VISITOR & EXPLORE DEMO ---');
+  console.log('\n--- [JOURNEY A] PUBLIC VISITOR & EXPLORE LIVE VIDEO ---');
   console.log('[A.1] Navigating to http://localhost:3000...');
   await page.goto('http://localhost:3000', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1500);
 
   const initialBody = await page.textContent('body');
-  if (initialBody.includes("Don't just learn the answers") && initialBody.includes('Explore Live Demo')) {
+  if (initialBody.includes("Don't just learn the answers") && initialBody.includes('Get Started Free')) {
     console.log('  [PASS] Public Landing Page rendered cleanly for unauthenticated visitor.');
   } else {
     throw new Error('FAIL: Public Landing Page did not render as expected.');
+  }
+
+  // Verify Explore Live Demo is gone
+  const demoButtons = await page.locator('text=Explore Live Demo').count();
+  if (demoButtons === 0) {
+    console.log('  [PASS] Confirmed "Explore Live Demo (No Signup)" has been completely removed from landing page.');
+  } else {
+    throw new Error(`FAIL: Found ${demoButtons} occurrences of "Explore Live Demo" on landing page.`);
   }
 
   console.log('[A.2] Verifying public how it works & comparison sections...');
@@ -38,24 +46,21 @@ async function runFullProductJourneys() {
     console.log('  [PASS] Landing page features, 4-step workflow, and comparison table visible.');
   }
 
-  console.log('[A.3] Clicking "Explore Live Demo (No Signup)" CTA...');
-  await page.locator('button:has-text("Explore Live Demo")').first().click();
-  await page.waitForTimeout(2000);
-
-  const demoBody = await page.textContent('body');
-  if (demoBody.includes('DEMO MODE') || demoBody.includes('Continuous Learner Modeling Engine')) {
-    console.log('  [PASS] Live Demo session started instantly; learner dashboard unlocked without auth friction.');
-  } else {
-    throw new Error('FAIL: Live Demo session did not unlock dashboard.');
-  }
-
-  console.log('[A.4] Verifying Demo Concept Graph navigation...');
-  await page.locator('button:has-text("Concept Graph")').first().click();
+  console.log('[A.3] Opening Explore Live Video Modal...');
+  const liveVideoBtn = page.locator('button:has-text("Explore Live Video")').first();
+  await liveVideoBtn.click();
   await page.waitForTimeout(1000);
-  const graphText = await page.textContent('body');
-  if (graphText.includes('Knowledge Prerequisite Graph') || graphText.includes('12 concepts')) {
-    console.log('  [PASS] Concept Graph rendered smoothly in Demo mode.');
+
+  const liveVideoModal = await page.textContent('body');
+  if (liveVideoModal.includes('Visual Socratic Problem Solver') && liveVideoModal.includes('Start Live Video')) {
+    console.log('  [PASS] Explore Live Video modal launched cleanly with pedagogical preview.');
+  } else {
+    throw new Error('FAIL: Explore Live Video modal did not render.');
   }
+
+  // Dismiss modal
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
 
   // --------------------------------------------------------------------
   // JOURNEY B: NEW STUDENT REGISTRATION & ASSESSMENT

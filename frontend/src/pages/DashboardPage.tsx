@@ -42,7 +42,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onOpenProfile,
   onOpenOnboarding
 }) => {
-  const { user, isAuthenticated, startDemoSession, resetDemoSession } = useAuth();
+  const { user, resetDemoSession } = useAuth();
   const conceptsList = Object.values(profile.concepts || {});
   const completedDiagnostic = profile.diagnostic_completed;
 
@@ -90,16 +90,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
-            {!isAuthenticated && (
-              <button
-                onClick={startDemoSession}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition-all transform hover:scale-105"
-              >
-                <Sparkles className="w-4 h-4 text-amber-200 animate-pulse" />
-                EXPLORE LIVE DEMO
-              </button>
-            )}
-
             {onOpenProfile && (
               <button
                 onClick={onOpenProfile}

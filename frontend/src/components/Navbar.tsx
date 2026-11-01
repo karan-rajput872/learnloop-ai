@@ -224,27 +224,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={startDemoSession}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition-all transform hover:scale-105"
-                  title="Explore all features instantly with sample learner progress (No signup required)"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
-                  <span>EXPLORE LIVE DEMO</span>
-                </button>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => openAuthModal('login')}
-                  className="flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-[#E6E9EF] hover:border-indigo-200 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors shadow-xs"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-[#E6E9EF] hover:border-indigo-200 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors shadow-xs cursor-pointer"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>Sign In</span>
                 </button>
                 <button
                   onClick={() => openAuthModal('register')}
-                  className="hidden md:inline-flex items-center px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                  className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
-                  Sign Up
+                  Get Started Free
                 </button>
               </div>
             )}
