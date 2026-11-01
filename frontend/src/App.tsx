@@ -33,6 +33,7 @@ function AppContent() {
   const [focusedConceptId, setFocusedConceptId] = useState<string | null>(null);
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [diagnosticInitialMode, setDiagnosticInitialMode] = useState<'quick' | 'comprehensive'>('comprehensive');
 
@@ -95,10 +96,10 @@ function AppContent() {
   }, [user, fetchProfileAndHealth]);
 
   useEffect(() => {
-    if (user && profile && profile.onboarding_completed === false) {
+    if (user && profile && profile.onboarding_completed === false && !onboardingDismissed) {
       setIsOnboardingOpen(true);
     }
-  }, [user, profile]);
+  }, [user, profile, onboardingDismissed]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -376,7 +377,10 @@ function AppContent() {
       {/* Onboarding Wizard Modal */}
       <OnboardingWizardModal
         isOpen={isOnboardingOpen}
-        onClose={() => setIsOnboardingOpen(false)}
+        onClose={() => {
+          setIsOnboardingOpen(false);
+          setOnboardingDismissed(true);
+        }}
         initialProfile={profile?.onboarding_data}
         onCompleted={(updatedProfile) => {
           setProfile(updatedProfile);

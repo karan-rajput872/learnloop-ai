@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -173,6 +173,17 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
   const [skillLevel, setSkillLevel] = useState<string>(initialProfile?.self_assessed_skill_level || 'Intermediate');
   const [preferences, setPreferences] = useState<string[]>(initialProfile?.learning_preferences || ['step_by_step', 'visual_diagrams', 'code_demonstrations']);
   const [diagnosticMode, setDiagnosticMode] = useState<'quick' | 'comprehensive'>('comprehensive');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
