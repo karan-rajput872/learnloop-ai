@@ -1,9 +1,16 @@
 import os
 import json
 import sqlite3
+import uuid
+import csv
+import io
+import re
+import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from app.dsa.syllabus import DSA_CONCEPTS
+
+logger = logging.getLogger(__name__)
 
 # Database Storage Configuration
 # Supports custom persistent path (e.g. Render Persistent Disk mounted at /var/data/learnloop.db)
@@ -23,6 +30,8 @@ class StorageManager:
         self.ensure_default_learner()
         self.ensure_teacher_demo_cohort()
         self.ensure_demo_teacher()
+        self.ensure_owner_bootstrap()
+        self.backfill_historical_analytics()
 
     def get_connection(self):
         conn = sqlite3.connect(DB_PATH)
@@ -306,6 +315,68 @@ class StorageManager:
                     created_at TEXT NOT NULL
                 )
             """)
+
+            # --------------------------------------------------------------------------
+            # OWNER CONSOLE & PLATFORM ANALYTICS TABLES
+            # --------------------------------------------------------------------------
+            # 1. Login Events (Audit trail of all authentication events, successes, and failures)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS login_events (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT,
+                    email TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    auth_provider TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    failure_reason TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    device_category TEXT,
+                    browser TEXT,
+                    os TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_created ON login_events(created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_user_id ON login_events(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_type ON login_events(event_type)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_status ON login_events(status)")
+
+            # 2. User Activity Events (Learning events, tutor, quizzes, diagnostics, revisions, live video)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_activity_events (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    student_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    concept_id TEXT,
+                    duration_seconds INTEGER DEFAULT 0,
+                    metadata_json TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_events_created ON user_activity_events(created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_events_user ON user_activity_events(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_events_type ON user_activity_events(event_type)")
+
+            # 3. Owner Audit Logs (Immutable audit log for administrative, console, and security activity)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS owner_audit_logs (
+                    id TEXT PRIMARY KEY,
+                    actor_id TEXT,
+                    actor_email TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    target TEXT,
+                    status TEXT NOT NULL,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    details_json TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_owner_audit_created ON owner_audit_logs(created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_owner_audit_actor ON owner_audit_logs(actor_email)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_owner_audit_action ON owner_audit_logs(action)")
 
             conn.commit()
 
@@ -1380,5 +1451,930 @@ class StorageManager:
     def get_teacher_dashboard_data(self) -> Dict[str, Any]:
         """Backward-compatible default returning demo teacher dashboard data."""
         return self.get_demo_teacher_dashboard_data()
+
+    # --------------------------------------------------------------------------
+    # OWNER CONSOLE & PLATFORM ANALYTICS STORAGE ENGINE
+    # --------------------------------------------------------------------------
+    def ensure_owner_bootstrap(self):
+        """
+        Secure, idempotent owner account bootstrap.
+        Ensures the user matching OWNER_EMAIL exists with role='owner'.
+        If no user exists, initializes a secure owner account using OWNER_INITIAL_PASSWORD.
+        """
+        from app.auth.security import hash_password, get_authorized_owner_emails
+        authorized_emails = get_authorized_owner_emails()
+        primary_owner_email = authorized_emails[0]
+        initial_pwd = os.getenv("OWNER_INITIAL_PASSWORD", "OwnerPass123456!")
+        now = datetime.now(timezone.utc).isoformat()
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            for email in authorized_emails:
+                cursor.execute("SELECT id, role, student_id FROM users WHERE normalized_email = ?", (email,))
+                user_row = cursor.fetchone()
+                if user_row:
+                    if user_row["role"] != "owner":
+                        cursor.execute("UPDATE users SET role = 'owner', updated_at = ? WHERE id = ?", (now, user_row["id"]))
+                        conn.commit()
+                        self.record_owner_audit_event(
+                            actor_id=user_row["id"],
+                            actor_email=email,
+                            action="ROLE_ELEVATED_TO_OWNER",
+                            target="users",
+                            status="SUCCESS",
+                            details={"note": "Existing user account promoted to owner role based on OWNER_EMAIL"}
+                        )
+                elif email == primary_owner_email:
+                    # Initialize default owner record if primary owner doesn't exist yet
+                    owner_id = "usr_owner_main"
+                    student_id = "student_owner"
+                    hashed_pwd = hash_password(initial_pwd)
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO users (
+                            id, student_id, full_name, email, normalized_email,
+                            hashed_password, google_sub, auth_provider, role,
+                            is_email_verified, is_active, created_at, updated_at, last_login_at, is_demo
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        owner_id, student_id, "LearnLoop Platform Owner", primary_owner_email, primary_owner_email,
+                        hashed_pwd, None, "local", "owner",
+                        1, 1, now, now, None, 0
+                    ))
+                    conn.commit()
+                    self.ensure_learner(student_id, "LearnLoop Platform Owner", onboarding_completed=1)
+                    self.record_owner_audit_event(
+                        actor_id=owner_id,
+                        actor_email=primary_owner_email,
+                        action="OWNER_ACCOUNT_BOOTSTRAPPED",
+                        target="users",
+                        status="SUCCESS",
+                        details={"note": "Platform owner account initialized securely on startup"}
+                    )
+
+    def backfill_historical_analytics(self):
+        """
+        One-time graceful backfill of historical analytics events from existing database records.
+        Populates login_events and user_activity_events so metrics reflect real historical usage.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # 1. Backfill login_events if empty
+            cursor.execute("SELECT COUNT(*) as count FROM login_events")
+            if cursor.fetchone()["count"] == 0:
+                cursor.execute("SELECT id, email, auth_provider, created_at, last_login_at FROM users WHERE is_demo = 0")
+                users = cursor.fetchall()
+                for u in users:
+                    event_id = f"log_bf_{uuid.uuid4().hex[:10]}"
+                    cursor.execute("""
+                        INSERT INTO login_events (
+                            id, user_id, email, event_type, auth_provider,
+                            status, failure_reason, ip_address, user_agent,
+                            device_category, browser, os, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        event_id, u["id"], u["email"], "LOGIN_SUCCESS", u["auth_provider"] or "local",
+                        "SUCCESS", None, "127.0.0.1", "Initial Historical Session",
+                        "desktop", "Chrome", "Windows", u["created_at"] or now
+                    ))
+                    if u["last_login_at"] and u["last_login_at"] != u["created_at"]:
+                        event_id2 = f"log_bf_{uuid.uuid4().hex[:10]}"
+                        cursor.execute("""
+                            INSERT INTO login_events (
+                                id, user_id, email, event_type, auth_provider,
+                                status, failure_reason, ip_address, user_agent,
+                                device_category, browser, os, created_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            event_id2, u["id"], u["email"], "LOGIN_SUCCESS", u["auth_provider"] or "local",
+                            "SUCCESS", None, "127.0.0.1", "Returning Historical Session",
+                            "desktop", "Chrome", "Windows", u["last_login_at"]
+                        ))
+                conn.commit()
+
+            # 2. Backfill user_activity_events if empty
+            cursor.execute("SELECT COUNT(*) as count FROM user_activity_events")
+            if cursor.fetchone()["count"] == 0:
+                # Attempts -> Quiz question attempts
+                cursor.execute("SELECT id, student_id, concept_id, is_correct, timestamp FROM attempts")
+                attempts = cursor.fetchall()
+                for a in attempts:
+                    act_id = f"act_bf_{uuid.uuid4().hex[:10]}"
+                    cursor.execute("SELECT id FROM users WHERE student_id = ?", (a["student_id"],))
+                    user_match = cursor.fetchone()
+                    uid = user_match["id"] if user_match else a["student_id"]
+                    cursor.execute("""
+                        INSERT INTO user_activity_events (
+                            id, user_id, student_id, event_type,
+                            concept_id, duration_seconds, metadata_json, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        act_id, uid, a["student_id"], "QUIZ_QUESTION_ATTEMPTED",
+                        a["concept_id"], 45, json.dumps({"is_correct": bool(a["is_correct"])}),
+                        a["timestamp"] or now
+                    ))
+
+                # Diagnostic attempts -> Diagnostic completed
+                cursor.execute("SELECT id, student_id, score, total_questions, percentage, timestamp FROM diagnostic_attempts")
+                diag_attempts = cursor.fetchall()
+                for d in diag_attempts:
+                    act_id = f"act_bf_{uuid.uuid4().hex[:10]}"
+                    cursor.execute("SELECT id FROM users WHERE student_id = ?", (d["student_id"],))
+                    user_match = cursor.fetchone()
+                    uid = user_match["id"] if user_match else d["student_id"]
+                    cursor.execute("""
+                        INSERT INTO user_activity_events (
+                            id, user_id, student_id, event_type,
+                            concept_id, duration_seconds, metadata_json, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        act_id, uid, d["student_id"], "DIAGNOSTIC_COMPLETED",
+                        None, 180, json.dumps({
+                            "score": d["score"],
+                            "total": d["total_questions"],
+                            "percentage": d["percentage"]
+                        }),
+                        d["timestamp"] or now
+                    ))
+                conn.commit()
+
+    def record_login_event(
+        self,
+        email: str,
+        event_type: str,
+        auth_provider: str = "local",
+        status: str = "SUCCESS",
+        user_id: Optional[str] = None,
+        failure_reason: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
+    ) -> str:
+        """Record an authentication event in the login_events table."""
+        from app.auth.security import parse_user_agent
+        device, browser, os_name = parse_user_agent(user_agent)
+        event_id = f"log_{uuid.uuid4().hex[:12]}"
+        now = datetime.now(timezone.utc).isoformat()
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO login_events (
+                    id, user_id, email, event_type, auth_provider,
+                    status, failure_reason, ip_address, user_agent,
+                    device_category, browser, os, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                event_id, user_id, email.strip().lower(), event_type, auth_provider,
+                status, failure_reason, ip_address, user_agent,
+                device, browser, os_name, now
+            ))
+            conn.commit()
+        return event_id
+
+    def record_login_event_safe(self, **kwargs) -> Optional[str]:
+        """Fail-safe non-blocking wrapper for recording login events."""
+        try:
+            return self.record_login_event(**kwargs)
+        except Exception as e:
+            logger.warning(f"Non-blocking login event logging failure: {e}")
+            return None
+
+    def record_user_activity_event(
+        self,
+        user_id: str,
+        student_id: str,
+        event_type: str,
+        concept_id: Optional[str] = None,
+        duration_seconds: int = 0,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Record a legitimate learning activity event in user_activity_events.
+        Stores zero PII or private conversation text.
+        """
+        event_id = f"act_{uuid.uuid4().hex[:12]}"
+        now = datetime.now(timezone.utc).isoformat()
+        metadata_json = json.dumps(metadata) if metadata else None
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO user_activity_events (
+                    id, user_id, student_id, event_type,
+                    concept_id, duration_seconds, metadata_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                event_id, user_id, student_id, event_type,
+                concept_id, duration_seconds, metadata_json, now
+            ))
+            conn.commit()
+        return event_id
+
+    def record_user_activity_event_safe(self, **kwargs) -> Optional[str]:
+        """Fail-safe non-blocking wrapper for recording learning activity events."""
+        try:
+            return self.record_user_activity_event(**kwargs)
+        except Exception as e:
+            logger.warning(f"Non-blocking user activity logging failure: {e}")
+            return None
+
+    def record_owner_audit_event(
+        self,
+        actor_email: str,
+        action: str,
+        target: Optional[str] = None,
+        status: str = "SUCCESS",
+        actor_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Record an immutable administrative or security audit event.
+        Audit logs cannot be modified or deleted via the dashboard.
+        """
+        audit_id = f"aud_{uuid.uuid4().hex[:12]}"
+        now = datetime.now(timezone.utc).isoformat()
+        details_json = json.dumps(details) if details else None
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO owner_audit_logs (
+                    id, actor_id, actor_email, action, target,
+                    status, ip_address, user_agent, details_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                audit_id, actor_id, actor_email.strip().lower(), action, target,
+                status, ip_address, user_agent, details_json, now
+            ))
+            conn.commit()
+        return audit_id
+
+    def get_owner_overview_metrics(self, range_days: int = 30) -> Dict[str, Any]:
+        """
+        Generate complete, database-backed platform metrics for the Owner Console Overview.
+        Includes user counts, DAU/WAU/MAU, login tallies, active sessions, and trend series.
+        """
+        now = datetime.now(timezone.utc)
+        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        seven_days_ago = (now - timedelta(days=7)).isoformat()
+        thirty_days_ago = (now - timedelta(days=30)).isoformat()
+        one_day_ago = (now - timedelta(days=1)).isoformat()
+        range_start = (now - timedelta(days=range_days)).isoformat()
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # 1. Registration tallies
+            cursor.execute("SELECT COUNT(*) as total FROM users WHERE is_demo = 0")
+            total_registered_users = cursor.fetchone()["total"]
+
+            cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_demo = 0 AND created_at >= ?", (today_midnight,))
+            new_registrations_today = cursor.fetchone()["cnt"]
+
+            cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_demo = 0 AND created_at >= ?", (seven_days_ago,))
+            new_registrations_week = cursor.fetchone()["cnt"]
+
+            cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_demo = 0 AND created_at >= ?", (thirty_days_ago,))
+            new_registrations_month = cursor.fetchone()["cnt"]
+
+            # 2. Login tallies
+            cursor.execute("SELECT COUNT(*) as cnt FROM login_events WHERE event_type = 'LOGIN_SUCCESS'")
+            total_successful_logins = cursor.fetchone()["cnt"]
+
+            cursor.execute("""
+                SELECT COUNT(*) as cnt FROM (
+                    SELECT user_id FROM login_events
+                    WHERE event_type = 'LOGIN_SUCCESS' AND user_id IS NOT NULL
+                    GROUP BY user_id
+                    HAVING COUNT(*) > 1
+                )
+            """)
+            returning_users = cursor.fetchone()["cnt"]
+
+            # 3. Active User Metrics (DAU, WAU, MAU)
+            # Distinct users who either logged in or executed learning activity within period
+            cursor.execute("""
+                SELECT COUNT(DISTINCT uid) as cnt FROM (
+                    SELECT user_id AS uid FROM login_events WHERE created_at >= ? AND user_id IS NOT NULL
+                    UNION
+                    SELECT user_id AS uid FROM user_activity_events WHERE created_at >= ? AND user_id IS NOT NULL
+                )
+            """, (one_day_ago, one_day_ago))
+            dau = cursor.fetchone()["cnt"]
+
+            cursor.execute("""
+                SELECT COUNT(DISTINCT uid) as cnt FROM (
+                    SELECT user_id AS uid FROM login_events WHERE created_at >= ? AND user_id IS NOT NULL
+                    UNION
+                    SELECT user_id AS uid FROM user_activity_events WHERE created_at >= ? AND user_id IS NOT NULL
+                )
+            """, (seven_days_ago, seven_days_ago))
+            wau = cursor.fetchone()["cnt"]
+
+            cursor.execute("""
+                SELECT COUNT(DISTINCT uid) as cnt FROM (
+                    SELECT user_id AS uid FROM login_events WHERE created_at >= ? AND user_id IS NOT NULL
+                    UNION
+                    SELECT user_id AS uid FROM user_activity_events WHERE created_at >= ? AND user_id IS NOT NULL
+                )
+            """, (thirty_days_ago, thirty_days_ago))
+            mau = cursor.fetchone()["cnt"]
+
+            # 4. Currently Active Sessions
+            now_iso = now.isoformat()
+            cursor.execute("""
+                SELECT COUNT(DISTINCT user_id) as cnt
+                FROM user_sessions
+                WHERE expires_at > ? AND revoked_at IS NULL
+            """, (now_iso,))
+            active_sessions = cursor.fetchone()["cnt"]
+
+            # 5. Engagement rate
+            engagement_rate = round((mau / total_registered_users * 100), 1) if total_registered_users > 0 else 0.0
+
+            # 6. Trend Charts Data (Daily buckets across range_days)
+            # A. Daily registrations
+            cursor.execute("""
+                SELECT substr(created_at, 1, 10) as day, COUNT(*) as cnt
+                FROM users
+                WHERE is_demo = 0 AND created_at >= ?
+                GROUP BY day
+                ORDER BY day ASC
+            """, (range_start,))
+            reg_dict = {row["day"]: row["cnt"] for row in cursor.fetchall()}
+
+            # B. Daily active users & logins
+            cursor.execute("""
+                SELECT substr(created_at, 1, 10) as day,
+                       COUNT(DISTINCT user_id) as active_users,
+                       COUNT(*) as logins
+                FROM login_events
+                WHERE created_at >= ? AND event_type = 'LOGIN_SUCCESS'
+                GROUP BY day
+                ORDER BY day ASC
+            """, (range_start,))
+            act_dict = {row["day"]: {"active_users": row["active_users"], "logins": row["logins"]} for row in cursor.fetchall()}
+
+            # C. Daily learning events
+            cursor.execute("""
+                SELECT substr(created_at, 1, 10) as day, COUNT(*) as total_events
+                FROM user_activity_events
+                WHERE created_at >= ?
+                GROUP BY day
+                ORDER BY day ASC
+            """, (range_start,))
+            learn_dict = {row["day"]: row["total_events"] for row in cursor.fetchall()}
+
+            # Assemble contiguous daily array
+            registration_trends = []
+            active_user_trends = []
+            engagement_trends = []
+
+            for i in range(range_days - 1, -1, -1):
+                day_str = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+                registration_trends.append({
+                    "date": day_str,
+                    "registrations": reg_dict.get(day_str, 0)
+                })
+                act_info = act_dict.get(day_str, {"active_users": 0, "logins": 0})
+                active_user_trends.append({
+                    "date": day_str,
+                    "active_users": act_info["active_users"],
+                    "logins": act_info["logins"]
+                })
+                engagement_trends.append({
+                    "date": day_str,
+                    "events": learn_dict.get(day_str, 0)
+                })
+
+            # 7. Device Category Breakdown
+            cursor.execute("""
+                SELECT device_category, COUNT(*) as count
+                FROM login_events
+                WHERE device_category IS NOT NULL
+                GROUP BY device_category
+            """)
+            device_breakdown = [{ "name": row["device_category"].capitalize(), "value": row["count"] } for row in cursor.fetchall()]
+
+            # 8. Role Breakdown
+            cursor.execute("SELECT role, COUNT(*) as count FROM users GROUP BY role")
+            role_breakdown = [{ "name": row["role"].capitalize(), "value": row["count"] } for row in cursor.fetchall()]
+
+            return {
+                "total_registered_users": total_registered_users,
+                "new_registrations_today": new_registrations_today,
+                "new_registrations_week": new_registrations_week,
+                "new_registrations_month": new_registrations_month,
+                "dau": dau,
+                "wau": wau,
+                "mau": mau,
+                "total_successful_logins": total_successful_logins,
+                "returning_users": returning_users,
+                "active_sessions": active_sessions,
+                "engagement_rate": engagement_rate,
+                "registration_trends": registration_trends,
+                "active_user_trends": active_user_trends,
+                "engagement_trends": engagement_trends,
+                "device_breakdown": device_breakdown,
+                "role_breakdown": role_breakdown,
+                "calculated_at": now.isoformat()
+            }
+
+    def get_owner_user_directory(
+        self,
+        search: Optional[str] = None,
+        role: Optional[str] = None,
+        status: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 25,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Query searchable, filterable, paginated user directory for the Owner Console.
+        Omits sensitive hashes, tokens, and raw private messages.
+        """
+        query_conditions = ["1=1"]
+        params = []
+
+        if search and search.strip():
+            term = f"%{search.strip().lower()}%"
+            query_conditions.append("(LOWER(full_name) LIKE ? OR LOWER(email) LIKE ? OR id LIKE ? OR student_id LIKE ?)")
+            params.extend([term, term, term, term])
+
+        if role and role.strip() and role != "all":
+            query_conditions.append("role = ?")
+            params.append(role.strip().lower())
+
+        if status and status.strip() and status != "all":
+            if status == "active":
+                query_conditions.append("is_active = 1")
+            elif status == "inactive":
+                query_conditions.append("is_active = 0")
+
+        if start_date and start_date.strip():
+            query_conditions.append("created_at >= ?")
+            params.append(start_date.strip())
+
+        if end_date and end_date.strip():
+            query_conditions.append("created_at <= ?")
+            params.append(end_date.strip() + "T23:59:59")
+
+        where_clause = " AND ".join(query_conditions)
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Total count for pagination
+            cursor.execute(f"SELECT COUNT(*) as total FROM users WHERE {where_clause}", tuple(params))
+            total_records = cursor.fetchone()["total"]
+
+            # Paginated records
+            query_sql = f"""
+                SELECT id, student_id, full_name, email, normalized_email,
+                       auth_provider, role, is_email_verified, is_active,
+                       created_at, updated_at, last_login_at
+                FROM users
+                WHERE {where_clause}
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            """
+            cursor.execute(query_sql, tuple(params + [limit, offset]))
+            rows = cursor.fetchall()
+
+            users = []
+            for r in rows:
+                user_dict = dict(r)
+
+                # Query total login count for this user
+                cursor.execute("SELECT COUNT(*) as count FROM login_events WHERE user_id = ? AND event_type = 'LOGIN_SUCCESS'", (user_dict["id"],))
+                user_dict["total_successful_logins"] = cursor.fetchone()["count"]
+
+                # Query total learning activity count and last activity timestamp
+                cursor.execute("""
+                    SELECT COUNT(*) as count, MAX(created_at) as last_activity
+                    FROM user_activity_events
+                    WHERE user_id = ? OR student_id = ?
+                """, (user_dict["id"], user_dict["student_id"]))
+                act_row = cursor.fetchone()
+                user_dict["total_learning_activity"] = act_row["count"] if act_row else 0
+                user_dict["last_activity_at"] = act_row["last_activity"] if (act_row and act_row["last_activity"]) else user_dict["last_login_at"]
+
+                users.append(user_dict)
+
+            return {
+                "users": users,
+                "total": total_records,
+                "limit": limit,
+                "offset": offset
+            }
+
+    def get_owner_user_detail(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve deep activity profile for a specific user.
+        Safely summarizes concept mastery, recent learning events, and login history.
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, student_id, full_name, email, auth_provider, role,
+                       is_email_verified, is_active, created_at, updated_at, last_login_at
+                FROM users
+                WHERE id = ?
+            """, (user_id,))
+            user_row = cursor.fetchone()
+            if not user_row:
+                return None
+
+            user_data = dict(user_row)
+            student_id = user_data["student_id"]
+
+            # 1. Learner Overview & Mastery
+            cursor.execute("SELECT * FROM learners WHERE student_id = ?", (student_id,))
+            learner_row = cursor.fetchone()
+            user_data["learner"] = dict(learner_row) if learner_row else None
+
+            cursor.execute("""
+                SELECT concept_id, concept_name, category, mastery_percentage,
+                       questions_attempted, correct_answers, current_difficulty,
+                       last_practiced_at
+                FROM concept_mastery
+                WHERE student_id = ?
+                ORDER BY mastery_percentage DESC
+            """, (student_id,))
+            user_data["concept_mastery"] = [dict(c) for c in cursor.fetchall()]
+
+            # 2. Recent Learning Activity Events (Last 25)
+            cursor.execute("""
+                SELECT id, event_type, concept_id, duration_seconds, metadata_json, created_at
+                FROM user_activity_events
+                WHERE user_id = ? OR student_id = ?
+                ORDER BY created_at DESC
+                LIMIT 25
+            """, (user_id, student_id))
+            user_data["recent_activity"] = [dict(a) for a in cursor.fetchall()]
+
+            # 3. Recent Login Events (Last 15)
+            cursor.execute("""
+                SELECT id, event_type, auth_provider, status, ip_address,
+                       device_category, browser, os, created_at
+                FROM login_events
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT 15
+            """, (user_id,))
+            user_data["recent_logins"] = [dict(l) for l in cursor.fetchall()]
+
+            return user_data
+
+    def get_owner_login_activity(
+        self,
+        search: Optional[str] = None,
+        status: Optional[str] = None,
+        provider: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Retrieve login audit events with search, filtering, and device/browser breakdowns.
+        """
+        conditions = ["1=1"]
+        params = []
+
+        if search and search.strip():
+            term = f"%{search.strip().lower()}%"
+            conditions.append("(LOWER(email) LIKE ? OR user_id LIKE ? OR ip_address LIKE ?)")
+            params.extend([term, term, term])
+
+        if status and status.strip() and status != "all":
+            conditions.append("status = ?")
+            params.append(status.strip().upper())
+
+        if provider and provider.strip() and provider != "all":
+            conditions.append("auth_provider = ?")
+            params.append(provider.strip().lower())
+
+        where_clause = " AND ".join(conditions)
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute(f"SELECT COUNT(*) as total FROM login_events WHERE {where_clause}", tuple(params))
+            total = cursor.fetchone()["total"]
+
+            cursor.execute(f"""
+                SELECT id, user_id, email, event_type, auth_provider, status,
+                       failure_reason, ip_address, device_category, browser, os, created_at
+                FROM login_events
+                WHERE {where_clause}
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            """, tuple(params + [limit, offset]))
+            events = [dict(r) for r in cursor.fetchall()]
+
+            # Browser breakdown
+            cursor.execute("SELECT browser, COUNT(*) as count FROM login_events GROUP BY browser ORDER BY count DESC LIMIT 6")
+            browser_breakdown = [{ "name": r["browser"] or "Other", "value": r["count"] } for r in cursor.fetchall()]
+
+            # Status breakdown
+            cursor.execute("SELECT status, COUNT(*) as count FROM login_events GROUP BY status")
+            status_breakdown = [{ "name": r["status"], "value": r["count"] } for r in cursor.fetchall()]
+
+            return {
+                "events": events,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "browser_breakdown": browser_breakdown,
+                "status_breakdown": status_breakdown
+            }
+
+    def get_owner_learning_analytics(self, range_days: int = 30) -> Dict[str, Any]:
+        """
+        Calculate feature adoption and learning volume across the platform.
+        """
+        now = datetime.now(timezone.utc)
+        range_start = (now - timedelta(days=range_days)).isoformat()
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # 1. Total Events by Type
+            cursor.execute("""
+                SELECT event_type, COUNT(*) as event_count, COUNT(DISTINCT user_id) as unique_users
+                FROM user_activity_events
+                WHERE created_at >= ?
+                GROUP BY event_type
+                ORDER BY event_count DESC
+            """, (range_start,))
+            events_by_type = [dict(r) for r in cursor.fetchall()]
+
+            # 2. Top Engaged Concepts
+            cursor.execute("""
+                SELECT concept_id, COUNT(*) as attempts_count,
+                       ROUND(AVG(CASE WHEN json_extract(metadata_json, '$.is_correct') = 1 THEN 100.0 ELSE 0.0 END), 1) as accuracy
+                FROM user_activity_events
+                WHERE concept_id IS NOT NULL AND created_at >= ?
+                GROUP BY concept_id
+                ORDER BY attempts_count DESC
+                LIMIT 10
+            """, (range_start,))
+            top_concepts = [dict(r) for r in cursor.fetchall()]
+
+            # Map concept names
+            for tc in top_concepts:
+                cid = tc["concept_id"]
+                tc["concept_name"] = DSA_CONCEPTS.get(cid, {}).get("name", cid.replace("_", " ").title())
+
+            # 3. Daily Learning Volume Trend
+            cursor.execute("""
+                SELECT substr(created_at, 1, 10) as day,
+                       COUNT(*) as total_events,
+                       SUM(CASE WHEN event_type = 'TUTOR_QUESTION_SUBMITTED' THEN 1 ELSE 0 END) as tutor_questions,
+                       SUM(CASE WHEN event_type = 'QUIZ_QUESTION_ATTEMPTED' THEN 1 ELSE 0 END) as quiz_attempts,
+                       SUM(CASE WHEN event_type = 'DIAGNOSTIC_COMPLETED' THEN 1 ELSE 0 END) as diagnostics
+                FROM user_activity_events
+                WHERE created_at >= ?
+                GROUP BY day
+                ORDER BY day ASC
+            """, (range_start,))
+            daily_rows = {r["day"]: dict(r) for r in cursor.fetchall()}
+
+            volume_series = []
+            for i in range(range_days - 1, -1, -1):
+                day_str = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+                ddata = daily_rows.get(day_str, {
+                    "total_events": 0,
+                    "tutor_questions": 0,
+                    "quiz_attempts": 0,
+                    "diagnostics": 0
+                })
+                volume_series.append({
+                    "date": day_str,
+                    "total_events": ddata["total_events"],
+                    "tutor_questions": ddata["tutor_questions"],
+                    "quiz_attempts": ddata["quiz_attempts"],
+                    "diagnostics": ddata["diagnostics"]
+                })
+
+            return {
+                "events_by_type": events_by_type,
+                "top_concepts": top_concepts,
+                "volume_series": volume_series,
+                "range_days": range_days
+            }
+
+    def get_owner_engagement_analytics(self, range_days: int = 30) -> Dict[str, Any]:
+        """
+        Calculate user engagement, feature adoption rates, and weekly cohort retention.
+        """
+        now = datetime.now(timezone.utc)
+        range_start = (now - timedelta(days=range_days)).isoformat()
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Total non-demo users for percentage calculations
+            cursor.execute("SELECT COUNT(*) as total FROM users WHERE is_demo = 0")
+            total_users = max(cursor.fetchone()["total"], 1)
+
+            # Feature Adoption (% of registered users who tried each feature)
+            features = [
+                ("Diagnostic Assessment", "DIAGNOSTIC_COMPLETED"),
+                ("Socratic AI Tutor", "TUTOR_QUESTION_SUBMITTED"),
+                ("Adaptive Quiz", "QUIZ_QUESTION_ATTEMPTED"),
+                ("Spaced Revision", "REVISION_SESSION_COMPLETED"),
+                ("Explore Live Video", "LIVE_VIDEO_SESSION_STARTED")
+            ]
+
+            feature_adoption = []
+            for name, etype in features:
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT user_id) as users_count
+                    FROM user_activity_events
+                    WHERE event_type = ?
+                """, (etype,))
+                ucnt = cursor.fetchone()["users_count"]
+                pct = round((ucnt / total_users) * 100, 1)
+                feature_adoption.append({
+                    "feature": name,
+                    "event_type": etype,
+                    "unique_users": ucnt,
+                    "adoption_percentage": pct
+                })
+
+            # Weekly Cohort Retention Matrix (Last 6 weeks)
+            cohorts = []
+            for w in range(5, -1, -1):
+                cohort_start = (now - timedelta(days=(w + 1) * 7)).isoformat()
+                cohort_end = (now - timedelta(days=w * 7)).isoformat()
+                week_label = (now - timedelta(days=(w + 1) * 7)).strftime("%b %d")
+
+                # Users registered in this cohort window
+                cursor.execute("""
+                    SELECT id FROM users
+                    WHERE is_demo = 0 AND created_at >= ? AND created_at < ?
+                """, (cohort_start, cohort_end))
+                cohort_user_ids = [r["id"] for r in cursor.fetchall()]
+                cohort_size = len(cohort_user_ids)
+
+                if cohort_size == 0:
+                    cohorts.append({
+                        "week": week_label,
+                        "size": 0,
+                        "w0": 100.0,
+                        "w1": 0.0,
+                        "w2": 0.0,
+                        "w3": 0.0
+                    })
+                    continue
+
+                # For weeks 1, 2, 3: percentage of these cohort_user_ids who had activity
+                retention_rates = {"w0": 100.0}
+                placeholders = ",".join("?" * cohort_size)
+
+                for offset_w in [1, 2, 3]:
+                    w_start = (now - timedelta(days=(w + 1 - offset_w) * 7)).isoformat()
+                    w_end = (now - timedelta(days=(w - offset_w) * 7)).isoformat()
+                    if datetime.fromisoformat(w_start) > now:
+                        retention_rates[f"w{offset_w}"] = None
+                        continue
+
+                    cursor.execute(f"""
+                        SELECT COUNT(DISTINCT user_id) as active_count
+                        FROM user_activity_events
+                        WHERE user_id IN ({placeholders}) AND created_at >= ? AND created_at < ?
+                    """, tuple(cohort_user_ids + [w_start, w_end]))
+                    active_cnt = cursor.fetchone()["active_count"]
+                    retention_rates[f"w{offset_w}"] = round((active_cnt / cohort_size) * 100, 1)
+
+                cohorts.append({
+                    "week": week_label,
+                    "size": cohort_size,
+                    **retention_rates
+                })
+
+            return {
+                "feature_adoption": feature_adoption,
+                "cohort_retention": cohorts,
+                "total_users_sample": total_users
+            }
+
+    def get_owner_audit_logs(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        action: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Query immutable audit trail of owner actions, logins, and security events.
+        """
+        conditions = ["1=1"]
+        params = []
+
+        if action and action.strip() and action != "all":
+            conditions.append("action = ?")
+            params.append(action.strip().upper())
+
+        where_clause = " AND ".join(conditions)
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute(f"SELECT COUNT(*) as total FROM owner_audit_logs WHERE {where_clause}", tuple(params))
+            total = cursor.fetchone()["total"]
+
+            cursor.execute(f"""
+                SELECT id, actor_id, actor_email, action, target, status,
+                       ip_address, user_agent, details_json, created_at
+                FROM owner_audit_logs
+                WHERE {where_clause}
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            """, tuple(params + [limit, offset]))
+            logs = [dict(r) for r in cursor.fetchall()]
+
+            return {
+                "logs": logs,
+                "total": total,
+                "limit": limit,
+                "offset": offset
+            }
+
+    def export_owner_report_csv(self, report_type: str, range_days: int = 30) -> str:
+        """
+        Generate authorized, privacy-respecting CSV report exports.
+        Does not export passwords, hashes, session tokens, or raw private transcripts.
+        """
+        output = io.StringIO()
+        writer = csv.writer(output)
+        now = datetime.now(timezone.utc)
+        range_start = (now - timedelta(days=range_days)).isoformat()
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            if report_type == "registrations":
+                writer.writerow(["User ID", "Student ID", "Full Name", "Email", "Role", "Auth Provider", "Created At (UTC)", "Last Login (UTC)"])
+                cursor.execute("""
+                    SELECT id, student_id, full_name, email, role, auth_provider, created_at, last_login_at
+                    FROM users
+                    WHERE is_demo = 0
+                    ORDER BY created_at DESC
+                """)
+                for r in cursor.fetchall():
+                    writer.writerow([r["id"], r["student_id"], r["full_name"], r["email"], r["role"], r["auth_provider"], r["created_at"], r["last_login_at"]])
+
+            elif report_type == "logins":
+                writer.writerow(["Timestamp (UTC)", "Event ID", "User ID", "Email", "Event Type", "Auth Provider", "Status", "Device", "Browser", "OS", "IP Address"])
+                cursor.execute("""
+                    SELECT created_at, id, user_id, email, event_type, auth_provider, status, device_category, browser, os, ip_address
+                    FROM login_events
+                    WHERE created_at >= ?
+                    ORDER BY created_at DESC
+                """, (range_start,))
+                for r in cursor.fetchall():
+                    writer.writerow([r["created_at"], r["id"], r["user_id"], r["email"], r["event_type"], r["auth_provider"], r["status"], r["device_category"], r["browser"], r["os"], r["ip_address"]])
+
+            elif report_type == "learning-activity":
+                writer.writerow(["Timestamp (UTC)", "Activity ID", "User ID", "Student ID", "Event Type", "Concept ID", "Duration Seconds"])
+                cursor.execute("""
+                    SELECT created_at, id, user_id, student_id, event_type, concept_id, duration_seconds
+                    FROM user_activity_events
+                    WHERE created_at >= ?
+                    ORDER BY created_at DESC
+                """, (range_start,))
+                for r in cursor.fetchall():
+                    writer.writerow([r["created_at"], r["id"], r["user_id"], r["student_id"], r["event_type"], r["concept_id"] or "", r["duration_seconds"]])
+
+            elif report_type == "feature-usage":
+                writer.writerow(["Feature Name", "Event Type", "Total Events", "Unique Users"])
+                cursor.execute("""
+                    SELECT event_type, COUNT(*) as event_count, COUNT(DISTINCT user_id) as unique_users
+                    FROM user_activity_events
+                    WHERE created_at >= ?
+                    GROUP BY event_type
+                    ORDER BY event_count DESC
+                """, (range_start,))
+                for r in cursor.fetchall():
+                    writer.writerow([r["event_type"].replace("_", " ").title(), r["event_type"], r["event_count"], r["unique_users"]])
+
+            elif report_type == "audit-logs":
+                writer.writerow(["Timestamp (UTC)", "Log ID", "Actor Email", "Action", "Target", "Status", "IP Address", "Details"])
+                cursor.execute("""
+                    SELECT created_at, id, actor_email, action, target, status, ip_address, details_json
+                    FROM owner_audit_logs
+                    ORDER BY created_at DESC
+                """)
+                for r in cursor.fetchall():
+                    writer.writerow([r["created_at"], r["id"], r["actor_email"], r["action"], r["target"], r["status"], r["ip_address"], r["details_json"] or ""])
+
+            else:
+                writer.writerow(["Error", "Invalid report type specified"])
+
+        return output.getvalue()
 
 storage = StorageManager()

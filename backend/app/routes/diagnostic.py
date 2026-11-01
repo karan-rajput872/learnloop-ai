@@ -237,6 +237,18 @@ def submit_diagnostic_test(
     # Save to SQLite diagnostic_attempts table
     storage.save_diagnostic_attempt(attempt_record)
 
+    storage.record_user_activity_event_safe(
+        user_id=user["id"] if user else student_id,
+        student_id=student_id,
+        event_type="DIAGNOSTIC_COMPLETED",
+        duration_seconds=300,
+        metadata={
+            "score": score,
+            "total_questions": total_questions,
+            "percentage": accuracy_percentage
+        }
+    )
+
     return {
         "status": "success",
         "diagnostic_completed": True,

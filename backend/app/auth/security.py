@@ -1,6 +1,8 @@
 import os
 import hashlib
 import secrets
+import time
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Tuple, List
 import jwt
@@ -9,7 +11,6 @@ from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHas
 import httpx
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.storage.db import storage
 
 # Security Settings
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "learnloop-ai-production-jwt-secret-key-32chars-min-len-2026!")
@@ -187,6 +188,7 @@ def get_current_user_optional(
             headers={"WWW-Authenticate": "Bearer"}
         )
 
+    from app.storage.db import storage
     user = storage.get_user_by_id(payload["sub"])
     if not user or not user.get("is_active"):
         raise HTTPException(
@@ -225,6 +227,147 @@ def require_roles(allowed_roles: List[str]):
             )
         return user
     return role_checker
+
+# Owner Console Security Settings
+# Authorized owner emails configured via environment variable (comma-separated if multiple)
+DEFAULT_OWNER_EMAIL = "karanrajput872@gmail.com"
+OWNER_EMAILS_RAW = os.getenv("OWNER_EMAIL", DEFAULT_OWNER_EMAIL)
+
+def get_authorized_owner_emails() -> List[str]:
+    """Retrieve normalized lowercase list of authorized owner emails from configuration."""
+    raw = os.getenv("OWNER_EMAIL", DEFAULT_OWNER_EMAIL)
+    emails = [e.strip().lower() for e in raw.split(",") if e.strip()]
+    if not emails:
+        emails = [DEFAULT_OWNER_EMAIL.lower()]
+    return emails
+
+def parse_user_agent(ua_string: Optional[str]) -> Tuple[str, str, str]:
+    """
+    Zero-dependency, privacy-preserving User-Agent parser.
+    Extracts coarse (device_category, browser, os) without invasive fingerprinting.
+    """
+    if not ua_string:
+        return "unknown", "Other", "Other"
+    ua = ua_string.lower()
+
+    # Device category
+    if "ipad" in ua or "tablet" in ua:
+        device = "tablet"
+    elif "mobile" in ua or "android" in ua or "iphone" in ua or "ipod" in ua:
+        device = "mobile"
+    else:
+        device = "desktop"
+
+    # Browser
+    if "edg/" in ua or "edgios/" in ua or "edge" in ua:
+        browser = "Edge"
+    elif "chrome/" in ua and "safari/" in ua and "edg" not in ua and "opr" not in ua:
+        browser = "Chrome"
+    elif "firefox/" in ua or "fxios/" in ua:
+        browser = "Firefox"
+    elif "safari/" in ua and "chrome" not in ua:
+        browser = "Safari"
+    elif "opera" in ua or "opr/" in ua:
+        browser = "Opera"
+    else:
+        browser = "Other"
+
+    # OS
+    if "windows" in ua:
+        os_name = "Windows"
+    elif "android" in ua:
+        os_name = "Android"
+    elif "iphone" in ua or "ipad" in ua or "ios" in ua:
+        os_name = "iOS"
+    elif "macintosh" in ua or "mac os" in ua:
+        os_name = "macOS"
+    elif "linux" in ua:
+        os_name = "Linux"
+    else:
+        os_name = "Other"
+
+    return device, browser, os_name
+
+# In-memory sliding window rate limiter for owner endpoints and brute-force prevention
+_owner_rate_limit: Dict[str, List[float]] = {}
+_rate_limit_lock = threading.Lock()
+
+def check_owner_rate_limit(key: str, max_attempts: int = 5, window_seconds: int = 900) -> bool:
+    """
+    Sliding window rate limit check.
+    Returns True if permitted, False if limit exceeded.
+    Default: max 5 failed attempts per 15 minutes (900s).
+    """
+    now = time.time()
+    with _rate_limit_lock:
+        attempts = _owner_rate_limit.get(key, [])
+        # Expire old entries outside the window
+        attempts = [t for t in attempts if now - t < window_seconds]
+        if len(attempts) >= max_attempts:
+            _owner_rate_limit[key] = attempts
+            return False
+        attempts.append(now)
+        _owner_rate_limit[key] = attempts
+        return True
+
+def reset_owner_rate_limit(key: str):
+    """Clear rate limit entry on successful authentication."""
+    with _rate_limit_lock:
+        if key in _owner_rate_limit:
+            del _owner_rate_limit[key]
+
+def is_owner_user(user: Optional[Dict[str, Any]]) -> bool:
+    """Check if the given authenticated user dict has authorized owner privileges."""
+    if not user:
+        return False
+    authorized_emails = get_authorized_owner_emails()
+    user_email = (user.get("normalized_email") or user.get("email") or "").strip().lower()
+    user_role = user.get("role", "student")
+    return (user_email in authorized_emails) or (user_role == "owner")
+
+def require_owner(
+    request: Request,
+    user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Strict backend authorization dependency for Private Owner Console endpoints.
+    Enforces that:
+    1. The user is actively authenticated with a valid JWT token.
+    2. The user's verified email matches configured OWNER_EMAIL or has role='owner'.
+    3. Student and teacher accounts are strictly rejected with HTTP 403 Forbidden.
+    4. Failed/unauthorized attempts are logged to the immutable audit trail.
+    """
+    if not is_owner_user(user):
+        client_ip = request.client.host if request.client else "unknown"
+        ua = request.headers.get("user-agent", "")
+        actor_email = (user.get("normalized_email") or user.get("email") or "unknown").strip().lower()
+        actor_role = user.get("role", "student")
+
+        try:
+            from app.storage.db import storage
+            storage.record_owner_audit_event(
+                actor_id=user.get("id"),
+                actor_email=actor_email,
+                action="UNAUTHORIZED_ACCESS_ATTEMPT",
+                target=request.url.path,
+                status="DENIED",
+                ip_address=client_ip,
+                user_agent=ua,
+                details={
+                    "reason": "Account is not in authorized OWNER_EMAIL configuration",
+                    "user_role": actor_role,
+                    "attempted_method": request.method
+                }
+            )
+        except Exception:
+            pass
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Student and standard educator accounts are not authorized to access the Private Owner Console."
+        )
+
+    return user
 
 def resolve_student_id(
     user: Optional[Dict[str, Any]],

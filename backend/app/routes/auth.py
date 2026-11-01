@@ -107,12 +107,14 @@ def clear_refresh_cookie(response: Response):
 # Endpoints
 # --------------------------------------------------------------------------
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, response: Response):
+def register(payload: RegisterRequest, response: Response, request: Request = None):
     """
     Create a new persistent student account with Argon2id password hash.
     Enforces uniqueness, validates email, initializes personal learner profile.
     """
     norm_email = payload.email.strip().lower()
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
+    ua = request.headers.get("user-agent", "") if request else ""
 
     if payload.password != payload.confirm_password:
         raise HTTPException(
@@ -184,6 +186,22 @@ def register(payload: RegisterRequest, response: Response):
 
     set_refresh_cookie(response, raw_refresh_token)
 
+    storage.record_login_event_safe(
+        user_id=user_id,
+        email=norm_email,
+        event_type="LOGIN_SUCCESS",
+        auth_provider="local",
+        status="SUCCESS",
+        ip_address=client_ip,
+        user_agent=ua
+    )
+    storage.record_user_activity_event_safe(
+        user_id=user_id,
+        student_id=student_id,
+        event_type="ONBOARDING_COMPLETED",
+        metadata={"action": "registration"}
+    )
+
     return {
         "status": "success",
         "message": "Account created successfully.",
@@ -194,12 +212,14 @@ def register(payload: RegisterRequest, response: Response):
     }
 
 @router.post("/login")
-def login(payload: LoginRequest, response: Response):
+def login(payload: LoginRequest, response: Response, request: Request = None):
     """
     Authenticate against normalized email and Argon2id password hash.
     Issues session token and returns isolated learner profile.
     """
     norm_email = payload.email.strip().lower()
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
+    ua = request.headers.get("user-agent", "") if request else ""
     user = storage.get_user_by_email(norm_email)
 
     # If account was created with Google Sign-In and does not yet have a password set, guide the learner
@@ -211,6 +231,16 @@ def login(payload: LoginRequest, response: Response):
 
     # Safe credential verification preventing user enumeration
     if not user or not user.get("hashed_password") or not verify_password(payload.password, user["hashed_password"]):
+        storage.record_login_event_safe(
+            user_id=user["id"] if user else None,
+            email=norm_email,
+            event_type="LOGIN_FAILED",
+            auth_provider="local",
+            status="FAILED",
+            failure_reason="Invalid credentials",
+            ip_address=client_ip,
+            user_agent=ua
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password."
@@ -248,6 +278,16 @@ def login(payload: LoginRequest, response: Response):
 
     set_refresh_cookie(response, raw_refresh_token)
 
+    storage.record_login_event_safe(
+        user_id=user["id"],
+        email=norm_email,
+        event_type="LOGIN_SUCCESS",
+        auth_provider=user.get("auth_provider", "local"),
+        status="SUCCESS",
+        ip_address=client_ip,
+        user_agent=ua
+    )
+
     return {
         "status": "success",
         "message": "Signed in successfully.",
@@ -258,12 +298,14 @@ def login(payload: LoginRequest, response: Response):
     }
 
 @router.post("/demo-session")
-def start_demo_session(response: Response):
+def start_demo_session(response: Response, request: Request = None):
     """
     Instantly create or restore an isolated guest demonstration session.
     No registration, credentials, or Google authentication required.
     Allows hackathon judges and prospective learners to test the complete application.
     """
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
+    ua = request.headers.get("user-agent", "") if request else ""
     user, learner = storage.get_or_create_demo_user()
 
     raw_refresh_token, token_hash, expires_at = create_refresh_token()
@@ -286,6 +328,25 @@ def start_demo_session(response: Response):
     })
 
     set_refresh_cookie(response, raw_refresh_token)
+
+    storage.record_login_event_safe(
+        user_id=user["id"],
+        email=user["email"],
+        event_type="LOGIN_SUCCESS",
+        auth_provider="demo",
+        status="SUCCESS",
+        ip_address=client_ip,
+        user_agent=ua
+    )
+
+    return {
+        "status": "success",
+        "message": "Demo session started successfully. Welcome to LearnLoop AI!",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": build_public_user(user),
+        "learner": learner
+    }
 
     return {
         "status": "success",
@@ -312,7 +373,7 @@ def reset_demo_session(response: Response, user: Dict[str, Any] = Depends(get_cu
     }
 
 @router.post("/google")
-def google_sign_in(payload: GoogleLoginRequest, response: Response):
+def google_sign_in(payload: GoogleLoginRequest, response: Response, request: Request = None):
     """
     Authenticate with verified Google Identity Services token.
     Supports the 4 required linking cases:
@@ -321,6 +382,8 @@ def google_sign_in(payload: GoogleLoginRequest, response: Response):
       Case 3: Existing password user with matching email -> safely links Google identity
       Case 4: Conflicting Google identity -> rejects safely
     """
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
+    ua = request.headers.get("user-agent", "") if request else ""
     claims = verify_google_id_token(payload.id_token)
     google_sub = claims["google_sub"]
     google_email = claims["email"]
@@ -397,6 +460,16 @@ def google_sign_in(payload: GoogleLoginRequest, response: Response):
     })
 
     set_refresh_cookie(response, raw_refresh_token)
+
+    storage.record_login_event_safe(
+        user_id=user["id"],
+        email=user["normalized_email"],
+        event_type="LOGIN_SUCCESS",
+        auth_provider="google",
+        status="SUCCESS",
+        ip_address=client_ip,
+        user_agent=ua
+    )
 
     return {
         "status": "success",
@@ -530,12 +603,25 @@ def logout(request: Request, response: Response, payload: Optional[RefreshReques
     """
     Revoke current user session and clear authentication cookie.
     """
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
+    ua = request.headers.get("user-agent", "") if request else ""
     raw_token = (payload.refresh_token if payload and payload.refresh_token else None) or request.cookies.get("refresh_token")
     if raw_token:
         token_hash = hash_token(raw_token)
         session = storage.get_session_by_token_hash(token_hash)
         if session:
             storage.revoke_session(session["id"])
+            user = storage.get_user_by_id(session["user_id"])
+            user_email = user.get("email") if user else "session_user"
+            storage.record_login_event_safe(
+                user_id=session["user_id"],
+                email=user_email,
+                event_type="LOGOUT",
+                auth_provider="session",
+                status="SUCCESS",
+                ip_address=client_ip,
+                user_agent=ua
+            )
 
     clear_refresh_cookie(response)
     return {"status": "success", "message": "Signed out successfully."}

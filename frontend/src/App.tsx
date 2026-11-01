@@ -31,8 +31,27 @@ import { PrivacySecurityModal } from './components/PrivacySecurityModal';
 import { HelpSupportModal } from './components/HelpSupportModal';
 import { TermsPrivacyModal } from './components/TermsPrivacyModal';
 import { LiveVideoModal } from './components/LiveVideoModal';
+import { OwnerConsolePage } from './pages/OwnerConsolePage';
 
 function AppContent() {
+  const [isOwnerRoute, setIsOwnerRoute] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/owner-console') ||
+      window.location.hash.startsWith('#/owner-console')
+    );
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsOwnerRoute(
+        window.location.pathname.startsWith('/owner-console') ||
+        window.location.hash.startsWith('#/owner-console')
+      );
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [profile, setProfile] = useState<LearnerProfile | null>(null);
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
@@ -189,6 +208,10 @@ function AppContent() {
     setApiError(null);
     setIsLoading(false);
   };
+
+  if (isOwnerRoute) {
+    return <OwnerConsolePage />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F8FA] text-[#172033] flex flex-col font-sans edu-grid-pattern">

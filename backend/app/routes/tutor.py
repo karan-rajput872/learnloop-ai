@@ -89,6 +89,18 @@ async def tutor_chat(
     except Exception as err:
         print("Gamification tutor chat activity error:", err)
 
+    storage.record_user_activity_event_safe(
+        user_id=user["id"] if user else effective_id,
+        student_id=effective_id,
+        event_type="TUTOR_QUESTION_SUBMITTED",
+        concept_id=None,
+        duration_seconds=60,
+        metadata={
+            "transcript_words": len(payload.raw_transcript.split()),
+            "tools_count": len(result.get("tools_executed", []))
+        }
+    )
+
     return {
         **result,
         "user_message_id": user_msg_id,
@@ -181,6 +193,18 @@ async def analyze_frame(
         )
     except Exception as err:
         print("Gamification video analysis activity error:", err)
+
+    storage.record_user_activity_event_safe(
+        user_id=user["id"] if user else effective_id,
+        student_id=effective_id,
+        event_type="LIVE_VIDEO_SESSION_STARTED",
+        concept_id=payload.concept_id,
+        duration_seconds=90,
+        metadata={
+            "is_ai_powered": result.get("is_ai_powered", False),
+            "feedback_length": len(result.get("pedagogical_feedback", ""))
+        }
+    )
 
     return result
 

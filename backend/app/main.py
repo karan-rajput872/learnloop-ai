@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.routes import diagnostic, concepts, learner, quiz, tutor, teacher, auth, gamification
+from app.routes import diagnostic, concepts, learner, quiz, tutor, teacher, auth, gamification, owner
 from app.dsa.syllabus import DSA_CONCEPTS
 from app.agent.gemini_service import gemini_tutor
 
@@ -56,6 +56,7 @@ app.include_router(quiz.router)
 app.include_router(tutor.router)
 app.include_router(teacher.router)
 app.include_router(gamification.router)
+app.include_router(owner.router)
 
 @app.get("/")
 def root():

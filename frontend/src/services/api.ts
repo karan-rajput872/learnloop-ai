@@ -372,5 +372,103 @@ export const api = {
       })
     });
     return await handleResponse<LiveVideoAnalysisResult>(res, 'Failed to analyze video frame');
+  },
+
+  // --------------------------------------------------------------------------
+  // PRIVATE OWNER CONSOLE & USER ANALYTICS APIS
+  // --------------------------------------------------------------------------
+  async ownerVerifySession(): Promise<any> {
+    const res = await fetchWithTimeout(`${API_BASE}/owner/verify-session`);
+    return await handleResponse<any>(res, 'Owner session verification failed');
+  },
+
+  async ownerLogin(credentials: { email: string; password: string }): Promise<any> {
+    const res = await fetchWithTimeout(`${API_BASE}/owner/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    });
+    return await handleResponse<any>(res, 'Owner authentication failed');
+  },
+
+  async getOwnerOverview(rangeDays = 30): Promise<any> {
+    const res = await fetchWithTimeout(`${API_BASE}/owner/overview?range_days=${rangeDays}`);
+    return await handleResponse<any>(res, 'Failed to fetch owner overview metrics');
+  },
+
+  async getOwnerUsers(params: { search?: string; role?: string; status?: string; start_date?: string; end_date?: string; limit?: number; offset?: number } = {}): Promise<any> {
+    const sp = new URLSearchParams();
+    if (params.search) sp.set('search', params.search);
+    if (params.role) sp.set('role', params.role);
+    if (params.status) sp.set('status', params.status);
+    if (params.start_date) sp.set('start_date', params.start_date);
+    if (params.end_date) sp.set('end_date', params.end_date);
+    if (params.limit) sp.set('limit', String(params.limit));
+    if (params.offset) sp.set('offset', String(params.offset));
+    const qs = sp.toString() ? `?${sp.toString()}` : '';
+    const res = await fetchWithTimeout(`${API_BASE}/owner/users${qs}`);
+    return await handleResponse<any>(res, 'Failed to fetch user directory');
+  },
+
+  async getOwnerUserDetail(userId: string): Promise<any> {
+    const res = await fetchWithTimeout(`${API_BASE}/owner/users/${encodeURIComponent(userId)}`);
+    return await handleResponse<any>(res, 'Failed to fetch user details');
+  },
+
+  async getOwnerLoginActivity(params: { search?: string; status?: string; provider?: string; limit?: number; offset?: number } = {}): Promise<any> {
+    const sp = new URLSearchParams();
+    if (params.search) sp.set('search', params.search);
+    if (params.status) sp.set('status', params.status);
+    if (params.provider) sp.set('provider', params.provider);
+    if (params.limit) sp.set('limit', String(params.limit));
+    if (params.offset) sp.set('offset', String(params.offset));
+    const qs = sp.toString() ? `?${sp.toString()}` : '';
+    const res = await fetchWithTimeout(`${API_BASE}/owner/login-activity${qs}`);
+    return await handleResponse<any>(res, 'Failed to fetch login activity');
+  },
+
+  async getOwnerLearningAnalytics(rangeDays = 30): Promise<any> {
+    const res = await fetchWithTimeout(`${API_BASE}/owner/learning-analytics?range_days=${rangeDays}`);
+    return await handleResponse<any>(res, 'Failed to fetch learning analytics');
+  },
+
+  async getOwnerEngagementAnalytics(rangeDays = 30): Promise<any> {
+    const res = await fetchWithTimeout(`${API_BASE}/owner/engagement-analytics?range_days=${rangeDays}`);
+    return await handleResponse<any>(res, 'Failed to fetch engagement analytics');
+  },
+
+  async getOwnerAuditLogs(params: { limit?: number; offset?: number; action?: string } = {}): Promise<any> {
+    const sp = new URLSearchParams();
+    if (params.limit) sp.set('limit', String(params.limit));
+    if (params.offset) sp.set('offset', String(params.offset));
+    if (params.action) sp.set('action', params.action);
+    const qs = sp.toString() ? `?${sp.toString()}` : '';
+    const res = await fetchWithTimeout(`${API_BASE}/owner/audit-logs${qs}`);
+    return await handleResponse<any>(res, 'Failed to fetch owner audit logs');
+  },
+
+  async logOwnerAction(action: string, target?: string, details?: any): Promise<any> {
+    const res = await fetchWithTimeout(`${API_BASE}/owner/audit-log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, target, details })
+    });
+    return await handleResponse<any>(res, 'Failed to record audit log');
+  },
+
+  async downloadOwnerReportCsv(reportType: string, rangeDays = 30): Promise<void> {
+    const res = await fetchWithTimeout(`${API_BASE}/owner/export/${reportType}?range_days=${rangeDays}`);
+    if (!res.ok) {
+      throw new Error(`Failed to export ${reportType} report (Status ${res.status})`);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `learnloop_${reportType}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   }
 };

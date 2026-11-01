@@ -60,4 +60,17 @@ async def submit_answer(
     except Exception as err:
         print("Gamification quiz activity error:", err)
 
+    from app.storage.db import storage
+    storage.record_user_activity_event_safe(
+        user_id=user["id"] if user else effective_id,
+        student_id=effective_id,
+        event_type="QUIZ_QUESTION_ATTEMPTED",
+        concept_id=submission.concept_id,
+        duration_seconds=30,
+        metadata={
+            "is_correct": result.get("is_correct", False),
+            "confidence_level": submission.confidence_level
+        }
+    )
+
     return result
