@@ -289,3 +289,25 @@ export interface AuthResponse {
   learner?: LearnerProfile;
 }
 
+export interface UserSettings {
+  theme: 'light' | 'dark' | 'system';
+  daily_learning_goal_minutes: number;
+  timezone: string;
+  email_notifications: boolean;
+  in_app_notifications: boolean;
+  sound_effects: boolean;
+  preferred_learning_mode: string;
+  learning_preferences?: string[];
+}
+
+export interface UserNotification {
+  id: string;
+  student_id?: string;
+  title: string;
+  message: string;
+  notification_type: 'info' | 'streak' | 'achievement' | 'revision' | 'alert';
+  is_read: boolean;
+  created_at: string;
+}
+
+

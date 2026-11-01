@@ -24,6 +24,12 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuthModal } from './components/AuthModal';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
 import { MyProfileModal } from './components/MyProfileModal';
+import { LandingPage } from './pages/LandingPage';
+import { SettingsModal } from './components/SettingsModal';
+import { NotificationsModal } from './components/NotificationsModal';
+import { PrivacySecurityModal } from './components/PrivacySecurityModal';
+import { HelpSupportModal } from './components/HelpSupportModal';
+import { TermsPrivacyModal } from './components/TermsPrivacyModal';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -35,9 +41,16 @@ function AppContent() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [isPrivacySecurityOpen, setIsPrivacySecurityOpen] = useState<boolean>(false);
+  const [isHelpSupportOpen, setIsHelpSupportOpen] = useState<boolean>(false);
+  const [isTermsPrivacyOpen, setIsTermsPrivacyOpen] = useState<boolean>(false);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
+
   const [diagnosticInitialMode, setDiagnosticInitialMode] = useState<'quick' | 'comprehensive'>('comprehensive');
 
-  const { user } = useAuth();
+  const { user, isAuthenticated, openAuthModal, startDemoSession } = useAuth();
 
   // Connection & Loading States
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -108,6 +121,32 @@ function AppContent() {
     return () => clearInterval(interval);
   }, [fetchProfileAndHealth]);
 
+  const refreshNotificationsCount = useCallback(() => {
+    if (user) {
+      api.getUserNotifications(user.student_id)
+        .then((items) => {
+          if (Array.isArray(items)) {
+            setUnreadNotificationsCount(items.filter((n) => !n.is_read).length);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setUnreadNotificationsCount(0);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refreshNotificationsCount();
+  }, [user, refreshNotificationsCount]);
+
+  // Protected route guard: If visitor is unauthenticated and on a protected tab, redirect to landing dashboard
+  useEffect(() => {
+    if (!isAuthenticated && !user && activeTab !== 'dashboard' && activeTab !== 'teacher') {
+      setActiveTab('dashboard');
+      openAuthModal('login');
+    }
+  }, [isAuthenticated, user, activeTab, openAuthModal]);
+
   // Timer to give visual feedback during cold starts
   useEffect(() => {
     let timer: any;
@@ -159,6 +198,13 @@ function AppContent() {
         onRefresh={() => fetchProfileAndHealth(true)}
         isRefreshing={isRetrying}
         onOpenMyProfile={() => setIsProfileModalOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenPreferences={() => setIsOnboardingOpen(true)}
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
+        onOpenPrivacySecurity={() => setIsPrivacySecurityOpen(true)}
+        onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
+        onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
+        unreadNotificationsCount={unreadNotificationsCount}
       />
 
       {/* Main Content Area */}
@@ -186,7 +232,18 @@ function AppContent() {
         {/* Tab 1: Dashboard */}
         {activeTab === 'dashboard' && (
           <>
-            {/* Case A: Initial Loading State (Skeleton Loader) */}
+            {/* Case 0: Unauthenticated visitor sees professional Landing Page */}
+            {!isAuthenticated && !user ? (
+              <LandingPage
+                onStartDemo={startDemoSession}
+                onOpenRegister={() => openAuthModal('register')}
+                onOpenLogin={() => openAuthModal('login')}
+                onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
+                onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
+              />
+            ) : (
+              <>
+                {/* Case A: Initial Loading State (Skeleton Loader) */}
             {isLoading && !profile && !isOfflinePreview && (
               <div className="space-y-6 animate-pulse">
                 {/* Cold Start Status Card */}
@@ -323,6 +380,8 @@ function AppContent() {
                 onOpenOnboarding={() => setIsOnboardingOpen(true)}
               />
             )}
+              </>
+            )}
           </>
         )}
 
@@ -405,6 +464,40 @@ function AppContent() {
         }}
       />
 
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        user={user}
+        onSettingsSaved={() => fetchProfileAndHealth(true)}
+      />
+
+      {/* Notifications Modal */}
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        studentId={user?.student_id}
+        onNotificationsUpdated={refreshNotificationsCount}
+      />
+
+      {/* Privacy & Security Architecture Modal */}
+      <PrivacySecurityModal
+        isOpen={isPrivacySecurityOpen}
+        onClose={() => setIsPrivacySecurityOpen(false)}
+      />
+
+      {/* Help & Support Guide Modal */}
+      <HelpSupportModal
+        isOpen={isHelpSupportOpen}
+        onClose={() => setIsHelpSupportOpen(false)}
+      />
+
+      {/* Terms & Privacy Modal */}
+      <TermsPrivacyModal
+        isOpen={isTermsPrivacyOpen}
+        onClose={() => setIsTermsPrivacyOpen(false)}
+      />
+
       {/* Educational Platform Footer */}
       <footer className="bg-white border-t border-[#E6E9EF] py-6 text-center text-xs text-[#667085] font-sans">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -417,12 +510,27 @@ function AppContent() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-[#667085] font-mono text-[11px]">
-            <span>Adaptive Learner Model</span>
+          <div className="flex items-center gap-3 text-[#667085] font-mono text-[11px]">
+            <button
+              onClick={() => setIsPrivacySecurityOpen(true)}
+              className="hover:text-[#5B5CE2] transition-colors underline-offset-2 hover:underline cursor-pointer"
+            >
+              Privacy & Security
+            </button>
             <span>•</span>
-            <span>Prerequisite Concept Graph</span>
+            <button
+              onClick={() => setIsTermsPrivacyOpen(true)}
+              className="hover:text-[#5B5CE2] transition-colors underline-offset-2 hover:underline cursor-pointer"
+            >
+              Terms of Service
+            </button>
             <span>•</span>
-            <span>Misconception Diagnostics</span>
+            <button
+              onClick={() => setIsHelpSupportOpen(true)}
+              className="hover:text-[#5B5CE2] transition-colors underline-offset-2 hover:underline cursor-pointer"
+            >
+              Help & Shortcuts
+            </button>
           </div>
         </div>
       </footer>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { HealthInfo, LearnerProfile } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { AccountMenu } from './AccountMenu';
 
 interface NavbarProps {
   activeTab: string;
@@ -29,6 +30,13 @@ interface NavbarProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   onOpenMyProfile?: () => void;
+  onOpenSettings?: () => void;
+  onOpenPreferences?: () => void;
+  onOpenNotifications?: () => void;
+  onOpenPrivacySecurity?: () => void;
+  onOpenHelpSupport?: () => void;
+  onOpenTermsPrivacy?: () => void;
+  unreadNotificationsCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -39,10 +47,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   onReset,
   onRefresh,
   isRefreshing = false,
-  onOpenMyProfile
+  onOpenMyProfile,
+  onOpenSettings,
+  onOpenPreferences,
+  onOpenNotifications,
+  onOpenPrivacySecurity,
+  onOpenHelpSupport,
+  onOpenTermsPrivacy,
+  unreadNotificationsCount = 0
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, openAuthModal, startDemoSession } = useAuth();
+  const { user, isAuthenticated, openAuthModal, startDemoSession, logout } = useAuth();
 
   const isAi = healthInfo?.engine?.is_ai_configured;
   const engineModel = healthInfo?.engine?.model || (isAi ? 'Gemini 2.5 Flash' : 'Deterministic Fallback');
@@ -70,6 +85,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   const handleNavClick = (tabId: string) => {
+    // If visitor is unauthenticated and not in demo mode, protect student tabs
+    if (!isAuthenticated && !user && tabId !== 'dashboard' && tabId !== 'teacher') {
+      openAuthModal('login');
+      return;
+    }
     setActiveTab(tabId);
     setMobileMenuOpen(false);
   };
@@ -171,18 +191,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>Learning Profile</span>
                   </button>
                 )}
-                <button
-                  onClick={() => openAuthModal('profile')}
-                  className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-xs text-indigo-900 transition-colors shadow-xs"
-                  title={`Signed in as ${user.full_name} (${user.email})`}
-                >
-                  <div className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-[10px]">
-                    {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                  <span className="font-semibold hidden md:inline truncate max-w-[120px]">
-                    {user.full_name}
-                  </span>
-                </button>
+                <AccountMenu
+                  user={user}
+                  unreadNotificationsCount={unreadNotificationsCount}
+                  isRefreshing={isRefreshing}
+                  onOpenProfile={() => onOpenMyProfile ? onOpenMyProfile() : openAuthModal('profile')}
+                  onOpenSettings={() => onOpenSettings && onOpenSettings()}
+                  onOpenPreferences={() => onOpenPreferences && onOpenPreferences()}
+                  onOpenNotifications={() => onOpenNotifications && onOpenNotifications()}
+                  onRefreshDashboard={() => onRefresh && onRefresh()}
+                  onOpenPrivacySecurity={() => onOpenPrivacySecurity && onOpenPrivacySecurity()}
+                  onOpenHelpSupport={() => onOpenHelpSupport && onOpenHelpSupport()}
+                  onOpenTermsPrivacy={() => onOpenTermsPrivacy && onOpenTermsPrivacy()}
+                  onLogout={logout}
+                />
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
