@@ -75,11 +75,11 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
 
   const initials = user.full_name
     ? user.full_name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .substring(0, 2)
-        .toUpperCase()
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase()
     : 'U';
 
   const handleAction = (callback: () => void) => {
@@ -116,9 +116,8 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
           aria-expanded={isOpen}
           aria-haspopup="true"
           aria-label="Account and application options"
-          className={`p-1.5 rounded-full transition-colors ${
-            isOpen ? 'bg-[#EEF0FD] text-[#5B5CE2]' : 'text-[#667085] hover:text-[#172033] hover:bg-slate-100'
-          }`}
+          className={`p-1.5 rounded-full transition-colors ${isOpen ? 'bg-[#EEF0FD] text-[#5B5CE2]' : 'text-[#667085] hover:text-[#172033] hover:bg-slate-100'
+            }`}
         >
           <MoreVertical className="w-4 h-4" />
         </button>

@@ -358,21 +358,19 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
             <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-[#E6E9EF] text-xs font-medium">
               <button
                 onClick={() => setViewMode('real')}
-                className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-lg transition-all cursor-pointer ${
-                  viewMode === 'real'
+                className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-lg transition-all cursor-pointer ${viewMode === 'real'
                     ? 'bg-white text-[#172033] shadow-xs font-bold'
                     : 'text-[#667085] hover:text-[#172033]'
-                }`}
+                  }`}
               >
                 Live Class
               </button>
               <button
                 onClick={() => setViewMode('demo')}
-                className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-lg transition-all cursor-pointer ${
-                  viewMode === 'demo'
+                className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-lg transition-all cursor-pointer ${viewMode === 'demo'
                     ? 'bg-white text-[#172033] shadow-xs font-bold'
                     : 'text-[#667085] hover:text-[#172033]'
-                }`}
+                  }`}
               >
                 Sample Cohort
               </button>
@@ -391,8 +389,8 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
               {isAggregating
                 ? 'Aggregating...'
                 : viewMode === 'demo'
-                ? 'Refresh Demo Aggregation'
-                : 'Recalculate Class Aggregation'}
+                  ? 'Refresh Demo Aggregation'
+                  : 'Recalculate Class Aggregation'}
             </span>
           </button>
         </div>

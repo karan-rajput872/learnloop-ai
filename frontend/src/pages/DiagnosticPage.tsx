@@ -255,11 +255,10 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                         {att.score} / {att.total_questions}
                       </td>
                       <td className="py-3 px-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full font-mono text-[11px] font-bold ${
-                          att.percentage >= 80 ? 'bg-teal-50 text-teal-700 border border-teal-200' :
-                          att.percentage >= 50 ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                          'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}>
+                        <span className={`inline-flex px-2 py-0.5 rounded-full font-mono text-[11px] font-bold ${att.percentage >= 80 ? 'bg-teal-50 text-teal-700 border border-teal-200' :
+                            att.percentage >= 50 ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                              'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}>
                           {att.percentage}%
                         </span>
                       </td>
@@ -351,10 +350,9 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
           {/* Card 2: Accuracy */}
           <div className="bg-white rounded-2xl border border-[#E6E9EF] p-3.5 sm:p-5 shadow-card space-y-1">
             <div className="text-[11px] sm:text-xs font-mono text-[#667085] uppercase">Accuracy</div>
-            <div className={`text-2xl sm:text-3xl font-extrabold font-sans ${
-              result.percentage >= 80 ? 'text-teal-700' :
-              result.percentage >= 50 ? 'text-amber-700' : 'text-rose-600'
-            }`}>
+            <div className={`text-2xl sm:text-3xl font-extrabold font-sans ${result.percentage >= 80 ? 'text-teal-700' :
+                result.percentage >= 50 ? 'text-amber-700' : 'text-rose-600'
+              }`}>
               {result.percentage}%
             </div>
             <div className="text-[10px] sm:text-[11px] text-[#667085] leading-tight">Calibrated score percentage</div>
@@ -558,11 +556,10 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                         {c.calibrated_mastery}%
                       </td>
                       <td className="py-3 px-3 text-right">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold ${
-                          isStrong ? 'bg-teal-50 text-teal-700 border border-teal-200' :
-                          isDeveloping ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                          'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold ${isStrong ? 'bg-teal-50 text-teal-700 border border-teal-200' :
+                            isDeveloping ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                              'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}>
                           {isStrong ? 'Strong' : isDeveloping ? 'Developing' : 'Needs Improvement'}
                         </span>
                       </td>
@@ -675,31 +672,28 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
           <span className="text-[#667085] mr-2">Filter View:</span>
           <button
             onClick={() => { setReviewFilter('all'); setReviewIndex(0); }}
-            className={`px-3 py-1 rounded-lg transition-colors ${
-              reviewFilter === 'all'
+            className={`px-3 py-1 rounded-lg transition-colors ${reviewFilter === 'all'
                 ? 'bg-[#5B5CE2] text-white font-bold'
                 : 'bg-slate-100 text-[#667085] hover:bg-slate-200'
-            }`}
+              }`}
           >
             All Questions ({allReviews.length})
           </button>
           <button
             onClick={() => { setReviewFilter('correct'); setReviewIndex(0); }}
-            className={`px-3 py-1 rounded-lg transition-colors ${
-              reviewFilter === 'correct'
+            className={`px-3 py-1 rounded-lg transition-colors ${reviewFilter === 'correct'
                 ? 'bg-teal-600 text-white font-bold'
                 : 'bg-teal-50 text-teal-700 hover:bg-teal-100'
-            }`}
+              }`}
           >
             Correct ({correctCount})
           </button>
           <button
             onClick={() => { setReviewFilter('incorrect'); setReviewIndex(0); }}
-            className={`px-3 py-1 rounded-lg transition-colors ${
-              reviewFilter === 'incorrect'
+            className={`px-3 py-1 rounded-lg transition-colors ${reviewFilter === 'incorrect'
                 ? 'bg-rose-600 text-white font-bold'
                 : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-            }`}
+              }`}
           >
             Incorrect ({incorrectCount})
           </button>
@@ -719,15 +713,13 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                 <button
                   key={q.question_id}
                   onClick={() => setReviewIndex(idx)}
-                  className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    isActive
+                  className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold flex items-center gap-1.5 transition-all ${isActive
                       ? 'ring-2 ring-offset-2 ring-[#5B5CE2] shadow-sm'
                       : 'opacity-85 hover:opacity-100'
-                  } ${
-                    q.is_correct
+                    } ${q.is_correct
                       ? 'bg-teal-50 text-teal-700 border border-teal-300'
                       : 'bg-rose-50 text-rose-700 border border-rose-300'
-                  }`}
+                    }`}
                 >
                   <span>Q{idx + 1}</span>
                   {q.is_correct ? (
@@ -755,11 +747,10 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                 </span>
               </div>
 
-              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-mono text-xs font-bold ${
-                activeReview.is_correct
+              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-mono text-xs font-bold ${activeReview.is_correct
                   ? 'bg-teal-50 text-teal-700 border border-teal-200'
                   : 'bg-rose-50 text-rose-700 border border-rose-200'
-              }`}>
+                }`}>
                 {activeReview.is_correct ? (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
@@ -817,12 +808,11 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                     key={opt.id}
                     className={`w-full p-3.5 rounded-xl border text-xs sm:text-sm font-sans flex items-start gap-3 ${borderBg}`}
                   >
-                    <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
-                      isStudentChoice && activeReview.is_correct ? 'bg-teal-600 text-white' :
-                      isStudentChoice && !activeReview.is_correct ? 'bg-rose-600 text-white' :
-                      isCorrectOption ? 'bg-emerald-700 text-white' :
-                      'bg-white text-[#667085] border border-[#E6E9EF]'
-                    }`}>
+                    <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${isStudentChoice && activeReview.is_correct ? 'bg-teal-600 text-white' :
+                        isStudentChoice && !activeReview.is_correct ? 'bg-rose-600 text-white' :
+                          isCorrectOption ? 'bg-emerald-700 text-white' :
+                            'bg-white text-[#667085] border border-[#E6E9EF]'
+                      }`}>
                       {opt.id}
                     </span>
                     <span className="leading-snug pt-0.5 flex-1">{opt.text}</span>
@@ -934,22 +924,20 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
           <button
             type="button"
             onClick={() => loadQuestions('quick')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs transition-all ${
-              testMode === 'quick'
+            className={`px-3.5 py-1.5 rounded-xl text-xs transition-all ${testMode === 'quick'
                 ? 'bg-[#5B5CE2] text-white shadow-xs font-semibold'
                 : 'bg-white border border-[#E6E9EF] text-slate-600 hover:bg-slate-50 font-medium'
-            }`}
+              }`}
           >
             Quick Mode (6 Qs)
           </button>
           <button
             type="button"
             onClick={() => loadQuestions('comprehensive')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs transition-all ${
-              testMode === 'comprehensive'
+            className={`px-3.5 py-1.5 rounded-xl text-xs transition-all ${testMode === 'comprehensive'
                 ? 'bg-[#5B5CE2] text-white shadow-xs font-semibold'
                 : 'bg-white border border-[#E6E9EF] text-slate-600 hover:bg-slate-50 font-medium'
-            }`}
+              }`}
           >
             Comprehensive Mode (12 Qs)
           </button>
@@ -979,13 +967,12 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                 key={q.id}
                 type="button"
                 onClick={() => setCurrentIndex(idx)}
-                className={`w-8 h-8 sm:w-7 sm:h-7 min-w-[32px] min-h-[32px] rounded-lg font-mono text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
-                  isCurrent
+                className={`w-8 h-8 sm:w-7 sm:h-7 min-w-[32px] min-h-[32px] rounded-lg font-mono text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${isCurrent
                     ? 'ring-2 ring-[#5B5CE2] bg-[#EEF0FD] text-[#5B5CE2]'
                     : isAnswered
-                    ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                }`}
+                      ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}
                 title={`Jump to Question ${idx + 1}`}
               >
                 {idx + 1}
@@ -1021,15 +1008,13 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                   key={opt.id}
                   type="button"
                   onClick={() => handleSelectOption(opt.id)}
-                  className={`w-full text-left p-3.5 min-h-[48px] rounded-xl border text-xs sm:text-sm font-sans flex items-start gap-3 transition-all cursor-pointer ${
-                    selected
+                  className={`w-full text-left p-3.5 min-h-[48px] rounded-xl border text-xs sm:text-sm font-sans flex items-start gap-3 transition-all cursor-pointer ${selected
                       ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] shadow-xs'
                       : 'bg-slate-50/70 hover:bg-slate-100/70 border-[#E6E9EF] text-slate-800'
-                  }`}
+                    }`}
                 >
-                  <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
-                    selected ? 'bg-[#5B5CE2] text-white' : 'bg-white text-[#667085] border border-[#E6E9EF]'
-                  }`}>
+                  <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${selected ? 'bg-[#5B5CE2] text-white' : 'bg-white text-[#667085] border border-[#E6E9EF]'
+                    }`}>
                     {opt.id}
                   </span>
                   <span className="leading-snug pt-0.5">{opt.text}</span>
