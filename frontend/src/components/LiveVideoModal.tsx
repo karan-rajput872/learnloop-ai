@@ -351,11 +351,10 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                     <button
                       type="button"
                       onClick={toggleMirror}
-                      className={`p-1.5 rounded-lg backdrop-blur-md border text-xs transition-colors cursor-pointer ${
-                        isMirrored
+                      className={`p-1.5 rounded-lg backdrop-blur-md border text-xs transition-colors cursor-pointer ${isMirrored
                           ? 'bg-indigo-600/80 border-indigo-400 text-white'
                           : 'bg-black/60 border-white/20 text-white/80 hover:text-white'
-                      }`}
+                        }`}
                       title={isMirrored ? 'Disable Mirror View (natural reading)' : 'Enable Mirror View'}
                     >
                       <FlipHorizontal className="w-4 h-4" />

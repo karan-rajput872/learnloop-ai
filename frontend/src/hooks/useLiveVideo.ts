@@ -194,15 +194,15 @@ export function useLiveVideo(): UseLiveVideoReturn {
           audio: false,
           video: chosenDeviceId
             ? {
-                deviceId: { exact: chosenDeviceId },
-                width: { ideal: 1280, max: 1920 },
-                height: { ideal: 720, max: 1080 }
-              }
+              deviceId: { exact: chosenDeviceId },
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 }
+            }
             : {
-                facingMode: 'user',
-                width: { ideal: 1280, max: 1920 },
-                height: { ideal: 720, max: 1080 }
-              }
+              facingMode: 'user',
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 }
+            }
         };
 
         activeStream = await navigator.mediaDevices.getUserMedia(constraints);

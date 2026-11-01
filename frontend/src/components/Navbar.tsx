@@ -143,13 +143,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <span
                   className={`w-2 h-2 rounded-full ${profile.overall_mastery >= 75 ? 'bg-teal-500' :
-                      profile.overall_mastery >= 45 ? 'bg-amber-500' : 'bg-[#5B5CE2]'
+                    profile.overall_mastery >= 45 ? 'bg-amber-500' : 'bg-[#5B5CE2]'
                     }`}
                 />
                 <span className="text-[#667085] hidden md:inline">Mastery:</span>
                 <span
                   className={`font-bold ${profile.overall_mastery >= 75 ? 'text-teal-700' :
-                      profile.overall_mastery >= 45 ? 'text-amber-700' : 'text-[#5B5CE2]'
+                    profile.overall_mastery >= 45 ? 'text-amber-700' : 'text-[#5B5CE2]'
                     }`}
                 >
                   {profile.overall_mastery}%
@@ -292,8 +292,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => handleNavClick(item.id)}
                 aria-current={isActive ? 'page' : undefined}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sans whitespace-nowrap transition-all shrink-0 ${isActive
-                    ? 'bg-[#5B5CE2] text-white font-semibold shadow-xs'
-                    : 'text-[#667085] hover:text-[#172033] hover:bg-white border border-transparent font-medium'
+                  ? 'bg-[#5B5CE2] text-white font-semibold shadow-xs'
+                  : 'text-[#667085] hover:text-[#172033] hover:bg-white border border-transparent font-medium'
                   }`}
               >
                 <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-[#667085]'}`} />
@@ -319,8 +319,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => handleNavClick(item.id)}
                   aria-current={isActive ? 'page' : undefined}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-sans transition-colors ${isActive
-                      ? 'bg-[#EEF0FD] text-[#5B5CE2] font-semibold border border-[#C7D2FE]'
-                      : 'text-[#172033] hover:bg-slate-50'
+                    ? 'bg-[#EEF0FD] text-[#5B5CE2] font-semibold border border-[#C7D2FE]'
+                    : 'text-[#172033] hover:bg-slate-50'
                     }`}
                 >
                   <div className="flex items-center gap-3">
