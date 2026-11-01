@@ -12,10 +12,10 @@ def check_live():
             for js in js_files:
                 r_js = httpx.get('https://learnloop-ai-one.vercel.app' + js, timeout=15.0)
                 has_landing = "Don't just learn the answers" in r_js.text or "Master the concepts" in r_js.text
-                has_menu = "Account and application options" in r_js.text
-                print(f"  -> {js}: has_landing={has_landing}, has_menu={has_menu}")
-                if has_landing and has_menu:
-                    print("\n SUCCESS! Vercel has deployed the new build!")
+                has_live_video = "Explore Live Video" in r_js.text
+                print(f"  -> {js}: has_landing={has_landing}, has_live_video={has_live_video}")
+                if has_landing and has_live_video:
+                    print("\n SUCCESS! Vercel has deployed the Explore Live Video build!")
                     return True
         except Exception as e:
             print(f"[Attempt {attempt}] Error: {e}")
