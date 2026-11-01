@@ -254,7 +254,7 @@ export const OwnerConsolePage: React.FC = () => {
     if (window.confirm('Sign out of the Private Owner Console?')) {
       try {
         await authService.logout();
-      } catch {}
+      } catch { }
       setAuthToken(null);
       setOwnerUser(null);
       setAuthStatus('unauthenticated');
@@ -511,11 +511,10 @@ export const OwnerConsolePage: React.FC = () => {
           <nav className="flex items-center gap-1 sm:gap-2 text-xs font-medium min-w-max pb-1">
             <button
               onClick={() => setActiveSection('overview')}
-              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${
-                activeSection === 'overview'
+              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${activeSection === 'overview'
                   ? 'bg-indigo-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
+                }`}
             >
               <Activity className="w-3.5 h-3.5" />
               <span>Overview</span>
@@ -523,11 +522,10 @@ export const OwnerConsolePage: React.FC = () => {
 
             <button
               onClick={() => setActiveSection('users')}
-              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${
-                activeSection === 'users'
+              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${activeSection === 'users'
                   ? 'bg-indigo-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
+                }`}
             >
               <Users className="w-3.5 h-3.5" />
               <span>User Directory</span>
@@ -535,11 +533,10 @@ export const OwnerConsolePage: React.FC = () => {
 
             <button
               onClick={() => setActiveSection('logins')}
-              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${
-                activeSection === 'logins'
+              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${activeSection === 'logins'
                   ? 'bg-indigo-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
+                }`}
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Login Activity</span>
@@ -547,11 +544,10 @@ export const OwnerConsolePage: React.FC = () => {
 
             <button
               onClick={() => setActiveSection('learning')}
-              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${
-                activeSection === 'learning'
+              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${activeSection === 'learning'
                   ? 'bg-indigo-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
+                }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
               <span>Learning Activity</span>
@@ -559,11 +555,10 @@ export const OwnerConsolePage: React.FC = () => {
 
             <button
               onClick={() => setActiveSection('engagement')}
-              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${
-                activeSection === 'engagement'
+              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${activeSection === 'engagement'
                   ? 'bg-indigo-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
+                }`}
             >
               <TrendingUp className="w-3.5 h-3.5" />
               <span>Retention & Cohorts</span>
@@ -571,11 +566,10 @@ export const OwnerConsolePage: React.FC = () => {
 
             <button
               onClick={() => setActiveSection('exports')}
-              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${
-                activeSection === 'exports'
+              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${activeSection === 'exports'
                   ? 'bg-indigo-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
+                }`}
             >
               <Download className="w-3.5 h-3.5" />
               <span>Reports & CSV</span>
@@ -583,11 +577,10 @@ export const OwnerConsolePage: React.FC = () => {
 
             <button
               onClick={() => setActiveSection('audit')}
-              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${
-                activeSection === 'audit'
+              className={`flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg transition-all cursor-pointer ${activeSection === 'audit'
                   ? 'bg-indigo-600 text-white font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
+                }`}
             >
               <FileText className="w-3.5 h-3.5" />
               <span>Security & Audit</span>
@@ -878,11 +871,10 @@ export const OwnerConsolePage: React.FC = () => {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5">
-                              <span className={`inline-flex px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${
-                                u.role === 'owner' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/30' :
-                                u.role === 'teacher' ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' :
-                                'bg-slate-800 text-slate-300 border border-slate-700'
-                              }`}>
+                              <span className={`inline-flex px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${u.role === 'owner' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/30' :
+                                  u.role === 'teacher' ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' :
+                                    'bg-slate-800 text-slate-300 border border-slate-700'
+                                }`}>
                                 {u.role}
                               </span>
                               <span className="text-[11px] text-slate-400 font-mono">({u.auth_provider})</span>
@@ -898,9 +890,8 @@ export const OwnerConsolePage: React.FC = () => {
                             {u.last_activity_at ? u.last_activity_at.replace('T', ' ').slice(0, 19) : (u.last_login_at ? u.last_login_at.replace('T', ' ').slice(0, 19) : '—')}
                           </td>
                           <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                              u.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${u.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              }`}>
                               {u.is_active ? 'Active' : 'Disabled'}
                             </span>
                           </td>
@@ -1048,9 +1039,8 @@ export const OwnerConsolePage: React.FC = () => {
                               <div className="text-[11px] text-slate-500 font-mono">provider: {ev.auth_provider}</div>
                             </td>
                             <td className="py-3 px-4">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                                ev.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                              }`}>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${ev.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                }`}>
                                 {ev.status}
                               </span>
                               {ev.failure_reason && (
@@ -1060,8 +1050,8 @@ export const OwnerConsolePage: React.FC = () => {
                             <td className="py-3 px-4 text-slate-300">
                               <div className="flex items-center gap-1.5">
                                 {ev.device_category === 'mobile' ? <Smartphone className="w-3.5 h-3.5 text-indigo-400" /> :
-                                 ev.device_category === 'tablet' ? <Tablet className="w-3.5 h-3.5 text-amber-400" /> :
-                                 <Laptop className="w-3.5 h-3.5 text-teal-400" />}
+                                  ev.device_category === 'tablet' ? <Tablet className="w-3.5 h-3.5 text-amber-400" /> :
+                                    <Laptop className="w-3.5 h-3.5 text-teal-400" />}
                                 <span className="font-medium capitalize">{ev.device_category || 'Desktop'}</span>
                                 <span className="text-slate-500">·</span>
                                 <span className="text-slate-400">{ev.browser || 'Browser'} ({ev.os || 'OS'})</span>
@@ -1151,11 +1141,10 @@ export const OwnerConsolePage: React.FC = () => {
                             <td className="py-2.5 px-3 font-mono text-slate-400 text-[11px]">{tc.concept_id}</td>
                             <td className="py-2.5 px-3 font-mono font-bold text-slate-200">{tc.attempts_count}</td>
                             <td className="py-2.5 px-3">
-                              <span className={`inline-flex px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${
-                                tc.accuracy >= 70 ? 'bg-emerald-500/10 text-emerald-400' :
-                                tc.accuracy >= 40 ? 'bg-amber-500/10 text-amber-400' :
-                                'bg-rose-500/10 text-rose-400'
-                              }`}>
+                              <span className={`inline-flex px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${tc.accuracy >= 70 ? 'bg-emerald-500/10 text-emerald-400' :
+                                  tc.accuracy >= 40 ? 'bg-amber-500/10 text-amber-400' :
+                                    'bg-rose-500/10 text-rose-400'
+                                }`}>
                                 {tc.accuracy}%
                               </span>
                             </td>
@@ -1252,32 +1241,29 @@ export const OwnerConsolePage: React.FC = () => {
                             <td className="py-3 px-3 text-emerald-400 font-bold">100%</td>
                             <td className="py-3 px-3">
                               {c.w1 !== null ? (
-                                <span className={`inline-flex px-2 py-0.5 rounded font-bold ${
-                                  c.w1 >= 40 ? 'bg-emerald-500/20 text-emerald-300' :
-                                  c.w1 >= 20 ? 'bg-amber-500/20 text-amber-300' :
-                                  'bg-slate-800 text-slate-400'
-                                }`}>
+                                <span className={`inline-flex px-2 py-0.5 rounded font-bold ${c.w1 >= 40 ? 'bg-emerald-500/20 text-emerald-300' :
+                                    c.w1 >= 20 ? 'bg-amber-500/20 text-amber-300' :
+                                      'bg-slate-800 text-slate-400'
+                                  }`}>
                                   {c.w1}%
                                 </span>
                               ) : <span className="text-slate-600">—</span>}
                             </td>
                             <td className="py-3 px-3">
                               {c.w2 !== null ? (
-                                <span className={`inline-flex px-2 py-0.5 rounded font-bold ${
-                                  c.w2 >= 30 ? 'bg-emerald-500/20 text-emerald-300' :
-                                  c.w2 >= 15 ? 'bg-amber-500/20 text-amber-300' :
-                                  'bg-slate-800 text-slate-400'
-                                }`}>
+                                <span className={`inline-flex px-2 py-0.5 rounded font-bold ${c.w2 >= 30 ? 'bg-emerald-500/20 text-emerald-300' :
+                                    c.w2 >= 15 ? 'bg-amber-500/20 text-amber-300' :
+                                      'bg-slate-800 text-slate-400'
+                                  }`}>
                                   {c.w2}%
                                 </span>
                               ) : <span className="text-slate-600">—</span>}
                             </td>
                             <td className="py-3 px-3">
                               {c.w3 !== null ? (
-                                <span className={`inline-flex px-2 py-0.5 rounded font-bold ${
-                                  c.w3 >= 20 ? 'bg-emerald-500/20 text-emerald-300' :
-                                  'bg-slate-800 text-slate-400'
-                                }`}>
+                                <span className={`inline-flex px-2 py-0.5 rounded font-bold ${c.w3 >= 20 ? 'bg-emerald-500/20 text-emerald-300' :
+                                    'bg-slate-800 text-slate-400'
+                                  }`}>
                                   {c.w3}%
                                 </span>
                               ) : <span className="text-slate-600">—</span>}
@@ -1471,9 +1457,8 @@ export const OwnerConsolePage: React.FC = () => {
                           </td>
                           <td className="py-3 px-4 font-mono text-slate-400 text-[11px]">{al.target || '—'}</td>
                           <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                              al.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${al.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              }`}>
                               {al.status}
                             </span>
                           </td>

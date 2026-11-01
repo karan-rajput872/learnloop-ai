@@ -227,3 +227,4 @@ ANALYTICS_RETENTION_DAYS=90
   - Option A: Mount a **Render Persistent Disk** to `/var/data` and configure `DATABASE_PATH=/var/data/learnloop.db`.
   - Option B: Migrate connection string to a managed **Render PostgreSQL** or Supabase instance by setting `DATABASE_URL=postgresql://user:pass@host/dbname`. The SQL queries use ANSI-compliant syntax compatible with SQLite and Postgres.
 - **Backup Recommendation:** Schedule a daily snapshot or cron script executing `sqlite3 learnloop.db ".backup '/backup/learnloop_$(date +%F).db'"` to ensure safe historical archiving.
+
