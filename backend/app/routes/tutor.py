@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
-from app.models.schemas import SpeechInputPayload
+from app.models.schemas import SpeechInputPayload, FrameAnalysisPayload, FrameAnalysisResponse
 from app.agent.tutor_agent import tutor_agent
 from app.agent.gemini_service import gemini_tutor
 from app.storage.db import storage
@@ -144,6 +144,52 @@ def tutor_action(
         "message_id": msg_id,
         "formatted_content": action_content
     }
+
+@router.post("/analyze-frame", response_model=FrameAnalysisResponse)
+async def analyze_frame(
+    payload: FrameAnalysisPayload,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
+    """
+    Explore Live Video: Multimodal visual inspection of student whiteboard sketches,
+    recursion trees, BST diagrams, and code snippets powered by Gemini 2.5 Flash.
+    """
+    effective_id = resolve_student_id(user, payload.student_id)
+    profile = storage.get_learner_profile(effective_id)
+    learner_context = {
+        "learner_category": profile.get("target_exam", "Student"),
+        "overall_mastery": profile.get("overall_mastery", 0.0),
+        "weakest_concept": profile.get("weakest_concept", "binary_trees")
+    } if profile else {}
+
+    result = await gemini_tutor.analyze_video_frame(
+        image_base64=payload.image_base64,
+        concept_id=payload.concept_id,
+        query=payload.query,
+        learner_context=learner_context
+    )
+
+    # Gamification: Record live video learning activity (3 minutes)
+    try:
+        from app.gamification.service import gamification_service
+        gamification_service.record_activity(
+            student_id=effective_id,
+            activity_type="live_video_analysis",
+            qualifying=True,
+            learning_minutes=3,
+            details={"concept_id": payload.concept_id, "is_ai_powered": result.get("is_ai_powered")}
+        )
+    except Exception as err:
+        print("Gamification video analysis activity error:", err)
+
+    return result
+
+@router.post("/live-video/analyze", response_model=FrameAnalysisResponse)
+async def analyze_live_video(
+    payload: FrameAnalysisPayload,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
+    return await analyze_frame(payload, user)
 
 @router.get("/revision/tasks")
 def list_revision_tasks(

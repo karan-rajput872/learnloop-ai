@@ -30,6 +30,7 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { PrivacySecurityModal } from './components/PrivacySecurityModal';
 import { HelpSupportModal } from './components/HelpSupportModal';
 import { TermsPrivacyModal } from './components/TermsPrivacyModal';
+import { LiveVideoModal } from './components/LiveVideoModal';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -46,6 +47,7 @@ function AppContent() {
   const [isPrivacySecurityOpen, setIsPrivacySecurityOpen] = useState<boolean>(false);
   const [isHelpSupportOpen, setIsHelpSupportOpen] = useState<boolean>(false);
   const [isTermsPrivacyOpen, setIsTermsPrivacyOpen] = useState<boolean>(false);
+  const [isLiveVideoOpen, setIsLiveVideoOpen] = useState<boolean>(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
 
   const [diagnosticInitialMode, setDiagnosticInitialMode] = useState<'quick' | 'comprehensive'>('comprehensive');
@@ -204,6 +206,7 @@ function AppContent() {
         onOpenPrivacySecurity={() => setIsPrivacySecurityOpen(true)}
         onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
         onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
+        onOpenLiveVideo={() => setIsLiveVideoOpen(true)}
         unreadNotificationsCount={unreadNotificationsCount}
       />
 
@@ -240,6 +243,7 @@ function AppContent() {
                 onOpenLogin={() => openAuthModal('login')}
                 onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
                 onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
+                onOpenLiveVideo={() => setIsLiveVideoOpen(true)}
               />
             ) : (
               <>
@@ -414,7 +418,7 @@ function AppContent() {
         )}
 
         {/* Tab 5: AI Tutor */}
-        {activeTab === 'tutor' && <TutorChatPage />}
+        {activeTab === 'tutor' && <TutorChatPage onOpenLiveVideo={() => setIsLiveVideoOpen(true)} />}
 
         {/* Tab 6: Spaced Revision */}
         {activeTab === 'revision' && (
@@ -496,6 +500,14 @@ function AppContent() {
       <TermsPrivacyModal
         isOpen={isTermsPrivacyOpen}
         onClose={() => setIsTermsPrivacyOpen(false)}
+      />
+
+      {/* Explore Live Video Visual Problem Solver Modal */}
+      <LiveVideoModal
+        isOpen={isLiveVideoOpen}
+        onClose={() => setIsLiveVideoOpen(false)}
+        initialConceptId={focusedConceptId || 'binary_trees'}
+        studentId={user?.student_id}
       />
 
       {/* Educational Platform Footer */}

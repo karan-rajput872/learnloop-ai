@@ -310,4 +310,17 @@ export interface UserNotification {
   created_at: string;
 }
 
+export type CameraPermissionState = 'prompt' | 'granted' | 'denied' | 'unsupported' | 'error' | 'not-found';
+
+export interface LiveVideoAnalysisResult {
+  analysis: string;
+  detected_concept: string;
+  concept_name: string;
+  confidence: number;
+  feedback_type: 'socratic_hint' | 'correction' | 'worked_example' | 'confirmation';
+  is_ai_powered: boolean;
+  timestamp: string;
+}
+
+
 

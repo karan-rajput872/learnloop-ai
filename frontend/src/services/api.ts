@@ -11,7 +11,8 @@ import {
   DiagnosticAttemptSummary,
   OnboardingProfile,
   PersonalizedLearningPath,
-  ProficiencyInfo
+  ProficiencyInfo,
+  LiveVideoAnalysisResult
 } from '../types';
 
 // Always use same-origin '/api' in browser environment.
@@ -352,5 +353,24 @@ export const api = {
       body: JSON.stringify({})
     });
     return await handleResponse<any>(res, 'Failed to mark notifications read');
+  },
+
+  async analyzeVideoFrame(
+    imageBase64: string,
+    conceptId = 'binary_trees',
+    query?: string,
+    studentId?: string
+  ): Promise<LiveVideoAnalysisResult> {
+    const res = await fetchWithTimeout(`${API_BASE}/tutor/analyze-frame`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_base64: imageBase64,
+        concept_id: conceptId,
+        query: query,
+        student_id: studentId || 'student_default'
+      })
+    });
+    return await handleResponse<LiveVideoAnalysisResult>(res, 'Failed to analyze video frame');
   }
 };

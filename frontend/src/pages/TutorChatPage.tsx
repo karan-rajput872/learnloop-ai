@@ -14,8 +14,13 @@ import {
   Code,
   Brain,
   Smile,
-  Loader2
+  Loader2,
+  Camera
 } from 'lucide-react';
+
+interface TutorChatPageProps {
+  onOpenLiveVideo?: () => void;
+}
 
 interface ChatMessage {
   id: string;
@@ -46,7 +51,7 @@ const DSA_CONCEPT_OPTIONS = [
   { id: 'graphs', name: 'Graphs' }
 ];
 
-export const TutorChatPage: React.FC = () => {
+export const TutorChatPage: React.FC<TutorChatPageProps> = ({ onOpenLiveVideo }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'init_1',
@@ -150,8 +155,21 @@ export const TutorChatPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Concept Selector for Quick Socratic Actions */}
-        <div className="flex items-center gap-2 bg-white border border-[#E6E9EF] p-2 rounded-xl text-xs font-mono shadow-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          {onOpenLiveVideo && (
+            <button
+              type="button"
+              onClick={onOpenLiveVideo}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-[#5B5CE2] to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition-all transform hover:scale-105 cursor-pointer"
+              title="Inspect handwritten code, diagrams, or whiteboard sketches using your camera"
+            >
+              <Camera className="w-3.5 h-3.5 text-indigo-200" />
+              <span>Explore Live Video</span>
+            </button>
+          )}
+
+          {/* Concept Selector for Quick Socratic Actions */}
+          <div className="flex items-center gap-2 bg-white border border-[#E6E9EF] p-2 rounded-xl text-xs font-mono shadow-xs">
           <span className="text-[#667085]">Focus Topic:</span>
           <select
             value={activeConcept}
@@ -162,6 +180,7 @@ export const TutorChatPage: React.FC = () => {
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
+          </div>
         </div>
       </div>
 

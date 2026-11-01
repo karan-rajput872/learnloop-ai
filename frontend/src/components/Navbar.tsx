@@ -15,7 +15,8 @@ import {
   User as UserIcon,
   LogIn,
   Award,
-  Sparkles
+  Sparkles,
+  Camera
 } from 'lucide-react';
 import { HealthInfo, LearnerProfile } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +30,7 @@ interface NavbarProps {
   onReset: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  onOpenLiveVideo?: () => void;
   onOpenMyProfile?: () => void;
   onOpenSettings?: () => void;
   onOpenPreferences?: () => void;
@@ -54,6 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPrivacySecurity,
   onOpenHelpSupport,
   onOpenTermsPrivacy,
+  onOpenLiveVideo,
   unreadNotificationsCount = 0
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -172,7 +175,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
 
-            {/* 3. Account / User Profile Controls */}
+            {/* 3. Explore Live Video Button */}
+            {onOpenLiveVideo && (
+              <button
+                type="button"
+                onClick={onOpenLiveVideo}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#5B5CE2] to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition-all transform hover:scale-105 cursor-pointer"
+                title="Launch Live Video Socratic Problem Solver (Gemini 2.5 Flash Vision)"
+              >
+                <Camera className="w-3.5 h-3.5 text-indigo-200" />
+                <span className="hidden sm:inline">Explore Live Video</span>
+                <span className="sm:hidden">Live Video</span>
+              </button>
+            )}
+
+            {/* 4. Account / User Profile Controls */}
             {isAuthenticated && user ? (
               <div className="flex items-center gap-1.5">
                 {user.is_demo && (

@@ -14,13 +14,15 @@ import {
   Check,
   Layers,
   HelpCircle,
-  FileText
+  FileText,
+  Camera
 } from 'lucide-react';
 
 interface LandingPageProps {
   onStartDemo: () => void;
   onOpenRegister: () => void;
   onOpenLogin: () => void;
+  onOpenLiveVideo?: () => void;
   onOpenTermsPrivacy?: () => void;
   onOpenHelpSupport?: () => void;
 }
@@ -29,6 +31,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onStartDemo,
   onOpenRegister,
   onOpenLogin,
+  onOpenLiveVideo,
   onOpenTermsPrivacy,
   onOpenHelpSupport
 }) => {
@@ -75,6 +78,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <Sparkles className="w-4 h-4 text-amber-200" />
               <span>Explore Live Demo (No Signup)</span>
             </button>
+
+            {onOpenLiveVideo && (
+              <button
+                type="button"
+                onClick={onOpenLiveVideo}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#EEF0FD] hover:bg-indigo-100 text-[#5B5CE2] border border-[#C7D2FE] font-bold text-sm shadow-xs transition-all transform hover:-translate-y-0.5"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Explore Live Video</span>
+              </button>
+            )}
 
             <button
               onClick={onOpenLogin}

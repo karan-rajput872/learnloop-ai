@@ -144,11 +144,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             notifications.map((n) => (
               <div
                 key={n.id}
-                className={`p-3.5 rounded-2xl border transition-all ${
-                  n.is_read
+                className={`p-3.5 rounded-2xl border transition-all ${n.is_read
                     ? 'bg-white border-[#E6E9EF] text-slate-600'
                     : 'bg-[#FAFBFD] border-[#C7D2FE] text-[#172033] shadow-xs ring-1 ring-[#5B5CE2]/10'
-                }`}
+                  }`}
               >
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 shrink-0">

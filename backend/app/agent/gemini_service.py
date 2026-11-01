@@ -236,4 +236,156 @@ Respond as the LearnLoop AI tutor directly to the student:
         )
         return response
 
+    async def analyze_video_frame(
+        self,
+        image_base64: str,
+        concept_id: Optional[str] = "binary_trees",
+        query: Optional[str] = None,
+        learner_context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Multimodal live video frame inspection powered by Gemini 2.5 Flash.
+        Analyzes student whiteboard sketches, handwritten recursion trees,
+        BST invariant drawings, and code snippets in real time.
+        """
+        # Clean base64 data prefix if present
+        clean_base64 = image_base64
+        if "base64," in clean_base64:
+            clean_base64 = clean_base64.split("base64,")[1]
+        clean_base64 = clean_base64.strip()
+
+        cid = concept_id if concept_id in DSA_CONCEPTS else "binary_trees"
+        c_info = DSA_CONCEPTS.get(cid, DSA_CONCEPTS["binary_trees"])
+        c_name = c_info["name"]
+
+        user_prompt = query.strip() if query and query.strip() else f"Analyze this visual frame for {c_name} concepts, invariant correctness, or algorithmic edge cases."
+
+        if self.is_ai_configured() and len(clean_base64) > 100:
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+            system_prompt = (
+                f"You are LearnLoop AI, an elite adaptive computer science tutor specialized in Data Structures & Algorithms. "
+                f"The student is showing you their handwritten work, diagram, whiteboard drawing, or code via the Explore Live Video camera.\n"
+                f"Target Concept: {c_name} ({cid}).\n"
+                f"Student Question: '{user_prompt}'\n\n"
+                f"Pedagogical Guidelines:\n"
+                f"1. Examine the visual elements: nodes, pointers, arrows, recursion levels, or code syntax.\n"
+                f"2. Check for invariant violations (e.g. BST ordering, recursion base condition missing, stack LIFO order).\n"
+                f"3. Use the Socratic method: guide the student with targeted questions rather than just dictating solutions.\n"
+                f"4. Keep the response clear, structured with bullet points, and under 150 words."
+            )
+
+            try:
+                async with httpx.AsyncClient(timeout=12.0) as client:
+                    res = await client.post(
+                        endpoint,
+                        json={
+                            "contents": [
+                                {
+                                    "parts": [
+                                        {"text": system_prompt},
+                                        {
+                                            "inline_data": {
+                                                "mime_type": "image/jpeg",
+                                                "data": clean_base64
+                                            }
+                                        }
+                                    ]
+                                }
+                            ],
+                            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 600}
+                        }
+                    )
+                    if res.status_code == 200:
+                        data = res.json()
+                        text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        if text:
+                            # Classify feedback type based on content
+                            t_lower = text.lower()
+                            fb_type = "socratic_hint"
+                            if any(k in t_lower for k in ["violation", "incorrect", "mistake", "error", "misconception"]):
+                                fb_type = "correction"
+                            elif any(k in t_lower for k in ["example", "code snippet", "for instance"]):
+                                fb_type = "worked_example"
+                            elif any(k in t_lower for k in ["correct", "great job", "well done", "valid"]):
+                                fb_type = "confirmation"
+
+                            from datetime import datetime
+                            return {
+                                "analysis": text,
+                                "detected_concept": cid,
+                                "concept_name": c_name,
+                                "confidence": 0.95,
+                                "feedback_type": fb_type,
+                                "is_ai_powered": True,
+                                "timestamp": datetime.utcnow().isoformat()
+                            }
+            except Exception as e:
+                print(f"[GeminiTutorService] Multimodal video frame analysis fallback engaged: {e}")
+
+        return self.deterministic_frame_analysis(cid, user_prompt)
+
+    def deterministic_frame_analysis(self, concept_id: str, query: str) -> Dict[str, Any]:
+        """Deterministic visual analysis fallback for live video tutoring."""
+        c_info = DSA_CONCEPTS.get(concept_id, DSA_CONCEPTS["binary_trees"])
+        c_name = c_info["name"]
+
+        VISUAL_INSPECTION_GUIDES = {
+            "binary_trees": (
+                "[Visual BST Invariant Check]:\n"
+                "- Verify that all nodes in the left subtree are strictly less than the root.\n"
+                "- Verify that all nodes in the right subtree are strictly greater than the root.\n"
+                "- Common Pitfall: Having a node (e.g., 25) that is valid for its direct parent (30) but violates an ancestor constraint (root 20)."
+            ),
+            "recursion": (
+                "[Visual Recursion Tree Check]:\n"
+                "- Identify the leaf nodes of your tree: do they reach an explicit stopping condition (Base Case)?\n"
+                "- Check the call stack height: does each recursive branch shrink the input size towards the base case?\n"
+                "- Memory Tip: Each level of depth adds an active frame to the call stack."
+            ),
+            "stacks": (
+                "[Visual Stack Layout Check]:\n"
+                "- Confirm push and pop operations are strictly performed at the top pointer.\n"
+                "- Verify LIFO discipline: the most recently pushed element must be the first popped."
+            ),
+            "queues": (
+                "[Visual Queue Structure Check]:\n"
+                "- Verify enqueue happens at the rear pointer and dequeue happens at the front pointer.\n"
+                "- In circular queues, verify wrap-around index math using (rear + 1) % capacity."
+            ),
+            "linked_lists": (
+                "[Visual Pointer Sequence Check]:\n"
+                "- When inserting or deleting nodes, make sure you store curr.next before overwriting the link to avoid losing subsequent nodes.\n"
+                "- Check boundary cases: empty list (head == null) and single-node list."
+            ),
+            "graphs": (
+                "[Visual Graph Traversal Check]:\n"
+                "- Check for cycles: always maintain a visited set to avoid infinite traversal loops.\n"
+                "- For BFS, visualize level-by-level wavefronts using a queue; for DFS, trace depth via a stack/recursion."
+            )
+        }
+
+        guide = VISUAL_INSPECTION_GUIDES.get(
+            concept_id,
+            f"[Visual Inspection Guide for {c_name}]:\n"
+            f"- Verify core memory invariants and boundary conditions in your visual diagram or code.\n"
+            f"- Key focus: {c_info.get('description', 'Algorithmic structural rules')}."
+        )
+
+        from datetime import datetime
+        analysis_text = (
+            f"### LearnLoop Visual Problem Analysis: {c_name}\n\n"
+            f"{guide}\n\n"
+            f"**Socratic Prompt**: Take a look at your current visual setup. Does your diagram or code handle the base edge case when the input size is 0 or 1?"
+        )
+
+        return {
+            "analysis": analysis_text,
+            "detected_concept": concept_id,
+            "concept_name": c_name,
+            "confidence": 0.88,
+            "feedback_type": "socratic_hint",
+            "is_ai_powered": False,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
 gemini_tutor = GeminiTutorService()

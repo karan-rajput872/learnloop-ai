@@ -111,3 +111,18 @@ class TeacherDashboardData(BaseModel):
     class_misconception_distribution: List[Dict[str, Any]]
     students_requiring_intervention: List[TeacherStudentIntervention]
     sample_notice: str
+
+class FrameAnalysisPayload(BaseModel):
+    image_base64: str
+    concept_id: Optional[str] = "binary_trees"
+    query: Optional[str] = None
+    student_id: Optional[str] = "student_default"
+
+class FrameAnalysisResponse(BaseModel):
+    analysis: str
+    detected_concept: str
+    concept_name: str
+    confidence: float
+    feedback_type: str  # socratic_hint, correction, worked_example, confirmation
+    is_ai_powered: bool
+    timestamp: str
