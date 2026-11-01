@@ -41,6 +41,19 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
 
   // View modes: 'real' (authorized educators), 'demo' (safe synthetic cohort), 'restricted' (student access barrier)
   const [viewMode, setViewMode] = useState<'real' | 'demo' | 'restricted'>(() => {
+    try {
+      const cached = typeof localStorage !== 'undefined' ? localStorage.getItem('learnloop_cached_user') : null;
+      const u = cached ? JSON.parse(cached) : user;
+      if (u?.role === 'teacher' || u?.role === 'admin') return 'real';
+      if (u?.role === 'student' && !u?.is_demo) {
+        if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('teacher_demo_mode_active') === 'true') {
+          return 'demo';
+        }
+        return 'restricted';
+      }
+    } catch {
+      // fallback
+    }
     if (isTeacherOrAdmin) return 'real';
     if (isStudentAccount) return 'restricted';
     return 'demo';
@@ -53,14 +66,17 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
   const [lastAggregatedAt, setLastAggregatedAt] = useState<string | null>(null);
   const [aggregationNotice, setAggregationNotice] = useState<string | null>(null);
 
-  // Sync viewMode if user role changes
+  // Sync viewMode if user role changes or session restores
   useEffect(() => {
-    if (isTeacherOrAdmin && viewMode === 'restricted') {
+    if (isTeacherOrAdmin) {
       setViewMode('real');
-    } else if (isStudentAccount && viewMode === 'real') {
-      setViewMode('restricted');
+    } else if (isStudentAccount) {
+      const isExplicitDemo = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('teacher_demo_mode_active') === 'true';
+      setViewMode(isExplicitDemo ? 'demo' : 'restricted');
+    } else {
+      setViewMode('demo');
     }
-  }, [user, isTeacherOrAdmin, isStudentAccount, viewMode]);
+  }, [user, isTeacherOrAdmin, isStudentAccount]);
 
   const loadData = useCallback(async (modeToLoad: 'real' | 'demo') => {
     setLoading(true);
@@ -167,6 +183,9 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <button
             onClick={() => {
+              if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem('teacher_demo_mode_active', 'true');
+              }
               setViewMode('demo');
             }}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all"
@@ -177,7 +196,12 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
 
           {onNavigateToTab && (
             <button
-              onClick={() => onNavigateToTab('dashboard')}
+              onClick={() => {
+                if (typeof sessionStorage !== 'undefined') {
+                  sessionStorage.removeItem('teacher_demo_mode_active');
+                }
+                onNavigateToTab('dashboard');
+              }}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-slate-50 text-[#172033] font-medium text-xs border border-[#E6E9EF] transition-colors shadow-xs"
             >
               <LayoutDashboard className="w-4 h-4 text-[#5B5CE2]" />
