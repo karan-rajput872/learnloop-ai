@@ -39,6 +39,7 @@ High-resolution visual captures from the automated Playwright test harness acros
 8. `08_owner_reports_csv.png` — 5 downloadable CSV reports with column specifications
 9. `09_owner_security_audit_trail.png` — Immutable log of owner logins, console views, and unauthorized probes
 10. `10_owner_access_denied_student.png` — Unauthorized warning screen when an active student accesses `/owner-console`
+11. `11_live_vercel_owner_console.png` — Live production Vercel verification of `https://learnloop-ai-one.vercel.app/owner-console` returning HTTP 200 and rendering the dark administrative authentication screen with 0 public links
 
 ---
 
@@ -227,4 +228,31 @@ ANALYTICS_RETENTION_DAYS=90
   - Option A: Mount a **Render Persistent Disk** to `/var/data` and configure `DATABASE_PATH=/var/data/learnloop.db`.
   - Option B: Migrate connection string to a managed **Render PostgreSQL** or Supabase instance by setting `DATABASE_URL=postgresql://user:pass@host/dbname`. The SQL queries use ANSI-compliant syntax compatible with SQLite and Postgres.
 - **Backup Recommendation:** Schedule a daily snapshot or cron script executing `sqlite3 learnloop.db ".backup '/backup/learnloop_$(date +%F).db'"` to ensure safe historical archiving.
+
+---
+
+## 9. Live Vercel Production Deployment Verification
+
+### 9.1. Verification Criteria & Results
+| # | Requirement | Verification Method | Status | Evidence / Details |
+|---|---|---|---|---|
+| 1 | Keep existing public website unchanged | Headless browser crawl of `https://learnloop-ai-one.vercel.app` | **PASSED** | Public landing page, navigation, student dashboard, teacher dashboard, and adaptive tutor operational |
+| 2 | Isolated route, layout, and auth flow | Route inspection & visual styling check | **PASSED** | Dedicated `/owner-console` route with dark slate administrative layout (`bg-slate-950`) and isolated authentication state |
+| 3 | Zero public links across website | Full DOM anchor audit via Playwright | **PASSED** | 0 links found to `owner-console` across public landing, navbars, and student menus |
+| 4 | Direct navigation requires owner authentication | Unauthenticated direct browser visit | **PASSED** | Renders restricted portal login gate; access to metrics blocked |
+| 5 | Backend authorization on every owner API | Automated pytest suite & direct API probes | **PASSED** | 100% of `/api/owner/*` routes require verified `OWNER_EMAIL` match via `require_owner` dependency |
+| 6 | Unauthenticated & unauthorized access rejected | Automated security tests (10/10) | **PASSED** | Unauthenticated visitors receive HTTP 401; student/teacher sessions receive HTTP 403 Forbidden with audit log entry |
+| 7 | Vercel SPA routing (No 404 on refresh) | `curl -I https://learnloop-ai-one.vercel.app/owner-console` | **PASSED** | Returns `HTTP/1.1 200 OK`, `Content-Type: text/html`, serving `index.html` via SPA rewrite rule |
+| 8 | Independent browser session testing | Automated Playwright script (`verify_live_production.mjs`) | **PASSED** | Verified in clean Microsoft Edge browser context; captured screenshot `11_live_vercel_owner_console.png` |
+
+### 9.2. Live Owner Console Access Instructions
+1. Open a browser and navigate directly to:
+   `https://learnloop-ai-one.vercel.app/owner-console`
+2. You will be greeted by the **Restricted Portal / LearnLoop Owner Console** login gate.
+3. Authenticate with the configured owner credentials (`OWNER_EMAIL`).
+4. To grant production backend access on Render:
+   - Go to [dashboard.render.com](https://dashboard.render.com) > `learnloop-ai-backend` > **Environment**.
+   - Add/verify `OWNER_EMAIL=karanrajput872@gmail.com`.
+   - Under **Deployments**, trigger **Manual Deploy** -> **Deploy latest commit** if auto-deploy is paused.
+
 
