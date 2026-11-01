@@ -78,6 +78,27 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
 
   const handleMouseUp = () => setIsDragging(false);
 
+  // Touch event handlers for mobile devices
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      dragStartRef.current = {
+        x: e.touches[0].clientX - pan.x,
+        y: e.touches[0].clientY - pan.y
+      };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    setPan({
+      x: e.touches[0].clientX - dragStartRef.current.x,
+      y: e.touches[0].clientY - dragStartRef.current.y
+    });
+  };
+
+  const handleTouchEnd = () => setIsDragging(false);
+
   // Group concepts by category for mobile list view
   const categories: Record<string, ConceptNode[]> = {};
   concepts.forEach(c => {
@@ -147,31 +168,31 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
       {viewMode === 'graph' && (
         <div className="relative w-full overflow-hidden bg-[#F8FAFC] rounded-xl border border-[#E6E9EF] select-none">
           {/* Zoom & Pan Floating Controls Bar */}
-          <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/95 backdrop-blur-md border border-[#E6E9EF] p-1.5 rounded-xl shadow-sm text-xs font-mono">
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/95 backdrop-blur-md border border-[#E6E9EF] p-1 sm:p-1.5 rounded-xl shadow-sm text-xs font-mono">
             <button
               onClick={handleZoomIn}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
+              className="p-2 sm:p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
               title="Zoom In (+)"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
             <button
               onClick={handleZoomOut}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
+              className="p-2 sm:p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
               title="Zoom Out (-)"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
             <button
               onClick={handleResetZoom}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
+              className="p-2 sm:p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
               title="Reset Zoom (100%)"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
             <button
               onClick={handleFitScreen}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
+              className="p-2 sm:p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
               title="Fit to Screen"
             >
               <Maximize2 className="w-4 h-4" />
@@ -182,11 +203,14 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
           </div>
 
           <div
-            className={`w-full h-[580px] overflow-hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`w-full h-[400px] sm:h-[580px] overflow-hidden touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
             <svg
               viewBox="0 0 780 660"
@@ -392,7 +416,7 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
 
           <button
             onClick={() => onPracticeConcept(selectedConcept.id)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all shrink-0"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all shrink-0 cursor-pointer"
           >
             Practice {selectedConcept.name}
             <ArrowRight className="w-3.5 h-3.5" />

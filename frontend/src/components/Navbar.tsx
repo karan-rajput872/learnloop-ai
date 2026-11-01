@@ -98,16 +98,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#E6E9EF] shadow-[0_1px_3px_rgba(16,24,40,0.05)]">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#E6E9EF] shadow-[0_1px_3px_rgba(16,24,40,0.05)] w-full max-w-[100vw] overflow-x-clip">
       {/* ========================================================= */}
       {/* TIER 1 (UPWARD): Brand, Information & System Telemetry    */}
       {/* ========================================================= */}
-      <div className="border-b border-[#E6E9EF]/80 px-4 sm:px-6 lg:px-8 py-2.5">
+      <div className="border-b border-[#E6E9EF]/80 px-3 sm:px-6 lg:px-8 py-2.5 w-full max-w-[100vw]">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
 
           {/* Left: Brand Identity & Syllabus Scope */}
           <div
-            className="flex items-center gap-3 cursor-pointer group shrink-0"
+            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0"
             onClick={() => handleNavClick('dashboard')}
             role="button"
             tabIndex={0}
@@ -118,11 +118,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               <GraduationCap className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-base sm:text-lg font-bold tracking-tight text-[#172033] font-sans">
                   LearnLoop<span className="text-[#5B5CE2]">.AI</span>
                 </span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-mono whitespace-nowrap">
+                <span className="hidden min-[480px]:inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-mono whitespace-nowrap">
                   Adaptive DSA
                 </span>
               </div>
@@ -135,10 +135,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right: Information Related Metadata & System Telemetry */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
 
-            {/* 1. Overall Learner Mastery Pill */}
+            {/* 1. Overall Learner Mastery Pill (Desktop >= xl) */}
             {profile && (
               <div
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 border border-[#E6E9EF] text-xs font-mono shadow-xs"
+                className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 border border-[#E6E9EF] text-xs font-mono shadow-xs"
                 title={`Overall DSA Syllabus Mastery: ${profile.overall_mastery}% across 12 concepts`}
               >
                 <span
@@ -146,7 +146,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     profile.overall_mastery >= 45 ? 'bg-amber-500' : 'bg-[#5B5CE2]'
                     }`}
                 />
-                <span className="text-[#667085] hidden md:inline">Mastery:</span>
+                <span className="text-[#667085]">Mastery:</span>
                 <span
                   className={`font-bold ${profile.overall_mastery >= 75 ? 'text-teal-700' :
                     profile.overall_mastery >= 45 ? 'text-amber-700' : 'text-[#5B5CE2]'
@@ -157,9 +157,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
-            {/* 2. AI Model Status Pill */}
+            {/* 2. AI Model Status Pill (Desktop >= xl) */}
             <div
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 border border-[#E6E9EF] text-xs font-mono shadow-xs cursor-default"
+              className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 border border-[#E6E9EF] text-xs font-mono shadow-xs cursor-default"
               title={`Active Pedagogical Engine: ${isAi ? 'Gemini 2.5 Flash API (Cloud Active)' : 'Deterministic Local Fallback'}`}
             >
               <span
@@ -167,25 +167,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }`}
               />
               <Cpu className="w-3.5 h-3.5 text-[#667085]" />
-              <span className={`font-medium ${isAi ? 'text-teal-800' : 'text-slate-700'} hidden sm:inline`}>
+              <span className={`font-medium ${isAi ? 'text-teal-800' : 'text-slate-700'}`}>
                 {isAi ? 'Gemini 2.5 Flash' : 'Deterministic Fallback'}
-              </span>
-              <span className={`font-medium ${isAi ? 'text-teal-800' : 'text-slate-700'} sm:hidden`}>
-                {isAi ? 'Gemini' : 'Fallback'}
               </span>
             </div>
 
-            {/* 3. Explore Live Video Button */}
+            {/* 3. Explore Live Video Button (Desktop >= lg) */}
             {onOpenLiveVideo && (
               <button
                 type="button"
                 onClick={onOpenLiveVideo}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#5B5CE2] to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition-all transform hover:scale-105 cursor-pointer"
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] rounded-xl bg-gradient-to-r from-[#5B5CE2] to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition-all transform hover:scale-105 cursor-pointer"
                 title="Launch Live Video Socratic Problem Solver (Gemini 2.5 Flash Vision)"
               >
                 <Camera className="w-3.5 h-3.5 text-indigo-200" />
-                <span className="hidden sm:inline">Explore Live Video</span>
-                <span className="sm:hidden">Live Video</span>
+                <span>Explore Live Video</span>
               </button>
             )}
 
@@ -227,50 +223,50 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => openAuthModal('login')}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-[#E6E9EF] hover:border-indigo-200 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors shadow-xs cursor-pointer"
+                  className="flex items-center gap-1 px-3 py-1.5 min-h-[38px] rounded-xl bg-slate-50 hover:bg-indigo-50 border border-[#E6E9EF] hover:border-indigo-200 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors shadow-xs cursor-pointer"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>Sign In</span>
                 </button>
                 <button
                   onClick={() => openAuthModal('register')}
-                  className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  className="hidden md:inline-flex items-center px-3.5 py-1.5 min-h-[38px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
                   Get Started Free
                 </button>
               </div>
             )}
 
-            {/* 4. Refresh Sync Action */}
+            {/* 4. Refresh Sync Action (Desktop >= lg) */}
             {onRefresh && (
               <button
                 onClick={onRefresh}
                 disabled={isRefreshing}
-                className="p-1.5 sm:p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-[#E6E9EF] text-[#667085] hover:text-[#5B5CE2] transition-colors shadow-xs disabled:opacity-50"
+                className="hidden lg:inline-flex p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-[#E6E9EF] text-[#667085] hover:text-[#5B5CE2] transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
                 title="Refresh Learner Telemetry & Server Sync"
                 aria-label="Refresh learner telemetry"
               >
-                <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin text-[#5B5CE2]' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#5B5CE2]' : ''}`} />
               </button>
             )}
 
-            {/* 5. Reset Learner Profile Action */}
+            {/* 5. Reset Learner Profile Action (Desktop >= lg) */}
             <button
               onClick={onReset}
-              className="p-1.5 sm:p-2 rounded-xl bg-slate-50 hover:bg-rose-50 border border-[#E6E9EF] hover:border-rose-200 text-[#667085] hover:text-rose-600 transition-colors shadow-xs"
+              className="hidden lg:inline-flex p-2 rounded-xl bg-slate-50 hover:bg-rose-50 border border-[#E6E9EF] hover:border-rose-200 text-[#667085] hover:text-rose-600 transition-colors shadow-xs cursor-pointer"
               title="Reset Learner Profile to Baseline"
               aria-label="Reset learner profile"
             >
-              <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <RotateCcw className="w-4 h-4" />
             </button>
 
-            {/* 5. Mobile Drawer Toggle (< 640px) */}
+            {/* 6. Mobile & Tablet Drawer Toggle (< 1024px) */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="sm:hidden p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-[#E6E9EF] text-[#172033] transition-colors"
+              className="lg:hidden min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 border border-[#E6E9EF] text-[#172033] transition-colors cursor-pointer"
               aria-label="Toggle Navigation Menu"
             >
-              {mobileMenuOpen ? <X className="w-4 h-4 text-[#172033]" /> : <Menu className="w-4 h-4 text-[#172033]" />}
+              {mobileMenuOpen ? <X className="w-5 h-5 text-[#172033]" /> : <Menu className="w-5 h-5 text-[#172033]" />}
             </button>
 
           </div>
@@ -281,8 +277,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* ========================================================= */}
       {/* TIER 2 (DOWNWARD): Dedicated Working Navigation Bar       */}
       {/* ========================================================= */}
-      <div className="px-4 sm:px-6 lg:px-8 py-1.5 bg-[#FAFBFD]">
-        <div className="max-w-7xl mx-auto flex items-center justify-start sm:justify-center overflow-x-auto no-scrollbar gap-1 sm:gap-1.5">
+      <div className="w-full max-w-[100vw] overflow-x-auto no-scrollbar touch-pan-x px-3 sm:px-6 lg:px-8 py-1.5 bg-[#FAFBFD] border-b border-[#E6E9EF]/50">
+        <div className="max-w-7xl mx-auto flex items-center justify-start sm:justify-center gap-1 sm:gap-1.5 py-0.5 w-max sm:w-auto min-w-0">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -291,7 +287,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sans whitespace-nowrap transition-all shrink-0 ${isActive
+                className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-xl text-xs font-sans whitespace-nowrap transition-all shrink-0 cursor-pointer ${isActive
                   ? 'bg-[#5B5CE2] text-white font-semibold shadow-xs'
                   : 'text-[#667085] hover:text-[#172033] hover:bg-white border border-transparent font-medium'
                   }`}
@@ -305,10 +301,24 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* ========================================================= */}
-      {/* MOBILE EXPANDED MENU DRAWER                               */}
+      {/* MOBILE & TABLET EXPANDED MENU DRAWER                      */}
       {/* ========================================================= */}
       {mobileMenuOpen && (
-        <div className="sm:hidden border-t border-[#E6E9EF] bg-white px-4 pt-3 pb-6 space-y-3 shadow-xl animate-fade-in">
+        <div className="lg:hidden border-t border-[#E6E9EF] bg-white px-4 pt-3 pb-6 space-y-3 shadow-xl animate-fade-in max-h-[calc(100dvh-4rem)] overflow-y-auto">
+          {onOpenLiveVideo && (
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenLiveVideo();
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 px-3.5 min-h-[44px] rounded-xl bg-gradient-to-r from-[#5B5CE2] to-indigo-600 text-white text-xs font-bold shadow-xs cursor-pointer"
+            >
+              <Camera className="w-4 h-4 text-indigo-200" />
+              <span>Explore Live Video (Camera & Voice)</span>
+            </button>
+          )}
+
           <div className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -318,7 +328,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-sans transition-colors ${isActive
+                  className={`w-full flex items-center justify-between px-3.5 py-3 min-h-[44px] rounded-xl text-sm font-sans transition-colors cursor-pointer ${isActive
                     ? 'bg-[#EEF0FD] text-[#5B5CE2] font-semibold border border-[#C7D2FE]'
                     : 'text-[#172033] hover:bg-slate-50'
                     }`}
@@ -348,6 +358,33 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
+          {/* Quick Actions inside mobile drawer */}
+          <div className="flex items-center gap-2 pt-1">
+            {onRefresh && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onRefresh();
+                }}
+                disabled={isRefreshing}
+                className="flex-1 py-2.5 px-3 min-h-[44px] rounded-xl bg-slate-50 border border-[#E6E9EF] text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#5B5CE2]' : ''}`} />
+                <span>Refresh Data</span>
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onReset();
+              }}
+              className="flex-1 py-2.5 px-3 min-h-[44px] rounded-xl bg-slate-50 hover:bg-rose-50 border border-[#E6E9EF] text-slate-700 hover:text-rose-600 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Profile</span>
+            </button>
+          </div>
+
           {/* Mobile Auth Buttons */}
           <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
             {isAuthenticated && user ? (
@@ -356,7 +393,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setMobileMenuOpen(false);
                   openAuthModal('profile');
                 }}
-                className="w-full py-2.5 px-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold text-xs flex items-center justify-center gap-2"
+                className="w-full py-3 px-3 min-h-[44px] rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 <UserIcon className="w-4 h-4" />
                 <span>Account ({user.full_name})</span>
@@ -368,7 +405,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setMobileMenuOpen(false);
                     openAuthModal('login');
                   }}
-                  className="flex-1 py-2 px-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5"
+                  className="flex-1 py-3 px-3 min-h-[44px] rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>Sign In</span>
@@ -378,7 +415,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setMobileMenuOpen(false);
                     openAuthModal('register');
                   }}
-                  className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 text-white font-semibold text-xs flex items-center justify-center"
+                  className="flex-1 py-3 px-3 min-h-[44px] rounded-xl bg-indigo-600 text-white font-semibold text-xs flex items-center justify-center cursor-pointer"
                 >
                   Create Account
                 </button>

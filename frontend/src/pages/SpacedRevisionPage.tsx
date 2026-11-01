@@ -72,11 +72,11 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center justify-between bg-white rounded-xl border border-[#E6E9EF] p-1.5 text-xs font-mono shadow-card">
-        <div className="flex items-center gap-1">
+      <div className="flex items-center justify-between bg-white rounded-xl border border-[#E6E9EF] p-1.5 text-xs font-mono shadow-card overflow-x-auto no-scrollbar touch-pan-x">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setFilter('pending')}
-            className={`px-3.5 py-1.5 rounded-lg transition-colors ${
+            className={`px-3.5 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-lg transition-colors shrink-0 whitespace-nowrap cursor-pointer ${
               filter === 'pending'
                 ? 'bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-bold'
                 : 'text-[#667085] hover:text-[#172033]'
@@ -86,7 +86,7 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
           </button>
           <button
             onClick={() => setFilter('completed')}
-            className={`px-3.5 py-1.5 rounded-lg transition-colors ${
+            className={`px-3.5 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-lg transition-colors shrink-0 whitespace-nowrap cursor-pointer ${
               filter === 'completed'
                 ? 'bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-bold'
                 : 'text-[#667085] hover:text-[#172033]'
@@ -96,7 +96,7 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
           </button>
           <button
             onClick={() => setFilter('all')}
-            className={`px-3.5 py-1.5 rounded-lg transition-colors ${
+            className={`px-3.5 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-lg transition-colors shrink-0 whitespace-nowrap cursor-pointer ${
               filter === 'all'
                 ? 'bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-bold'
                 : 'text-[#667085] hover:text-[#172033]'
@@ -106,7 +106,7 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
           </button>
         </div>
 
-        <span className="text-[11px] text-[#667085] pr-2 hidden sm:inline font-mono">
+        <span className="text-[11px] text-[#667085] pr-2 hidden sm:inline font-mono shrink-0">
           Dynamic Retention Engine
         </span>
       </div>
@@ -146,10 +146,10 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                 <button
                   onClick={() => onPracticeConcept(task.concept_id)}
-                  className="px-3.5 py-2 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs transition-all shadow-xs flex items-center gap-1.5"
+                  className="flex-1 sm:flex-none justify-center px-4 py-2.5 min-h-[44px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   Practice Now
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export const SpacedRevisionPage: React.FC<SpacedRevisionPageProps> = ({ onPracti
                 {task.status !== 'completed' && (
                   <button
                     onClick={() => handleComplete(task.id)}
-                    className="p-2 rounded-xl bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-[#E6E9EF] text-[#667085] transition-colors"
+                    className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-[#E6E9EF] text-[#667085] transition-colors cursor-pointer"
                     title="Mark Completed"
                   >
                     <CheckCircle2 className="w-4 h-4" />

@@ -27,12 +27,12 @@ export const PrivacySecurityModal: React.FC<PrivacySecurityModalProps> = ({ isOp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E6E9EF] flex flex-col max-h-[85vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+      <div className="relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E6E9EF] flex flex-col max-h-[calc(100dvh-1.5rem)] overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#E6E9EF] flex items-center justify-between bg-slate-50/70">
+        <div className="px-5 sm:px-6 py-4 border-b border-[#E6E9EF] flex items-center justify-between bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EEF0FD] flex items-center justify-center text-[#5B5CE2] shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-[#EEF0FD] flex items-center justify-center text-[#5B5CE2] shadow-xs shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
@@ -42,7 +42,7 @@ export const PrivacySecurityModal: React.FC<PrivacySecurityModalProps> = ({ isOp
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -105,11 +105,11 @@ export const PrivacySecurityModal: React.FC<PrivacySecurityModalProps> = ({ isOp
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 border-t border-[#E6E9EF] bg-slate-50/70 flex justify-end">
+        <div className="px-5 sm:px-6 py-3.5 border-t border-[#E6E9EF] bg-slate-50/70 flex justify-end shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-semibold shadow-xs transition-colors"
+            className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
           >
             Understood
           </button>

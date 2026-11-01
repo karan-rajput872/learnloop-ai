@@ -171,13 +171,13 @@ export const AuthModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md max-h-[calc(100dvh-1.5rem)] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
         {/* Header Banner */}
-        <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 px-6 py-6 text-white relative">
+        <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 px-5 sm:px-6 py-5 text-white relative shrink-0">
           <button
             onClick={closeAuthModal}
-            className="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -185,14 +185,14 @@ export const AuthModal: React.FC = () => {
 
           <div className="flex items-center gap-2 mb-1">
             <span className="p-1.5 bg-white/20 rounded-lg backdrop-blur-md">
-              <ShieldCheck className="w-5 h-5 text-white" />
+              <ShieldCheck className="w-4 h-4 text-white" />
             </span>
             <span className="text-xs uppercase tracking-wider font-semibold text-indigo-100">
               {authModal === 'profile' ? 'Account Profile' : 'Secure Access'}
             </span>
           </div>
 
-          <h3 className="text-xl font-bold">
+          <h3 className="text-lg sm:text-xl font-bold">
             {authModal === 'login' && 'Welcome Back to LearnLoop'}
             {authModal === 'register' && 'Create Your Learner Account'}
             {authModal === 'profile' && 'Learner Profile & Settings'}
@@ -205,7 +205,7 @@ export const AuthModal: React.FC = () => {
         </div>
 
         {/* Content Body */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           {errorMessage && (
             <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />

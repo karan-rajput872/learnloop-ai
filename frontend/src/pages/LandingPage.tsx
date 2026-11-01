@@ -38,8 +38,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ========================================================= */}
       {/* 1. HERO SECTION                                           */}
       {/* ========================================================= */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-white via-white to-[#FAFBFD] border border-[#E6E9EF] p-8 sm:p-12 lg:p-16 shadow-xl text-center space-y-8">
-        <div className="max-w-3xl mx-auto space-y-5">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-white via-white to-[#FAFBFD] border border-[#E6E9EF] p-5 sm:p-10 lg:p-16 shadow-xl text-center space-y-6 sm:space-y-8">
+        <div className="max-w-3xl mx-auto space-y-4 sm:space-y-5">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EEF0FD] border border-[#C7D2FE] text-[#5B5CE2] text-xs font-mono font-bold shadow-xs">
             <Sparkles className="w-4 h-4 text-[#5B5CE2] animate-pulse" />
@@ -47,7 +47,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Headline */}
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-[#172033] tracking-tight leading-tight font-sans">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-[#172033] tracking-tight leading-tight font-sans">
             Don&apos;t just learn the answers.{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#5B5CE2] via-indigo-600 to-purple-600">
               Master the concepts.
@@ -55,15 +55,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg text-[#667085] leading-relaxed font-sans max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base lg:text-lg text-[#667085] leading-relaxed font-sans max-w-2xl mx-auto">
             Traditional quiz apps drill repetitive MCQs. LearnLoop AI models your individual cognitive mastery across 12 DSA concepts, pinpoints hidden misconceptions with 7 bounded agent tools, and consolidates knowledge using spaced repetition.
           </p>
 
           {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 w-full max-w-md sm:max-w-none mx-auto">
             <button
               onClick={onOpenRegister}
-              className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-bold text-base shadow-lg shadow-[#5B5CE2]/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              className="w-full sm:w-auto min-h-[48px] flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-bold text-base shadow-lg shadow-[#5B5CE2]/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
             >
               <span>Get Started Free</span>
               <ArrowRight className="w-4 h-4" />
@@ -73,7 +73,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 type="button"
                 onClick={onOpenLiveVideo}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#EEF0FD] hover:bg-indigo-100 text-[#5B5CE2] border border-[#C7D2FE] font-bold text-sm shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                className="w-full sm:w-auto min-h-[48px] flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#EEF0FD] hover:bg-indigo-100 text-[#5B5CE2] border border-[#C7D2FE] font-bold text-sm shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer"
               >
                 <Camera className="w-4 h-4" />
                 <span>Explore Live Video</span>
@@ -82,25 +82,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <button
               onClick={onOpenLogin}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-[#172033] border border-[#E6E9EF] font-semibold text-sm shadow-xs transition-colors cursor-pointer"
+              className="w-full sm:w-auto min-h-[48px] flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-[#172033] border border-[#E6E9EF] font-semibold text-sm shadow-xs transition-colors cursor-pointer"
             >
               <span>Sign In</span>
             </button>
           </div>
 
           {/* Trust badges */}
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-[#667085] font-mono">
+          <div className="pt-3 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-[11px] sm:text-xs text-[#667085] font-mono">
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-teal-600" />
+              <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
               100% Free & Open Evaluation
             </span>
             <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-[#5B5CE2]" />
+              <ShieldCheck className="w-4 h-4 text-[#5B5CE2] shrink-0" />
               Argon2id & FERPA Compliant
             </span>
             <span className="flex items-center gap-1.5">
-              <Cpu className="w-4 h-4 text-purple-600" />
-              Gemini 2.5 Flash + Deterministic Fallback
+              <Cpu className="w-4 h-4 text-purple-600 shrink-0" />
+              Gemini 2.5 Flash + Fallback
             </span>
           </div>
         </div>
@@ -175,7 +175,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ========================================================= */}
       {/* 3. COMPARISON TABLE: LEARNLOOP AI VS TRADITIONAL QUIZZES  */}
       {/* ========================================================= */}
-      <section className="rounded-3xl bg-white border border-[#E6E9EF] p-8 shadow-card space-y-6">
+      <section className="rounded-3xl bg-white border border-[#E6E9EF] p-4 sm:p-8 shadow-card space-y-4 sm:space-y-6">
         <div className="text-center max-w-xl mx-auto space-y-1">
           <h2 className="text-xl sm:text-2xl font-black text-[#172033] font-sans">
             Why LearnLoop AI is Different
@@ -185,8 +185,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
+        {/* Mobile Horizontal Scroll Indicator */}
+        <div className="sm:hidden flex items-center justify-end text-[11px] text-slate-400 gap-1 px-1">
+          <span>Swipe horizontally to view comparison →</span>
+        </div>
+
+        <div className="overflow-x-auto touch-pan-x -mx-2 sm:mx-0 px-2 sm:px-0">
+          <table className="w-full text-xs text-left min-w-[540px]">
             <thead>
               <tr className="border-b border-[#E6E9EF] bg-slate-50/70">
                 <th className="py-3 px-4 font-bold text-slate-700">Capability</th>
@@ -301,7 +306,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ========================================================= */}
       {/* 5. CALL TO ACTION BANNER                                  */}
       {/* ========================================================= */}
-      <section className="rounded-3xl bg-gradient-to-r from-[#5B5CE2] via-indigo-600 to-purple-600 p-8 sm:p-12 text-white shadow-xl text-center space-y-6">
+      <section className="rounded-3xl bg-gradient-to-r from-[#5B5CE2] via-indigo-600 to-purple-600 p-6 sm:p-12 text-white shadow-xl text-center space-y-6">
         <div className="max-w-2xl mx-auto space-y-3">
           <h2 className="text-2xl sm:text-4xl font-black tracking-tight font-sans">
             Ready to master your concepts?
@@ -311,10 +316,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md sm:max-w-none mx-auto">
           <button
             onClick={onOpenRegister}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white text-[#5B5CE2] font-bold text-sm shadow-lg hover:bg-slate-50 transition-all transform hover:scale-105 flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto min-h-[48px] px-8 py-3.5 rounded-2xl bg-white text-[#5B5CE2] font-bold text-sm shadow-lg hover:bg-slate-50 transition-all transform hover:scale-105 flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Create Free Account</span>
             <ArrowRight className="w-4 h-4" />
@@ -322,7 +327,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {onOpenLiveVideo && (
             <button
               onClick={onOpenLiveVideo}
-              className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto min-h-[48px] px-7 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Camera className="w-4 h-4" />
               <span>Explore Live Video</span>
@@ -330,7 +335,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           )}
           <button
             onClick={onOpenLogin}
-            className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm backdrop-blur-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto min-h-[48px] px-7 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm backdrop-blur-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Sign In</span>
           </button>

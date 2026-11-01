@@ -102,15 +102,15 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
   return (
     <div className="bg-white rounded-2xl border border-[#E6E9EF] p-5 shadow-card space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#E6E9EF] pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E6E9EF] pb-3 gap-3">
+        <div className="flex items-start sm:items-center gap-2.5">
+          <div className="p-2 rounded-lg bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] shrink-0 mt-0.5 sm:mt-0">
             <Volume2 className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#172033] flex items-center gap-1.5">
-              Wispr Flow Natural Speech Dictation
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-mono">
+            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#172033] flex flex-wrap items-center gap-1.5">
+              <span>Wispr Flow Natural Speech Dictation</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE] font-mono whitespace-nowrap">
                 Disfluency Aware
               </span>
             </h4>
@@ -124,13 +124,13 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
         <button
           onClick={toggleRecording}
           disabled={isLoading}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-medium text-xs transition-all shadow-xs ${isRecording
+          className={`w-full sm:w-auto min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shadow-xs shrink-0 cursor-pointer ${isRecording
               ? 'bg-rose-600 text-white animate-pulse ring-4 ring-rose-100'
               : 'bg-[#5B5CE2] hover:bg-[#494AC8] text-white'
             }`}
         >
-          {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-          {isRecording ? 'Listening...' : 'Record Voice'}
+          {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          <span>{isRecording ? 'Listening...' : 'Record Voice'}</span>
         </button>
       </div>
 
@@ -170,18 +170,18 @@ export const WisprFlowDictaphone: React.FC<WisprFlowDictaphoneProps> = ({
           <span>{customText.length} characters</span>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <textarea
             rows={2}
             value={customText}
             onChange={(e) => setCustomText(e.target.value)}
             placeholder="Type your question with natural filler words, or speak above..."
-            className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E6E9EF] text-[#172033] text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-[#5B5CE2] focus:bg-white transition-colors"
+            className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E6E9EF] text-[#172033] text-[16px] sm:text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-[#5B5CE2] focus:bg-white transition-colors"
           />
           <button
             onClick={() => onTranscriptReady(customText)}
             disabled={isLoading || !customText.trim()}
-            className="px-5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] disabled:opacity-40 text-white font-medium text-xs shadow-xs transition-colors"
+            className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] disabled:opacity-40 text-white font-medium text-xs shadow-xs transition-colors flex items-center justify-center cursor-pointer shrink-0"
           >
             Send to Tutor
           </button>

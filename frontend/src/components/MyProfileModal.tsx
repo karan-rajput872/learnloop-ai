@@ -66,8 +66,8 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
     : String(verifiedLevel);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
-      <div className="bg-white border border-[#E6E9EF] shadow-2xl rounded-2xl w-full max-w-2xl my-6 flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
+      <div className="bg-white border border-[#E6E9EF] shadow-2xl rounded-2xl w-full max-w-2xl my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] overflow-hidden">
         
         {/* Header */}
         <div className="bg-[#FAFBFD] border-b border-[#E6E9EF] p-5 sm:p-6 shrink-0 flex items-center justify-between">
@@ -234,25 +234,25 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-[#FAFBFD] border-t border-[#E6E9EF] p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+        <div className="bg-[#FAFBFD] border-t border-[#E6E9EF] p-3 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
           <button
             onClick={() => {
               onClose();
               onOpenEditWizard();
             }}
-            className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-[#E6E9EF] bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-colors"
+            className="w-full sm:w-auto min-h-[44px] flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#E6E9EF] bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5 text-[#5B5CE2]" />
             Edit Profile & Goals
           </button>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => {
                 onClose();
                 onStartDiagnostic('quick');
               }}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold shadow-xs transition-colors"
+              className="w-full sm:w-auto min-h-[44px] flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Retake Quick Diagnostic
@@ -262,7 +262,7 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
                 onClose();
                 onStartDiagnostic('comprehensive');
               }}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-semibold shadow-xs transition-colors"
+              className="w-full sm:w-auto min-h-[44px] flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
             >
               <Award className="w-3.5 h-3.5" />
               Retake Comprehensive

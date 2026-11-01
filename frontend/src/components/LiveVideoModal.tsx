@@ -177,10 +177,10 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="live-video-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in"
     >
       <div
-        className="relative w-full max-w-5xl rounded-3xl bg-white border border-[#E6E9EF] shadow-2xl overflow-hidden flex flex-col max-h-[95vh]"
+        className="relative w-full max-w-5xl rounded-2xl sm:rounded-3xl bg-white border border-[#E6E9EF] shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1rem)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ========================================================= */}
@@ -434,14 +434,14 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                       value={customPrompt}
                       onChange={(e) => setCustomPrompt(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAnalyzeFrame()}
-                      className="w-full px-3.5 py-2 pr-28 rounded-xl border border-[#E6E9EF] bg-white text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5B5CE2]/20"
+                      className="w-full px-3.5 py-2.5 sm:py-2 pr-28 rounded-xl border border-[#E6E9EF] bg-white text-[16px] sm:text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5B5CE2]/20"
                     />
                     <button
                       type="button"
                       data-testid="analyze-frame-button"
                       onClick={handleAnalyzeFrame}
                       disabled={isAnalyzing}
-                      className="absolute right-1 top-1 bottom-1 px-3 rounded-lg bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                      className="absolute right-1 top-1 bottom-1 px-3.5 rounded-lg bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {isAnalyzing ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -459,7 +459,7 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
                         key={idx}
                         type="button"
                         onClick={() => setCustomPrompt(p)}
-                        className="text-[11px] px-2.5 py-1 rounded-lg bg-white border border-[#E6E9EF] text-slate-600 hover:text-[#5B5CE2] hover:border-indigo-200 transition-colors cursor-pointer"
+                        className="min-h-[32px] text-[11px] px-2.5 py-1 rounded-lg bg-white border border-[#E6E9EF] text-slate-600 hover:text-[#5B5CE2] hover:border-indigo-200 transition-colors cursor-pointer"
                       >
                         {p}
                       </button>

@@ -129,7 +129,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
         <div
           role="menu"
           aria-orientation="vertical"
-          className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-[#E6E9EF] shadow-2xl py-2 z-50 animate-fade-in text-xs font-sans divide-y divide-slate-100 focus:outline-none"
+          className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-white border border-[#E6E9EF] shadow-2xl py-2 z-50 animate-fade-in text-xs font-sans divide-y divide-slate-100 focus:outline-none"
           style={{ maxHeight: '85vh', overflowY: 'auto' }}
         >
           {/* Header Section */}
@@ -156,7 +156,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
             {/* 1. My Profile */}
             <button
               onClick={() => handleAction(onOpenProfile)}
-              className="w-full flex items-center justify-between px-4 py-2 text-left text-slate-700 hover:bg-[#EEF0FD] hover:text-[#5B5CE2] transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-slate-700 hover:bg-[#EEF0FD] hover:text-[#5B5CE2] transition-colors group cursor-pointer"
               role="menuitem"
             >
               <div className="flex items-center gap-2.5">
@@ -169,7 +169,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
             {/* 2. Settings */}
             <button
               onClick={() => handleAction(onOpenSettings)}
-              className="w-full flex items-center justify-between px-4 py-2 text-left text-slate-700 hover:bg-[#EEF0FD] hover:text-[#5B5CE2] transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-slate-700 hover:bg-[#EEF0FD] hover:text-[#5B5CE2] transition-colors group cursor-pointer"
               role="menuitem"
             >
               <div className="flex items-center gap-2.5">
@@ -182,7 +182,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
             {/* 3. Learning Preferences */}
             <button
               onClick={() => handleAction(onOpenPreferences)}
-              className="w-full flex items-center justify-between px-4 py-2 text-left text-slate-700 hover:bg-[#EEF0FD] hover:text-[#5B5CE2] transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-slate-700 hover:bg-[#EEF0FD] hover:text-[#5B5CE2] transition-colors group cursor-pointer"
               role="menuitem"
             >
               <div className="flex items-center gap-2.5">
@@ -195,7 +195,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
             {/* 4. Notifications */}
             <button
               onClick={() => handleAction(onOpenNotifications)}
-              className="w-full flex items-center justify-between px-4 py-2 text-left text-slate-700 hover:bg-[#EEF0FD] hover:text-[#5B5CE2] transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-slate-700 hover:bg-[#EEF0FD] hover:text-[#5B5CE2] transition-colors group cursor-pointer"
               role="menuitem"
             >
               <div className="flex items-center gap-2.5">
@@ -218,7 +218,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
             <button
               onClick={() => handleAction(onRefreshDashboard)}
               disabled={isRefreshing}
-              className="w-full flex items-center justify-between px-4 py-2 text-left text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors group disabled:opacity-50"
+              className="w-full flex items-center justify-between px-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors group disabled:opacity-50 cursor-pointer"
               role="menuitem"
             >
               <div className="flex items-center gap-2.5">
@@ -234,7 +234,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
             {/* 6. Privacy & Security */}
             <button
               onClick={() => handleAction(onOpenPrivacySecurity)}
-              className="w-full flex items-center justify-between px-4 py-2 text-left text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors group cursor-pointer"
               role="menuitem"
             >
               <div className="flex items-center gap-2.5">
@@ -247,7 +247,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
             {/* 7. Help & Support */}
             <button
               onClick={() => handleAction(onOpenHelpSupport)}
-              className="w-full flex items-center justify-between px-4 py-2 text-left text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors group cursor-pointer"
               role="menuitem"
             >
               <div className="flex items-center gap-2.5">
@@ -260,7 +260,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
             {/* 8. Terms and Privacy */}
             <button
               onClick={() => handleAction(onOpenTermsPrivacy)}
-              className="w-full flex items-center justify-between px-4 py-2 text-left text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-left text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors group cursor-pointer"
               role="menuitem"
             >
               <div className="flex items-center gap-2.5">
@@ -276,7 +276,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({
             {/* 9. Logout */}
             <button
               onClick={() => handleAction(onLogout)}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-left text-rose-600 hover:bg-rose-50 transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-3 sm:py-2.5 min-h-[44px] sm:min-h-0 text-left text-rose-600 hover:bg-rose-50 transition-colors group cursor-pointer"
               role="menuitem"
             >
               <div className="flex items-center gap-2.5">

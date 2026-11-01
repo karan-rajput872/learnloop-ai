@@ -151,7 +151,7 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
   // =========================================================================
   if (viewMode === 'restricted') {
     return (
-      <div className="max-w-2xl mx-auto my-6 p-8 bg-white rounded-2xl border border-[#E6E9EF] shadow-card space-y-6 text-center animate-fade-in">
+      <div className="max-w-2xl mx-auto my-4 sm:my-6 p-5 sm:p-8 bg-white rounded-2xl border border-[#E6E9EF] shadow-card space-y-6 text-center animate-fade-in">
         <div className="w-16 h-16 rounded-2xl bg-[#EEF0FD] border border-[#C7D2FE] flex items-center justify-center mx-auto text-[#5B5CE2]">
           <ShieldCheck className="w-8 h-8" />
         </div>
@@ -352,13 +352,13 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
           {/* Mode Switcher for Educators */}
           {isTeacherOrAdmin && (
             <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-[#E6E9EF] text-xs font-medium">
               <button
                 onClick={() => setViewMode('real')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-lg transition-all cursor-pointer ${
                   viewMode === 'real'
                     ? 'bg-white text-[#172033] shadow-xs font-bold'
                     : 'text-[#667085] hover:text-[#172033]'
@@ -368,7 +368,7 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
               </button>
               <button
                 onClick={() => setViewMode('demo')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-lg transition-all cursor-pointer ${
                   viewMode === 'demo'
                     ? 'bg-white text-[#172033] shadow-xs font-bold'
                     : 'text-[#667085] hover:text-[#172033]'
@@ -383,7 +383,7 @@ export const TeacherDashboardPage: React.FC<TeacherDashboardPageProps> = ({ onNa
           <button
             onClick={handleRecalculateAggregation}
             disabled={isAggregating}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs transition-all shadow-sm disabled:opacity-60"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs transition-all shadow-sm disabled:opacity-60 cursor-pointer"
             title={viewMode === 'demo' ? 'Refresh Demonstration Cohort Telemetry' : 'Recalculate Live Class Aggregation'}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isAggregating ? 'animate-spin' : ''}`} />

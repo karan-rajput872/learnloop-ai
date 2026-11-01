@@ -155,12 +155,12 @@ export const TutorChatPage: React.FC<TutorChatPageProps> = ({ onOpenLiveVideo })
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           {onOpenLiveVideo && (
             <button
               type="button"
               onClick={onOpenLiveVideo}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-[#5B5CE2] to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition-all transform hover:scale-105 cursor-pointer"
+              className="w-full sm:w-auto min-h-[40px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-[#5B5CE2] to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition-all transform hover:scale-105 cursor-pointer shrink-0"
               title="Inspect handwritten code, diagrams, or whiteboard sketches using your camera"
             >
               <Camera className="w-3.5 h-3.5 text-indigo-200" />
@@ -169,17 +169,17 @@ export const TutorChatPage: React.FC<TutorChatPageProps> = ({ onOpenLiveVideo })
           )}
 
           {/* Concept Selector for Quick Socratic Actions */}
-          <div className="flex items-center gap-2 bg-white border border-[#E6E9EF] p-2 rounded-xl text-xs font-mono shadow-xs">
-          <span className="text-[#667085]">Focus Topic:</span>
-          <select
-            value={activeConcept}
-            onChange={(e) => setActiveConcept(e.target.value)}
-            className="bg-slate-50 border border-[#E6E9EF] text-[#5B5CE2] font-semibold rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-[#5B5CE2]"
-          >
-            {DSA_CONCEPT_OPTIONS.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <div className="flex items-center justify-between sm:justify-start gap-2 bg-white border border-[#E6E9EF] p-2 rounded-xl text-xs font-mono shadow-xs">
+            <span className="text-[#667085] shrink-0">Focus Topic:</span>
+            <select
+              value={activeConcept}
+              onChange={(e) => setActiveConcept(e.target.value)}
+              className="bg-slate-50 border border-[#E6E9EF] text-[#5B5CE2] font-semibold rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-[#5B5CE2]"
+            >
+              {DSA_CONCEPT_OPTIONS.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -198,7 +198,7 @@ export const TutorChatPage: React.FC<TutorChatPageProps> = ({ onOpenLiveVideo })
           <button
             onClick={() => handleTutorAction('hint')}
             disabled={Boolean(actionLoading) || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer"
           >
             {actionLoading === 'hint' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lightbulb className="w-3.5 h-3.5 text-amber-600" />}
             Give me a hint
@@ -207,7 +207,7 @@ export const TutorChatPage: React.FC<TutorChatPageProps> = ({ onOpenLiveVideo })
           <button
             onClick={() => handleTutorAction('analogy')}
             disabled={Boolean(actionLoading) || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#EEF0FD] hover:bg-indigo-100 border border-[#C7D2FE] text-[#5B5CE2] text-xs font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl bg-[#EEF0FD] hover:bg-indigo-100 border border-[#C7D2FE] text-[#5B5CE2] text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer"
           >
             {actionLoading === 'analogy' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Palette className="w-3.5 h-3.5 text-[#5B5CE2]" />}
             Explain with an analogy
@@ -216,7 +216,7 @@ export const TutorChatPage: React.FC<TutorChatPageProps> = ({ onOpenLiveVideo })
           <button
             onClick={() => handleTutorAction('worked_example')}
             disabled={Boolean(actionLoading) || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 text-xs font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer"
           >
             {actionLoading === 'worked_example' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Code className="w-3.5 h-3.5 text-sky-600" />}
             Show a worked example
@@ -225,7 +225,7 @@ export const TutorChatPage: React.FC<TutorChatPageProps> = ({ onOpenLiveVideo })
           <button
             onClick={() => handleTutorAction('socratic_challenge')}
             disabled={Boolean(actionLoading) || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 text-xs font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer"
           >
             {actionLoading === 'socratic_challenge' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Brain className="w-3.5 h-3.5 text-teal-600" />}
             Test my understanding
@@ -234,7 +234,7 @@ export const TutorChatPage: React.FC<TutorChatPageProps> = ({ onOpenLiveVideo })
           <button
             onClick={() => handleTutorAction('explain_simple')}
             disabled={Boolean(actionLoading) || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer"
           >
             {actionLoading === 'explain_simple' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Smile className="w-3.5 h-3.5 text-slate-600" />}
             Explain more simply
@@ -249,7 +249,7 @@ export const TutorChatPage: React.FC<TutorChatPageProps> = ({ onOpenLiveVideo })
       />
 
       {/* Chat Thread */}
-      <div className="bg-white rounded-2xl border border-[#E6E9EF] p-5 shadow-card space-y-4 max-h-[500px] overflow-y-auto">
+      <div className="bg-white rounded-2xl border border-[#E6E9EF] p-4 sm:p-5 shadow-card space-y-4 max-h-[60dvh] sm:max-h-[500px] overflow-y-auto">
         {messages.map((m) => (
           <div
             key={m.id}

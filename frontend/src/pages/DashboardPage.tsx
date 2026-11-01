@@ -67,7 +67,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     <div className="space-y-6 animate-fade-in">
 
       {/* Hero Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-white border border-[#E6E9EF] p-6 sm:p-8 shadow-card">
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-[#E6E9EF] p-4 sm:p-8 shadow-card">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2.5 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
@@ -81,7 +81,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#172033] font-sans">
+            <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-[#172033] font-sans">
               Welcome back, <span className="text-[#5B5CE2]">{profile.name}</span>
             </h1>
             <p className="text-xs sm:text-sm text-[#667085] leading-relaxed font-sans">
@@ -93,7 +93,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {onOpenProfile && (
               <button
                 onClick={onOpenProfile}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors shadow-xs"
+                className="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-slate-50 hover:bg-slate-100 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors shadow-xs cursor-pointer"
               >
                 <Award className="w-4 h-4 text-[#5B5CE2]" />
                 My Learning Profile
@@ -103,7 +103,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {!completedDiagnostic ? (
               <button
                 onClick={onStartDiagnostic}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all"
+                className="flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all cursor-pointer"
               >
                 <GraduationCap className="w-4 h-4" />
                 Take Diagnostic Test
@@ -112,7 +112,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             ) : (
               <button
                 onClick={onStartQuiz}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all"
+                className="flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all cursor-pointer"
               >
                 <BrainCircuit className="w-4 h-4" />
                 Launch Adaptive Practice
@@ -122,7 +122,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             <button
               onClick={onViewGraph}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-white hover:bg-slate-50 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors cursor-pointer"
             >
               <Network className="w-4 h-4 text-[#5B5CE2]" />
               View Syllabus Graph
@@ -304,7 +304,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           <button
             onClick={onStartQuiz}
-            className="w-full py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 sm:py-2 min-h-[44px] rounded-xl bg-slate-50 hover:bg-slate-100 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             Practice Weakest Concepts Now &rarr;
           </button>
@@ -354,7 +354,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           <button
             onClick={onOpenRevision}
-            className="w-full py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 sm:py-2 min-h-[44px] rounded-xl bg-slate-50 hover:bg-slate-100 text-[#172033] text-xs font-medium border border-[#E6E9EF] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             Open Spaced Revision Calendar &rarr;
           </button>

@@ -196,7 +196,7 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
                 type="button"
                 onClick={() => !evalResult && setSelectedOption(opt.id)}
                 disabled={Boolean(evalResult)}
-                className={`w-full text-left p-3.5 rounded-xl border text-xs sm:text-sm font-sans flex items-start gap-3 transition-all ${optStyle}`}
+                className={`w-full text-left p-3.5 min-h-[48px] rounded-xl border text-xs sm:text-sm font-sans flex items-start gap-3 transition-all cursor-pointer ${optStyle}`}
               >
                 <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
                   isSelected ? 'bg-[#5B5CE2] text-white' : 'bg-white text-[#667085] border border-[#E6E9EF]'
@@ -223,12 +223,12 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
                 value={reasoning}
                 onChange={(e) => setReasoning(e.target.value)}
                 placeholder="e.g. I chose option A because the top pointer moves towards index C-1, and if we pop an empty stack it triggers an underflow..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E6E9EF] text-[#172033] text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-[#5B5CE2] focus:bg-white transition-colors"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E6E9EF] text-[#172033] text-[16px] sm:text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-[#5B5CE2] focus:bg-white transition-colors"
               />
             </div>
 
             {/* Confidence Selector */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
               <div className="flex items-center gap-2 text-xs font-mono text-[#667085]">
                 <span>Confidence:</span>
                 {(['low', 'medium', 'high'] as const).map((level) => (
@@ -236,7 +236,7 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
                     key={level}
                     type="button"
                     onClick={() => setConfidence(level)}
-                    className={`px-2.5 py-1 rounded-md text-[11px] uppercase font-mono font-semibold transition-colors border ${
+                    className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs uppercase font-mono font-semibold transition-colors border cursor-pointer ${
                       confidence === level
                         ? 'bg-[#EEF0FD] text-[#5B5CE2] border-[#C7D2FE]'
                         : 'bg-white text-[#667085] border-[#E6E9EF] hover:text-[#172033]'
@@ -250,7 +250,7 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
               <button
                 type="submit"
                 disabled={submitting || !selectedOption || !reasoning.trim()}
-                className="px-6 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] disabled:opacity-40 text-white font-medium text-xs shadow-sm transition-all"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] disabled:opacity-40 text-white font-medium text-xs shadow-sm transition-all flex items-center justify-center cursor-pointer"
               >
                 {submitting ? 'Agent Evaluating Reasoning...' : 'Submit & Analyze Reasoning'}
               </button>
@@ -350,7 +350,7 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => fetchNextQuestion(evalResult.next_recommended_concept)}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium text-xs shadow-sm transition-all cursor-pointer"
               >
                 Proceed to Next Adaptive Question
                 <ArrowRight className="w-3.5 h-3.5" />

@@ -267,8 +267,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
-      <div className="bg-white border border-[#E6E9EF] shadow-2xl rounded-2xl w-full max-w-2xl my-6 flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
+      <div className="bg-white border border-[#E6E9EF] shadow-2xl rounded-2xl w-full max-w-2xl my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] overflow-hidden">
 
         {/* Header with Progress */}
         <div className="bg-[#FAFBFD] border-b border-[#E6E9EF] p-5 sm:p-6 shrink-0">
@@ -808,13 +808,13 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
         </div>
 
         {/* Footer Navigation */}
-        <div className="bg-[#FAFBFD] border-t border-[#E6E9EF] p-4 sm:p-5 flex items-center justify-between shrink-0">
-          <div>
+        <div className="bg-[#FAFBFD] border-t border-[#E6E9EF] p-3 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
+          <div className="flex items-center justify-between sm:justify-start">
             {step > 1 ? (
               <button
                 type="button"
                 onClick={() => setStep(step - 1)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#E6E9EF] bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs"
+                className="min-h-[44px] flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#E6E9EF] bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back
@@ -823,30 +823,30 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs text-slate-500 hover:text-slate-700 px-2 font-medium"
+                className="min-h-[44px] text-xs text-slate-500 hover:text-slate-700 px-2 font-medium cursor-pointer"
               >
                 Skip for Now
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             {step < totalSteps ? (
               <button
                 type="button"
                 onClick={() => setStep(step + 1)}
-                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-semibold shadow-xs transition-colors"
+                className="min-h-[44px] flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               >
                 Continue
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             ) : (
-              <div className="flex items-center gap-2">
+              <>
                 <button
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => handleFinalSubmit(false)}
-                  className="px-4 py-2 rounded-xl border border-[#E6E9EF] bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs disabled:opacity-50"
+                  className="min-h-[44px] px-4 py-2.5 rounded-xl border border-[#E6E9EF] bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   Save & Go to Dashboard
                 </button>
@@ -854,12 +854,12 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => handleFinalSubmit(true)}
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
+                  className="min-h-[44px] flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? 'Saving...' : 'Start Diagnostic Assessment'}
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
-              </div>
+              </>
             )}
           </div>
         </div>

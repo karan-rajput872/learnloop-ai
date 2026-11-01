@@ -338,46 +338,46 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
         </div>
 
         {/* Top 4 KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Card 1: Score */}
-          <div className="bg-white rounded-2xl border border-[#E6E9EF] p-5 shadow-card space-y-1">
-            <div className="text-xs font-mono text-[#667085] uppercase">Total Score</div>
-            <div className="text-3xl font-extrabold text-[#172033] font-sans">
-              {result.score} <span className="text-lg font-normal text-[#667085]">/ {result.total_questions}</span>
+          <div className="bg-white rounded-2xl border border-[#E6E9EF] p-3.5 sm:p-5 shadow-card space-y-1">
+            <div className="text-[11px] sm:text-xs font-mono text-[#667085] uppercase">Total Score</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-[#172033] font-sans">
+              {result.score} <span className="text-sm sm:text-lg font-normal text-[#667085]">/ {result.total_questions}</span>
             </div>
-            <div className="text-[11px] text-[#667085]">Calibrated across 12 DSA concepts</div>
+            <div className="text-[10px] sm:text-[11px] text-[#667085] leading-tight">Calibrated across DSA concepts</div>
           </div>
 
           {/* Card 2: Accuracy */}
-          <div className="bg-white rounded-2xl border border-[#E6E9EF] p-5 shadow-card space-y-1">
-            <div className="text-xs font-mono text-[#667085] uppercase">Assessment Accuracy</div>
-            <div className={`text-3xl font-extrabold font-sans ${
+          <div className="bg-white rounded-2xl border border-[#E6E9EF] p-3.5 sm:p-5 shadow-card space-y-1">
+            <div className="text-[11px] sm:text-xs font-mono text-[#667085] uppercase">Accuracy</div>
+            <div className={`text-2xl sm:text-3xl font-extrabold font-sans ${
               result.percentage >= 80 ? 'text-teal-700' :
               result.percentage >= 50 ? 'text-amber-700' : 'text-rose-600'
             }`}>
               {result.percentage}%
             </div>
-            <div className="text-[11px] text-[#667085]">Test score (separate from mastery)</div>
+            <div className="text-[10px] sm:text-[11px] text-[#667085] leading-tight">Calibrated score percentage</div>
           </div>
 
           {/* Card 3: Correct Answers */}
-          <div className="bg-white rounded-2xl border border-[#E6E9EF] p-5 shadow-card space-y-1">
-            <div className="text-xs font-mono text-[#667085] uppercase">Correct Answers</div>
-            <div className="text-3xl font-extrabold text-teal-700 font-sans flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-[#E6E9EF] p-3.5 sm:p-5 shadow-card space-y-1">
+            <div className="text-[11px] sm:text-xs font-mono text-[#667085] uppercase">Correct</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-teal-700 font-sans flex items-center gap-1.5 sm:gap-2">
               {result.score}
-              <CheckCircle2 className="w-5 h-5 text-teal-500" />
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500" />
             </div>
-            <div className="text-[11px] text-teal-800">Calibrated baseline: 80% mastery</div>
+            <div className="text-[10px] sm:text-[11px] text-teal-800 leading-tight">80% mastery baseline</div>
           </div>
 
           {/* Card 4: Incorrect Answers */}
-          <div className="bg-white rounded-2xl border border-[#E6E9EF] p-5 shadow-card space-y-1">
-            <div className="text-xs font-mono text-[#667085] uppercase">Identified Gaps</div>
-            <div className="text-3xl font-extrabold text-rose-600 font-sans flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-[#E6E9EF] p-3.5 sm:p-5 shadow-card space-y-1">
+            <div className="text-[11px] sm:text-xs font-mono text-[#667085] uppercase">Identified Gaps</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 font-sans flex items-center gap-1.5 sm:gap-2">
               {incorrectCount}
-              <XCircle className="w-5 h-5 text-rose-500" />
+              <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500" />
             </div>
-            <div className="text-[11px] text-rose-800">Flagged for targeted revision</div>
+            <div className="text-[10px] sm:text-[11px] text-rose-800 leading-tight">Flagged for targeted revision</div>
           </div>
         </div>
 
@@ -970,7 +970,7 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
         </div>
 
         {/* Quick jump pills */}
-        <div className="flex flex-wrap gap-1.5 pt-1">
+        <div className="flex flex-wrap gap-2 pt-1">
           {questions.map((q, idx) => {
             const isAnswered = Boolean(answers[q.id]?.option);
             const isCurrent = idx === currentIndex;
@@ -979,7 +979,7 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                 key={q.id}
                 type="button"
                 onClick={() => setCurrentIndex(idx)}
-                className={`w-7 h-7 rounded-lg font-mono text-xs font-bold transition-all flex items-center justify-center ${
+                className={`w-8 h-8 sm:w-7 sm:h-7 min-w-[32px] min-h-[32px] rounded-lg font-mono text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
                   isCurrent
                     ? 'ring-2 ring-[#5B5CE2] bg-[#EEF0FD] text-[#5B5CE2]'
                     : isAnswered
@@ -997,7 +997,7 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
 
       {/* Question Card */}
       {currentQ && (
-        <div className="bg-white rounded-2xl border border-[#E6E9EF] p-6 sm:p-7 shadow-card space-y-5">
+        <div className="bg-white rounded-2xl border border-[#E6E9EF] p-4 sm:p-7 shadow-card space-y-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono font-semibold uppercase px-2.5 py-1 rounded-md bg-[#EEF0FD] text-[#5B5CE2] border border-[#C7D2FE]">
               {currentQ.concept_id.replace('_', ' ')}
@@ -1021,7 +1021,7 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                   key={opt.id}
                   type="button"
                   onClick={() => handleSelectOption(opt.id)}
-                  className={`w-full text-left p-3.5 rounded-xl border text-xs sm:text-sm font-sans flex items-start gap-3 transition-all ${
+                  className={`w-full text-left p-3.5 min-h-[48px] rounded-xl border text-xs sm:text-sm font-sans flex items-start gap-3 transition-all cursor-pointer ${
                     selected
                       ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] shadow-xs'
                       : 'bg-slate-50/70 hover:bg-slate-100/70 border-[#E6E9EF] text-slate-800'
@@ -1048,17 +1048,17 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
               value={answers[currentQ.id]?.reasoning || ''}
               onChange={(e) => handleReasoningChange(e.target.value)}
               placeholder="e.g. I picked B because binary search splits the search interval in half at each step..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E6E9EF] text-[#172033] text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-[#5B5CE2] focus:bg-white transition-colors"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E6E9EF] text-[#172033] text-[16px] sm:text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-[#5B5CE2] focus:bg-white transition-colors"
             />
           </div>
 
           {/* Navigation Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-[#E6E9EF]">
+          <div className="flex items-center justify-between pt-4 border-t border-[#E6E9EF] gap-2">
             <button
               type="button"
               onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
               disabled={currentIndex === 0}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-40 text-[#667085] text-xs font-medium border border-[#E6E9EF] transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl bg-white hover:bg-slate-50 disabled:opacity-40 text-[#667085] text-xs font-medium border border-[#E6E9EF] transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Previous
@@ -1068,7 +1068,7 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
               <button
                 type="button"
                 onClick={() => setCurrentIndex(prev => Math.min(questions.length - 1, prev + 1))}
-                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-medium shadow-sm transition-all"
+                className="flex items-center gap-1.5 px-5 py-2.5 min-h-[44px] rounded-xl bg-[#5B5CE2] hover:bg-[#494AC8] text-white text-xs font-medium shadow-sm transition-all cursor-pointer"
               >
                 Next Question
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -1078,7 +1078,7 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
                 type="button"
                 onClick={handleSubmitAll}
                 disabled={submitting || answeredCount === 0}
-                className="flex items-center gap-1.5 px-6 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-xs font-medium shadow-sm transition-all"
+                className="flex items-center gap-1.5 px-6 py-2.5 min-h-[44px] rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-xs font-medium shadow-sm transition-all cursor-pointer"
               >
                 {submitting ? 'Calibrating Baseline...' : 'Complete & View Results'}
                 <CheckCircle2 className="w-4 h-4" />
