@@ -12,8 +12,31 @@ import httpx
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-# Security Settings
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "learnloop-ai-production-jwt-secret-key-32chars-min-len-2026!")
+# Security Settings & Production Environment Validation
+_raw_jwt_secret = os.getenv("JWT_SECRET_KEY", "").strip()
+_environment = os.getenv("ENVIRONMENT", "").strip().lower()
+IS_PRODUCTION = (
+    _environment in ("production", "prod")
+    or os.getenv("RENDER", "").strip().lower() == "true"
+    or bool(os.getenv("RENDER_SERVICE_ID"))
+)
+
+FALLBACK_DEV_JWT_SECRET = "learnloop-dev-only-secret-key-not-for-production-use-min32c!"
+
+if not _raw_jwt_secret:
+    if IS_PRODUCTION:
+        raise RuntimeError(
+            "CRITICAL SECURITY CONFIGURATION ERROR: JWT_SECRET_KEY environment variable is required in production. "
+            "Please configure a strong, random 32+ character secret in your hosting provider's environment settings (e.g. Render Dashboard)."
+        )
+    JWT_SECRET_KEY = FALLBACK_DEV_JWT_SECRET
+else:
+    if len(_raw_jwt_secret) < 32:
+        raise ValueError(
+            "SECURITY CONFIGURATION ERROR: JWT_SECRET_KEY must be at least 32 characters long for cryptographic security."
+        )
+    JWT_SECRET_KEY = _raw_jwt_secret
+
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
@@ -292,9 +315,17 @@ def parse_user_agent(ua_string: Optional[str]) -> Tuple[str, str, str]:
 _owner_rate_limit: Dict[str, List[float]] = {}
 _rate_limit_lock = threading.Lock()
 
-def check_owner_rate_limit(key: str, max_attempts: int = 5, window_seconds: int = 900) -> bool:
+def check_owner_rate_limit(
+    key: str,
+    max_attempts: int = 5,
+    window_seconds: int = 900,
+    client_ip: Optional[str] = None,
+    email: Optional[str] = None
+) -> bool:
     """
-    Sliding window rate limit check.
+    Hybrid sliding-window rate limit check:
+    1. Fast in-memory check for burst attacks.
+    2. Shared, multi-worker persistent database check via storage.check_database_rate_limit().
     Returns True if permitted, False if limit exceeded.
     Default: max 5 failed attempts per 15 minutes (900s).
     """
@@ -306,6 +337,16 @@ def check_owner_rate_limit(key: str, max_attempts: int = 5, window_seconds: int 
         if len(attempts) >= max_attempts:
             _owner_rate_limit[key] = attempts
             return False
+
+    # Check shared database rate limit across processes
+    try:
+        from app.storage.db import storage
+        if not storage.check_database_rate_limit(client_ip, email, max_failures=max_attempts, window_seconds=window_seconds):
+            return False
+    except Exception:
+        pass
+
+    with _rate_limit_lock:
         attempts.append(now)
         _owner_rate_limit[key] = attempts
         return True

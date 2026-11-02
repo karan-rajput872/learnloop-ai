@@ -697,11 +697,21 @@ class GamificationService:
         with storage.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT OR REPLACE INTO user_settings (
+                INSERT INTO user_settings (
                     student_id, theme, timezone, daily_goal_minutes,
                     preferred_study_days, reminder_notifications, revision_reminders,
                     streak_reminders, sound_effects, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (student_id) DO UPDATE SET
+                    theme = EXCLUDED.theme,
+                    timezone = EXCLUDED.timezone,
+                    daily_goal_minutes = EXCLUDED.daily_goal_minutes,
+                    preferred_study_days = EXCLUDED.preferred_study_days,
+                    reminder_notifications = EXCLUDED.reminder_notifications,
+                    revision_reminders = EXCLUDED.revision_reminders,
+                    streak_reminders = EXCLUDED.streak_reminders,
+                    sound_effects = EXCLUDED.sound_effects,
+                    updated_at = EXCLUDED.updated_at
             """, (
                 student_id, theme, timezone_str, daily_goal,
                 study_days, reminders, revisions, streaks, sounds, now_iso
@@ -723,10 +733,11 @@ class GamificationService:
             notifs = [dict(r) for r in cursor.fetchall()]
 
             # Dynamic check: Are there revisions due?
+            now_iso = datetime.now(timezone.utc).isoformat()
             cursor.execute("""
                 SELECT COUNT(*) FROM revision_tasks
-                WHERE student_id = ? AND status != 'completed' AND datetime(due_date) <= datetime('now')
-            """, (student_id,))
+                WHERE student_id = ? AND status != 'completed' AND due_date <= ?
+            """, (student_id, now_iso))
             due_count = cursor.fetchone()[0]
 
             if due_count > 0:

@@ -7,36 +7,374 @@ import io
 import re
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union
 from app.dsa.syllabus import DSA_CONCEPTS
+
+try:
+    import psycopg2
+    import psycopg2.pool
+    import psycopg2.extras
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
+# SQL token recognition for safe parameter adaptation (? -> %s outside quotes/comments)
+_SQL_LITERAL_OR_COMMENT_RE = re.compile(
+    r"""(
+        '(?:''|[^'])*'
+        |"(?:""|[^"])*"
+        |--[^\r\n]*
+        |/\*[\s\S]*?\*/
+    )""",
+    re.VERBOSE
+)
+
+def adapt_sql_for_postgres(sql: str) -> str:
+    """
+    Safely adapt an SQLite SQL statement for PostgreSQL execution:
+    1. Replaces '?' placeholders with '%s' strictly outside string literals and comments.
+    2. Adapts SQLite-specific functions (e.g. datetime('now') -> CURRENT_TIMESTAMP).
+    """
+    sql = re.sub(r"\bdatetime\(\s*'now'\s*\)", "CURRENT_TIMESTAMP", sql, flags=re.IGNORECASE)
+    parts = _SQL_LITERAL_OR_COMMENT_RE.split(sql)
+    for i in range(0, len(parts), 2):
+        if parts[i]:
+            parts[i] = parts[i].replace("?", "%s")
+    return "".join(parts)
+
+
+class PostgresCursorWrapper:
+    """Cursor wrapper providing transparent SQL adaptation and dictionary/index row access."""
+    def __init__(self, real_cursor):
+        self._cursor = real_cursor
+
+    def execute(self, sql: str, params=None):
+        adapted_sql = adapt_sql_for_postgres(sql)
+        if params is None:
+            return self._cursor.execute(adapted_sql)
+        return self._cursor.execute(adapted_sql, params)
+
+    def executemany(self, sql: str, seq_of_params):
+        adapted_sql = adapt_sql_for_postgres(sql)
+        return self._cursor.executemany(adapted_sql, seq_of_params)
+
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+    def fetchmany(self, size=None):
+        if size is None:
+            return self._cursor.fetchmany()
+        return self._cursor.fetchmany(size)
+
+    @property
+    def description(self):
+        return self._cursor.description
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+    def close(self):
+        return self._cursor.close()
+
+    def __iter__(self):
+        return iter(self._cursor)
+
+    def __getattr__(self, name):
+        return getattr(self._cursor, name)
+
+
+class PostgresConnectionWrapper:
+    """Threaded pooled connection context manager with health check, broken socket disposal, and transaction isolation."""
+    def __init__(self, pool):
+        self._pool = pool
+        self._conn = None
+        self._closed = False
+        self._is_broken = False
+
+        # Checkout connection with stale socket health check
+        # Catches connections dropped by Neon idle suspend before application queries begin
+        conn = None
+        try:
+            conn = pool.getconn()
+            if getattr(conn, "closed", 0) != 0:
+                try:
+                    pool.putconn(conn, close=True)
+                except Exception:
+                    pass
+                conn = pool.getconn()
+
+            # Active probe: ensure TCP socket is alive before transaction starts
+            # If socket was dropped server-side (Neon idle suspend), probe fails here safely
+            is_alive = False
+            try:
+                prev_autocommit = getattr(conn, "autocommit", False)
+                conn.autocommit = True
+                with conn.cursor() as cur:
+                    cur.execute("/* health_probe */ SELECT 1")
+                conn.autocommit = prev_autocommit
+                is_alive = True
+            except (psycopg2.OperationalError, psycopg2.InterfaceError) as probe_err:
+                logger.info(f"[STORAGE NOTICE] Discarded idle/stale pooled connection: {probe_err}")
+                try:
+                    pool.putconn(conn, close=True)
+                except Exception:
+                    pass
+                conn = None
+
+            if not is_alive or conn is None:
+                # Acquire fresh connection from pool
+                conn = pool.getconn()
+                prev_autocommit = getattr(conn, "autocommit", False)
+                conn.autocommit = True
+                with conn.cursor() as cur:
+                    cur.execute("/* health_probe */ SELECT 1")
+                conn.autocommit = prev_autocommit
+
+            self._conn = conn
+        except psycopg2.pool.PoolError as e:
+            raise RuntimeError(
+                f"Database connection pool exhausted. Increase DB_POOL_MAX: {e}"
+            ) from e
+        except Exception as e:
+            if conn is not None:
+                try:
+                    pool.putconn(conn, close=True)
+                except Exception:
+                    pass
+            logger.warning(f"Error acquiring or validating connection from PostgreSQL pool: {e}")
+            raise
+
+    def cursor(self, *args, **kwargs):
+        if self._conn is None or self._closed:
+            raise RuntimeError("Cannot open cursor: PostgresConnectionWrapper has no active connection.")
+        if "cursor_factory" not in kwargs:
+            kwargs["cursor_factory"] = psycopg2.extras.DictCursor
+        real_cur = self._conn.cursor(*args, **kwargs)
+        return PostgresCursorWrapper(real_cur)
+
+    def commit(self):
+        try:
+            return self._conn.commit()
+        except Exception as e:
+            self._is_broken = True
+            logger.warning(f"Error committing PostgreSQL transaction: {e}")
+            raise
+
+    def rollback(self):
+        try:
+            return self._conn.rollback()
+        except Exception as e:
+            self._is_broken = True
+            logger.warning(f"Error rolling back PostgreSQL transaction: {e}")
+            raise
+
+    def close(self):
+        if not self._closed:
+            self._closed = True
+            conn_to_return = self._conn
+            self._conn = None
+            if conn_to_return is not None and self._pool is not None:
+                try:
+                    driver_closed = getattr(conn_to_return, "closed", 0) != 0
+                    is_broken = self._is_broken or driver_closed
+                    self._pool.putconn(conn_to_return, close=is_broken)
+                except Exception as e:
+                    logger.warning(f"Error returning connection to PostgreSQL pool: {e}")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if exc_type is not None:
+                # An exception occurred during user execution
+                if isinstance(exc_val, (psycopg2.OperationalError, psycopg2.InterfaceError)):
+                    self._is_broken = True
+                try:
+                    self._conn.rollback()
+                except Exception as rb_err:
+                    self._is_broken = True
+                    logger.warning(f"Rollback failed during error handling: {rb_err}")
+            else:
+                try:
+                    self._conn.commit()
+                except Exception as cm_err:
+                    self._is_broken = True
+                    logger.warning(f"Commit failed during transaction conclusion: {cm_err}")
+                    raise
+        finally:
+            self.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def __getattr__(self, name):
+        if self._conn is None:
+            raise AttributeError(f"PostgresConnectionWrapper has no active connection for attribute '{name}'")
+        return getattr(self._conn, name)
+
+
+class SqliteConnectionWrapper:
+    """SQLite connection wrapper providing dictionary row factory and clean context management."""
+    def __init__(self, db_path: str):
+        self._conn = sqlite3.connect(db_path)
+        self._conn.row_factory = sqlite3.Row
+
+    def cursor(self, *args, **kwargs):
+        return self._conn.cursor(*args, **kwargs)
+
+    def commit(self):
+        return self._conn.commit()
+
+    def rollback(self):
+        return self._conn.rollback()
+
+    def close(self):
+        return self._conn.close()
+
+    def __enter__(self):
+        return self._conn.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        res = self._conn.__exit__(exc_type, exc_val, exc_tb)
+        self._conn.close()
+        return res
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
 # Database Storage Configuration
 # Supports custom persistent path (e.g. Render Persistent Disk mounted at /var/data/learnloop.db)
-CUSTOM_DB_PATH = os.getenv("DATABASE_PATH") or os.getenv("SQLITE_PATH")
-if CUSTOM_DB_PATH:
-    DB_PATH = os.path.abspath(CUSTOM_DB_PATH)
-    DB_DIR = os.path.dirname(DB_PATH)
-else:
-    DB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data"))
-    DB_PATH = os.path.join(DB_DIR, "learnloop.db")
+def _resolve_database_path() -> Tuple[str, str]:
+    """
+    Resolve SQLite database and directory path supporting:
+    1. DATABASE_PATH environment variable (Render Persistent Disk e.g. /var/data/learnloop.db)
+    2. SQLITE_PATH environment variable
+    3. DATABASE_URL environment variable (when formatted as sqlite:///path/to/db)
+    4. Default local repository fallback: backend/data/learnloop.db
+    """
+    custom_path = (os.getenv("DATABASE_PATH") or os.getenv("SQLITE_PATH") or "").strip()
+    if custom_path:
+        resolved = os.path.abspath(custom_path)
+        return resolved, os.path.dirname(resolved)
+
+    db_url = os.getenv("DATABASE_URL", "").strip()
+    if db_url.startswith("sqlite:///"):
+        raw_path = db_url.replace("sqlite:///", "")
+        if raw_path.startswith("./") or raw_path.startswith(".\\"):
+            resolved = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../", raw_path[2:]))
+        else:
+            resolved = os.path.abspath(raw_path)
+        return resolved, os.path.dirname(resolved)
+
+    default_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data"))
+    return os.path.join(default_dir, "learnloop.db"), default_dir
+
+DB_PATH, DB_DIR = _resolve_database_path()
 JSON_FALLBACK = os.path.join(DB_DIR, "learner_store.json")
 
 class StorageManager:
     def __init__(self):
-        os.makedirs(DB_DIR, exist_ok=True)
-        self.init_sqlite()
+        db_url = os.getenv("DATABASE_URL", "").strip()
+        self.is_postgres = db_url.startswith("postgresql://") or db_url.startswith("postgres://")
+        self._pg_pool = None
+        self.postgres_url = None
+
+        if self.is_postgres:
+            if not PSYCOPG2_AVAILABLE:
+                raise RuntimeError(
+                    "DATABASE_URL is configured for PostgreSQL, but psycopg2 is not installed. "
+                    "Please install psycopg2-binary to enable PostgreSQL support."
+                )
+            if db_url.startswith("postgres://"):
+                self.postgres_url = "postgresql://" + db_url[len("postgres://"):]
+            else:
+                self.postgres_url = db_url
+
+            self._init_postgres_pool()
+            logger.info("[STORAGE ACTIVE] Initialized Neon/PostgreSQL backend via ThreadedConnectionPool.")
+        else:
+            try:
+                os.makedirs(DB_DIR, exist_ok=True)
+            except Exception as e:
+                print(f"[STORAGE WARNING] Could not ensure database directory {DB_DIR}: {e}")
+
+            # Diagnostic notice for Render deployment
+            if os.getenv("RENDER", "").lower() == "true" or bool(os.getenv("RENDER_SERVICE_ID")):
+                if not DB_PATH.startswith("/var/data"):
+                    print(f"[RENDER STORAGE NOTICE] LearnLoop database is running at ephemeral path: {DB_PATH}")
+                    print("[RENDER STORAGE NOTICE] To persist data across container redeploys, mount a Persistent Disk at /var/data and set DATABASE_PATH=/var/data/learnloop.db")
+                else:
+                    print(f"[RENDER STORAGE ACTIVE] Verified persistent disk database mounted at: {DB_PATH}")
+
+        self.init_db()
         self.ensure_default_learner()
         self.ensure_teacher_demo_cohort()
         self.ensure_demo_teacher()
         self.ensure_owner_bootstrap()
         self.backfill_historical_analytics()
+        self.purge_expired_analytics_events()
+
+    def _init_postgres_pool(self, minconn: Optional[int] = None, maxconn: Optional[int] = None):
+        """Initialize thread-safe PostgreSQL connection pool with configurable limits and keepalives."""
+        min_c = minconn if minconn is not None else int(os.getenv("DB_POOL_MIN", "1"))
+        max_c = maxconn if maxconn is not None else int(os.getenv("DB_POOL_MAX", "10"))
+        try:
+            self._pg_pool = psycopg2.pool.ThreadedConnectionPool(
+                minconn=min_c,
+                maxconn=max_c,
+                dsn=self.postgres_url
+            )
+            logger.info(f"[STORAGE ACTIVE] Initialized Neon/PostgreSQL connection pool (min={min_c}, max={max_c}).")
+        except Exception as e:
+            logger.error(f"[STORAGE ERROR] Failed to initialize PostgreSQL connection pool: {e}")
+            raise
 
     def get_connection(self):
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        return conn
+        """Acquire a database connection context manager (PostgreSQL pooled or SQLite)."""
+        if self.is_postgres:
+            return PostgresConnectionWrapper(self._pg_pool)
+        return SqliteConnectionWrapper(DB_PATH)
+
+    def close(self):
+        """Gracefully release database connection pools and resources."""
+        if self._pg_pool is not None:
+            try:
+                self._pg_pool.closeall()
+                self._pg_pool = None
+                logger.info("[STORAGE] PostgreSQL connection pool gracefully closed.")
+            except Exception as e:
+                logger.warning(f"[STORAGE WARNING] Error closing PostgreSQL pool: {e}")
+
+    def _get_table_columns(self, cursor, table_name: str) -> List[str]:
+        """Database-agnostic retrieval of lowercase column names for schema inspection."""
+        if self.is_postgres:
+            cursor.execute("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = ?
+            """, (table_name.lower(),))
+            return [row[0].lower() for row in cursor.fetchall()]
+        else:
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            rows = cursor.fetchall()
+            return [r[1].lower() if isinstance(r, (tuple, list)) else r["name"].lower() for r in rows]
+
+    def init_db(self):
+        """Initialize database schema on active engine."""
+        if self.is_postgres:
+            self.init_postgres()
+        else:
+            self.init_sqlite()
 
     def init_sqlite(self):
         with self.get_connection() as conn:
@@ -186,22 +524,19 @@ class StorageManager:
             """)
 
             # Schema upgrade for concurrent refresh coordination & grace window
-            cursor.execute("PRAGMA table_info(user_sessions)")
-            session_cols = [c[1] for c in cursor.fetchall()]
+            session_cols = self._get_table_columns(cursor, "user_sessions")
             if "previous_token_hash" not in session_cols:
                 cursor.execute("ALTER TABLE user_sessions ADD COLUMN previous_token_hash TEXT")
             if "rotated_at" not in session_cols:
                 cursor.execute("ALTER TABLE user_sessions ADD COLUMN rotated_at TEXT")
 
             # Schema upgrade for users is_demo flag
-            cursor.execute("PRAGMA table_info(users)")
-            user_cols = [c[1] for c in cursor.fetchall()]
+            user_cols = self._get_table_columns(cursor, "users")
             if "is_demo" not in user_cols:
                 cursor.execute("ALTER TABLE users ADD COLUMN is_demo INTEGER DEFAULT 0")
 
             # Schema upgrade for learners onboarding & verified proficiency
-            cursor.execute("PRAGMA table_info(learners)")
-            learner_cols = [c[1] for c in cursor.fetchall()]
+            learner_cols = self._get_table_columns(cursor, "learners")
             if "onboarding_completed" not in learner_cols:
                 cursor.execute("ALTER TABLE learners ADD COLUMN onboarding_completed INTEGER DEFAULT 0")
             if "onboarding_completed_at" not in learner_cols:
@@ -341,6 +676,7 @@ class StorageManager:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_user_id ON login_events(user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_type ON login_events(event_type)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_status ON login_events(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_ip_status_created ON login_events(ip_address, status, created_at)")
 
             # 2. User Activity Events (Learning events, tutor, quizzes, diagnostics, revisions, live video)
             cursor.execute("""
@@ -380,6 +716,401 @@ class StorageManager:
 
             conn.commit()
 
+    def init_postgres(self):
+        """Initialize PostgreSQL schema, tables, indexes, and helper functions."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # 0. PostgreSQL Helper: SQLite datetime('now') compatibility function
+            cursor.execute("""
+                CREATE OR REPLACE FUNCTION datetime(val text) RETURNS timestamp AS $$
+                BEGIN
+                    IF val = 'now' THEN
+                        RETURN CURRENT_TIMESTAMP;
+                    END IF;
+                    RETURN val::timestamp;
+                END;
+                $$ LANGUAGE plpgsql IMMUTABLE;
+            """)
+
+            # 0b. PostgreSQL Helper: SQLite json_extract compatibility function
+            cursor.execute("""
+                CREATE OR REPLACE FUNCTION json_extract(doc text, path text) RETURNS integer AS $$
+                DECLARE
+                    key_name text;
+                    val_json json;
+                BEGIN
+                    IF doc IS NULL OR doc = '' THEN
+                        RETURN NULL;
+                    END IF;
+                    key_name := replace(path, '$.', '');
+                    val_json := (doc::json)->key_name;
+                    IF val_json IS NULL THEN
+                        RETURN NULL;
+                    END IF;
+                    IF val_json::text = 'true' OR val_json::text = '1' THEN
+                        RETURN 1;
+                    ELSIF val_json::text = 'false' OR val_json::text = '0' THEN
+                        RETURN 0;
+                    END IF;
+                    RETURN (val_json #>> '{}')::integer;
+                EXCEPTION WHEN OTHERS THEN
+                    RETURN NULL;
+                END;
+                $$ LANGUAGE plpgsql IMMUTABLE;
+            """)
+
+            # 1. Learners profile table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS learners (
+                    student_id TEXT PRIMARY KEY,
+                    name TEXT,
+                    target_exam TEXT,
+                    overall_mastery REAL,
+                    diagnostic_completed INTEGER,
+                    onboarding_completed INTEGER DEFAULT 0,
+                    onboarding_completed_at TEXT,
+                    learner_category TEXT,
+                    onboarding_data TEXT,
+                    verified_proficiency_level TEXT DEFAULT 'Level 1 — Beginner',
+                    verified_proficiency_score REAL DEFAULT 0.0,
+                    learning_path_json TEXT,
+                    created_at TEXT,
+                    updated_at TEXT
+                )
+            """)
+
+            # 2. Concept mastery table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS concept_mastery (
+                    student_id TEXT,
+                    concept_id TEXT,
+                    concept_name TEXT,
+                    category TEXT,
+                    mastery_percentage REAL,
+                    questions_attempted INTEGER,
+                    correct_answers INTEGER,
+                    incorrect_answers INTEGER,
+                    current_difficulty TEXT,
+                    last_misconception TEXT,
+                    last_misconception_name TEXT,
+                    last_practiced_at TEXT,
+                    next_revision_at TEXT,
+                    consecutive_correct INTEGER,
+                    PRIMARY KEY (student_id, concept_id)
+                )
+            """)
+
+            # 3. Submission attempt history (SERIAL for auto-increment in PostgreSQL)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS attempts (
+                    id SERIAL PRIMARY KEY,
+                    student_id TEXT,
+                    question_id TEXT,
+                    concept_id TEXT,
+                    selected_option TEXT,
+                    is_correct INTEGER,
+                    student_reasoning TEXT,
+                    detected_misconception TEXT,
+                    score_delta REAL,
+                    timestamp TEXT
+                )
+            """)
+
+            # 4. Revision schedule table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS revision_tasks (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT,
+                    concept_id TEXT,
+                    concept_name TEXT,
+                    due_date TEXT,
+                    status TEXT,
+                    reason TEXT,
+                    urgency TEXT
+                )
+            """)
+
+            # 5. Teacher demonstration cohorts
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS teacher_demo_cohort (
+                    student_id TEXT PRIMARY KEY,
+                    name TEXT,
+                    overall_mastery REAL,
+                    weakest_concept TEXT,
+                    primary_misconception TEXT,
+                    days_inactive INTEGER,
+                    needs_intervention INTEGER,
+                    data_json TEXT
+                )
+            """)
+
+            # 6. Persistent Tutor Chat Messages
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS chat_messages (
+                    id TEXT PRIMARY KEY,
+                    session_id TEXT,
+                    student_id TEXT,
+                    role TEXT,
+                    content TEXT,
+                    metadata_json TEXT,
+                    timestamp TEXT
+                )
+            """)
+
+            # 7. Diagnostic Assessment Attempts History
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS diagnostic_attempts (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT,
+                    score INTEGER,
+                    total_questions INTEGER,
+                    percentage REAL,
+                    concept_results TEXT,
+                    question_details TEXT,
+                    timestamp TEXT
+                )
+            """)
+
+            # 8. Authentication: Users table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT UNIQUE,
+                    full_name TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    normalized_email TEXT NOT NULL UNIQUE,
+                    hashed_password TEXT,
+                    google_sub TEXT UNIQUE,
+                    auth_provider TEXT NOT NULL DEFAULT 'local',
+                    role TEXT NOT NULL DEFAULT 'student',
+                    is_email_verified INTEGER NOT NULL DEFAULT 0,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    is_demo INTEGER DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    last_login_at TEXT
+                )
+            """)
+
+            # 9. Authentication: User sessions / Refresh tokens
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_sessions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    refresh_token_hash TEXT NOT NULL UNIQUE,
+                    device_info TEXT,
+                    previous_token_hash TEXT,
+                    rotated_at TEXT,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    last_used_at TEXT NOT NULL,
+                    revoked_at TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+
+            # 10. Authentication: Password reset tokens
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    expires_at TEXT NOT NULL,
+                    used_at TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+
+            # 11. Gamification: Activity logs for streaks and engagement tracking
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_activity_logs (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL,
+                    activity_type TEXT NOT NULL,
+                    activity_date TEXT NOT NULL,
+                    qualifying INTEGER NOT NULL DEFAULT 1,
+                    learning_minutes INTEGER DEFAULT 5,
+                    details_json TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_student_date ON user_activity_logs(student_id, activity_date)")
+
+            # 12. Gamification: Daily streaks
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_streaks (
+                    student_id TEXT PRIMARY KEY,
+                    current_streak INTEGER NOT NULL DEFAULT 0,
+                    longest_streak INTEGER NOT NULL DEFAULT 0,
+                    last_activity_date TEXT,
+                    total_active_days INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
+            # 13. Gamification: XP and Level
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_gamification (
+                    student_id TEXT PRIMARY KEY,
+                    total_xp INTEGER NOT NULL DEFAULT 0,
+                    level INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
+            # 14. Gamification: Achievements
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_achievements (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL,
+                    achievement_id TEXT NOT NULL,
+                    unlocked INTEGER NOT NULL DEFAULT 0,
+                    progress_current INTEGER NOT NULL DEFAULT 0,
+                    progress_target INTEGER NOT NULL DEFAULT 1,
+                    unlocked_at TEXT,
+                    UNIQUE(student_id, achievement_id)
+                )
+            """)
+
+            # 15. Gamification: Daily and Weekly Challenges
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_challenges (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL,
+                    challenge_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    challenge_type TEXT NOT NULL,
+                    current_count INTEGER NOT NULL DEFAULT 0,
+                    target_count INTEGER NOT NULL DEFAULT 1,
+                    xp_reward INTEGER NOT NULL DEFAULT 15,
+                    completed INTEGER NOT NULL DEFAULT 0,
+                    completed_at TEXT,
+                    period_key TEXT NOT NULL
+                )
+            """)
+
+            # 16. Settings: User preferences
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_settings (
+                    student_id TEXT PRIMARY KEY,
+                    theme TEXT NOT NULL DEFAULT 'light',
+                    timezone TEXT NOT NULL DEFAULT 'UTC',
+                    daily_goal_minutes INTEGER NOT NULL DEFAULT 30,
+                    preferred_study_days TEXT NOT NULL DEFAULT '["Mon","Tue","Wed","Thu","Fri"]',
+                    reminder_notifications INTEGER NOT NULL DEFAULT 1,
+                    revision_reminders INTEGER NOT NULL DEFAULT 1,
+                    streak_reminders INTEGER NOT NULL DEFAULT 1,
+                    sound_effects INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
+            # 17. Notifications: In-app notifications
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_notifications (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    notification_type TEXT NOT NULL DEFAULT 'info',
+                    action_tab TEXT,
+                    is_read INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
+            # 18. Owner Console: Login Events
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS login_events (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT,
+                    email TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    auth_provider TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    failure_reason TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    device_category TEXT,
+                    browser TEXT,
+                    os TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_created ON login_events(created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_user_id ON login_events(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_type ON login_events(event_type)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_status ON login_events(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_login_events_ip_status_created ON login_events(ip_address, status, created_at)")
+
+            # 19. Owner Console: User Activity Events
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_activity_events (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    student_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    concept_id TEXT,
+                    duration_seconds INTEGER DEFAULT 0,
+                    metadata_json TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_events_created ON user_activity_events(created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_events_user ON user_activity_events(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_events_type ON user_activity_events(event_type)")
+
+            # 20. Owner Console: Owner Audit Logs
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS owner_audit_logs (
+                    id TEXT PRIMARY KEY,
+                    actor_id TEXT,
+                    actor_email TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    target TEXT,
+                    status TEXT NOT NULL,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    details_json TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_owner_audit_created ON owner_audit_logs(created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_owner_audit_actor ON owner_audit_logs(actor_email)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_owner_audit_action ON owner_audit_logs(action)")
+
+            # Incremental schema upgrades
+            session_cols = self._get_table_columns(cursor, "user_sessions")
+            if "previous_token_hash" not in session_cols:
+                cursor.execute("ALTER TABLE user_sessions ADD COLUMN previous_token_hash TEXT")
+            if "rotated_at" not in session_cols:
+                cursor.execute("ALTER TABLE user_sessions ADD COLUMN rotated_at TEXT")
+
+            user_cols = self._get_table_columns(cursor, "users")
+            if "is_demo" not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN is_demo INTEGER DEFAULT 0")
+
+            learner_cols = self._get_table_columns(cursor, "learners")
+            if "onboarding_completed" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN onboarding_completed INTEGER DEFAULT 0")
+            if "onboarding_completed_at" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN onboarding_completed_at TEXT")
+            if "learner_category" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN learner_category TEXT")
+            if "onboarding_data" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN onboarding_data TEXT")
+            if "verified_proficiency_level" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN verified_proficiency_level TEXT DEFAULT 'Level 1 — Beginner'")
+            if "verified_proficiency_score" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN verified_proficiency_score REAL DEFAULT 0.0")
+            if "learning_path_json" not in learner_cols:
+                cursor.execute("ALTER TABLE learners ADD COLUMN learning_path_json TEXT")
+
+            conn.commit()
+
     def ensure_default_learner(self):
         self.ensure_learner("student_default", "Alex Chen", onboarding_completed=1)
 
@@ -392,18 +1123,39 @@ class StorageManager:
                 now = datetime.utcnow().isoformat()
                 display_name = name or (f"Student {student_id}" if student_id != "student_default" else "Alex Chen")
                 cursor.execute("""
-                    INSERT OR REPLACE INTO learners
+                    INSERT INTO learners
                     (student_id, name, target_exam, overall_mastery, diagnostic_completed, onboarding_completed, verified_proficiency_level, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (student_id) DO UPDATE SET
+                        name = EXCLUDED.name,
+                        target_exam = EXCLUDED.target_exam,
+                        overall_mastery = EXCLUDED.overall_mastery,
+                        diagnostic_completed = EXCLUDED.diagnostic_completed,
+                        onboarding_completed = EXCLUDED.onboarding_completed,
+                        verified_proficiency_level = EXCLUDED.verified_proficiency_level,
+                        updated_at = EXCLUDED.updated_at
                 """, (student_id, display_name, "Data Structures & Algorithms Exam", 0.0, 0, onboarding_completed, "Level 1 — Beginner", now, now))
 
                 for cid, cdata in DSA_CONCEPTS.items():
                     cursor.execute("""
-                        INSERT OR REPLACE INTO concept_mastery
+                        INSERT INTO concept_mastery
                         (student_id, concept_id, concept_name, category, mastery_percentage,
                          questions_attempted, correct_answers, incorrect_answers, current_difficulty,
                          last_misconception, last_misconception_name, last_practiced_at, next_revision_at, consecutive_correct)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (student_id, concept_id) DO UPDATE SET
+                            concept_name = EXCLUDED.concept_name,
+                            category = EXCLUDED.category,
+                            mastery_percentage = EXCLUDED.mastery_percentage,
+                            questions_attempted = EXCLUDED.questions_attempted,
+                            correct_answers = EXCLUDED.correct_answers,
+                            incorrect_answers = EXCLUDED.incorrect_answers,
+                            current_difficulty = EXCLUDED.current_difficulty,
+                            last_misconception = EXCLUDED.last_misconception,
+                            last_misconception_name = EXCLUDED.last_misconception_name,
+                            last_practiced_at = EXCLUDED.last_practiced_at,
+                            next_revision_at = EXCLUDED.next_revision_at,
+                            consecutive_correct = EXCLUDED.consecutive_correct
                     """, (student_id, cid, cdata["name"], cdata["category"], 0.0, 0, 0, 0, "novice", None, None, None, None, 0))
                 conn.commit()
 
@@ -749,18 +1501,22 @@ class StorageManager:
 
     def get_learning_path(self, student_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve personalized learning path for student."""
+        learning_path_json = None
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT learning_path_json FROM learners WHERE student_id = ?", (student_id,))
             row = cursor.fetchone()
-            if not row or not row["learning_path_json"]:
-                from app.dsa.personalization import generate_personalized_learning_path
-                profile = self.get_learner_profile(student_id)
-                return generate_personalized_learning_path(student_id, profile)
-            try:
-                return json.loads(row["learning_path_json"])
-            except Exception:
-                return {}
+            if row and row["learning_path_json"]:
+                learning_path_json = row["learning_path_json"]
+
+        if not learning_path_json:
+            from app.dsa.personalization import generate_personalized_learning_path
+            profile = self.get_learner_profile(student_id)
+            return generate_personalized_learning_path(student_id, profile)
+        try:
+            return json.loads(learning_path_json)
+        except Exception:
+            return {}
 
     def update_concept_mastery(self, student_id: str, concept_id: str, mastery_data: Dict[str, Any]):
         self.ensure_learner(student_id)
@@ -845,9 +1601,17 @@ class StorageManager:
             task_id = existing["id"] if existing else task["id"]
 
             cursor.execute("""
-                INSERT OR REPLACE INTO revision_tasks
+                INSERT INTO revision_tasks
                 (id, student_id, concept_id, concept_name, due_date, status, reason, urgency)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    student_id = EXCLUDED.student_id,
+                    concept_id = EXCLUDED.concept_id,
+                    concept_name = EXCLUDED.concept_name,
+                    due_date = EXCLUDED.due_date,
+                    status = EXCLUDED.status,
+                    reason = EXCLUDED.reason,
+                    urgency = EXCLUDED.urgency
             """, (
                 task_id,
                 task["student_id"],
@@ -934,9 +1698,17 @@ class StorageManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT OR REPLACE INTO diagnostic_attempts
+                INSERT INTO diagnostic_attempts
                 (id, student_id, score, total_questions, percentage, concept_results, question_details, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    student_id = EXCLUDED.student_id,
+                    score = EXCLUDED.score,
+                    total_questions = EXCLUDED.total_questions,
+                    percentage = EXCLUDED.percentage,
+                    concept_results = EXCLUDED.concept_results,
+                    question_details = EXCLUDED.question_details,
+                    timestamp = EXCLUDED.timestamp
             """, (
                 attempt_data["id"],
                 attempt_data.get("student_id", "student_default"),
@@ -1013,7 +1785,7 @@ class StorageManager:
                 is_demo_val
             ))
             conn.commit()
-            return self.get_user_by_id(user_data["id"])
+        return self.get_user_by_id(user_data["id"])
 
     def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve user by unique user ID."""
@@ -1084,7 +1856,7 @@ class StorageManager:
             if row and row["student_id"]:
                 cursor.execute("UPDATE learners SET name = ?, updated_at = ? WHERE student_id = ?", (full_name, now, row["student_id"]))
             conn.commit()
-            return self.get_user_by_id(user_id)
+        return self.get_user_by_id(user_id)
 
     def create_user_session(self, session_data: Dict[str, Any]):
         """Persist a user session record with token hash."""
@@ -1457,15 +2229,21 @@ class StorageManager:
     # --------------------------------------------------------------------------
     def ensure_owner_bootstrap(self):
         """
-        Secure, idempotent owner account bootstrap.
+        Secure, idempotent, non-destructive owner account bootstrap.
         Ensures the user matching OWNER_EMAIL exists with role='owner'.
-        If no user exists, initializes a secure owner account using OWNER_INITIAL_PASSWORD.
+        - If an existing user matches OWNER_EMAIL, their role is elevated to 'owner'.
+          Their existing password, profile, and progress are strictly preserved.
+        - If no user matches OWNER_EMAIL, a dedicated owner account is inserted safely
+          using standard INSERT INTO (never INSERT OR REPLACE), ensuring no account or password is overwritten.
         """
         from app.auth.security import hash_password, get_authorized_owner_emails
         authorized_emails = get_authorized_owner_emails()
         primary_owner_email = authorized_emails[0]
         initial_pwd = os.getenv("OWNER_INITIAL_PASSWORD", "OwnerPass123456!")
         now = datetime.now(timezone.utc).isoformat()
+
+        audits_to_record = []
+        learners_to_ensure = []
 
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -1476,21 +2254,39 @@ class StorageManager:
                     if user_row["role"] != "owner":
                         cursor.execute("UPDATE users SET role = 'owner', updated_at = ? WHERE id = ?", (now, user_row["id"]))
                         conn.commit()
-                        self.record_owner_audit_event(
-                            actor_id=user_row["id"],
-                            actor_email=email,
-                            action="ROLE_ELEVATED_TO_OWNER",
-                            target="users",
-                            status="SUCCESS",
-                            details={"note": "Existing user account promoted to owner role based on OWNER_EMAIL"}
-                        )
+                        audits_to_record.append({
+                            "actor_id": user_row["id"],
+                            "actor_email": email,
+                            "action": "ROLE_ELEVATED_TO_OWNER",
+                            "target": "users",
+                            "status": "SUCCESS",
+                            "details": {"note": "Existing user account promoted to owner role based on OWNER_EMAIL"}
+                        })
                 elif email == primary_owner_email:
-                    # Initialize default owner record if primary owner doesn't exist yet
-                    owner_id = "usr_owner_main"
-                    student_id = "student_owner"
+                    # Initialize default owner record safely if primary owner doesn't exist yet
+                    # Check if 'usr_owner_main' is already used by another email address
+                    cursor.execute("SELECT id, normalized_email FROM users WHERE id = 'usr_owner_main'")
+                    existing_id = cursor.fetchone()
+                    if existing_id and existing_id["normalized_email"] != primary_owner_email:
+                        owner_id = f"usr_owner_{uuid.uuid4().hex[:12]}"
+                    else:
+                        owner_id = "usr_owner_main"
+
+                    cursor.execute("SELECT student_id FROM learners WHERE student_id = 'student_owner'")
+                    existing_learner = cursor.fetchone()
+                    if existing_learner:
+                        cursor.execute("SELECT id FROM users WHERE student_id = 'student_owner' AND normalized_email != ?", (primary_owner_email,))
+                        if cursor.fetchone():
+                            student_id = f"student_owner_{uuid.uuid4().hex[:8]}"
+                        else:
+                            student_id = "student_owner"
+                    else:
+                        student_id = "student_owner"
+
                     hashed_pwd = hash_password(initial_pwd)
+                    # Safe INSERT INTO - never replaces or overwrites existing accounts
                     cursor.execute("""
-                        INSERT OR REPLACE INTO users (
+                        INSERT INTO users (
                             id, student_id, full_name, email, normalized_email,
                             hashed_password, google_sub, auth_provider, role,
                             is_email_verified, is_active, created_at, updated_at, last_login_at, is_demo
@@ -1501,15 +2297,21 @@ class StorageManager:
                         1, 1, now, now, None, 0
                     ))
                     conn.commit()
-                    self.ensure_learner(student_id, "LearnLoop Platform Owner", onboarding_completed=1)
-                    self.record_owner_audit_event(
-                        actor_id=owner_id,
-                        actor_email=primary_owner_email,
-                        action="OWNER_ACCOUNT_BOOTSTRAPPED",
-                        target="users",
-                        status="SUCCESS",
-                        details={"note": "Platform owner account initialized securely on startup"}
-                    )
+                    learners_to_ensure.append((student_id, "LearnLoop Platform Owner", 1))
+                    audits_to_record.append({
+                        "actor_id": owner_id,
+                        "actor_email": primary_owner_email,
+                        "action": "OWNER_ACCOUNT_BOOTSTRAPPED",
+                        "target": "users",
+                        "status": "SUCCESS",
+                        "details": {"note": "Platform owner account initialized securely without overwrite risk"}
+                    })
+
+        # Process side effects after main connection context has cleanly exited
+        for sid, name, ob in learners_to_ensure:
+            self.ensure_learner(sid, name, onboarding_completed=ob)
+        for a in audits_to_record:
+            self.record_owner_audit_event(**a)
 
     def backfill_historical_analytics(self):
         """
@@ -1640,6 +2442,117 @@ class StorageManager:
             logger.warning(f"Non-blocking login event logging failure: {e}")
             return None
 
+    def purge_expired_analytics_events(self, custom_retention_days: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Safely prune transient telemetry records older than the configured retention threshold.
+        
+        STRICT SAFETY GUARANTEES:
+        - NEVER modifies or deletes user accounts (users).
+        - NEVER modifies or deletes learner profiles or mastery states (learners, concept_mastery).
+        - NEVER modifies or deletes quiz questions or diagnostic attempts (attempts, diagnostic_attempts).
+        - NEVER modifies or deletes revision tasks or chat messages (revision_tasks, tutor_messages).
+        - NEVER modifies or deletes security audit logs (owner_audit_logs are immutable and permanent).
+        - ONLY prunes transient authentication telemetry (login_events) and raw telemetry (user_activity_events).
+        """
+        raw_env = os.getenv("ANALYTICS_RETENTION_DAYS", "90").strip()
+        try:
+            retention_days = int(custom_retention_days) if custom_retention_days is not None else int(raw_env)
+        except ValueError:
+            retention_days = 90
+
+        if retention_days <= 0:
+            return {
+                "status": "disabled",
+                "retention_days": retention_days,
+                "login_events_purged": 0,
+                "activity_events_purged": 0,
+                "note": "Analytics retention purging is disabled (ANALYTICS_RETENTION_DAYS <= 0)."
+            }
+
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+        login_cnt = 0
+        act_cnt = 0
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Prune transient login events older than retention cutoff
+            cursor.execute("SELECT COUNT(*) as cnt FROM login_events WHERE created_at < ?", (cutoff_date,))
+            login_cnt = cursor.fetchone()["cnt"]
+            if login_cnt > 0:
+                cursor.execute("DELETE FROM login_events WHERE created_at < ?", (cutoff_date,))
+
+            # Prune transient activity telemetry older than retention cutoff
+            cursor.execute("SELECT COUNT(*) as cnt FROM user_activity_events WHERE created_at < ?", (cutoff_date,))
+            act_cnt = cursor.fetchone()["cnt"]
+            if act_cnt > 0:
+                cursor.execute("DELETE FROM user_activity_events WHERE created_at < ?", (cutoff_date,))
+
+            conn.commit()
+
+        if login_cnt > 0 or act_cnt > 0:
+            self.record_owner_audit_event(
+                actor_email="system",
+                action="ANALYTICS_RETENTION_PURGE",
+                target="login_events,user_activity_events",
+                status="SUCCESS",
+                details={
+                    "retention_days": retention_days,
+                    "cutoff_date": cutoff_date,
+                    "login_events_purged": login_cnt,
+                    "activity_events_purged": act_cnt
+                }
+            )
+
+        return {
+            "status": "completed",
+            "retention_days": retention_days,
+            "cutoff_date": cutoff_date,
+            "login_events_purged": login_cnt,
+            "activity_events_purged": act_cnt
+        }
+
+    def check_database_rate_limit(
+        self,
+        client_ip: Optional[str],
+        email: Optional[str] = None,
+        max_failures: int = 5,
+        window_seconds: int = 900
+    ) -> bool:
+        """
+        Production-ready, multi-worker shared rate limiting backed by persistent database records.
+        Counts failed authentication attempts for this IP or email in the sliding window.
+        Returns True if permitted, False if limit exceeded.
+        """
+        if not client_ip and not email:
+            return True
+        now = datetime.now(timezone.utc)
+        window_start = (now - timedelta(seconds=window_seconds)).isoformat()
+
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                clauses = []
+                params = [window_start]
+
+                if client_ip and client_ip not in ("unknown", ""):
+                    clauses.append("ip_address = ?")
+                    params.append(client_ip)
+                if email and email.strip():
+                    clauses.append("email = ?")
+                    params.append(email.strip().lower())
+
+                if not clauses:
+                    return True
+
+                where_clause = f"status = 'FAILED' AND created_at >= ? AND ({' OR '.join(clauses)})"
+                cursor.execute(f"SELECT COUNT(*) as failures FROM login_events WHERE {where_clause}", tuple(params))
+                row = cursor.fetchone()
+                failures = row["failures"] if row else 0
+                return failures < max_failures
+        except Exception:
+            return True
+
     def record_user_activity_event(
         self,
         user_id: str,
@@ -1755,13 +2668,14 @@ class StorageManager:
             returning_users = cursor.fetchone()["cnt"]
 
             # 3. Active User Metrics (DAU, WAU, MAU)
-            # Distinct users who either logged in or executed learning activity within period
+            # Distinct registered users who either logged in or executed learning activity within period
             cursor.execute("""
                 SELECT COUNT(DISTINCT uid) as cnt FROM (
                     SELECT user_id AS uid FROM login_events WHERE created_at >= ? AND user_id IS NOT NULL
                     UNION
                     SELECT user_id AS uid FROM user_activity_events WHERE created_at >= ? AND user_id IS NOT NULL
                 )
+                WHERE uid IN (SELECT id FROM users WHERE is_demo = 0)
             """, (one_day_ago, one_day_ago))
             dau = cursor.fetchone()["cnt"]
 
@@ -1771,6 +2685,7 @@ class StorageManager:
                     UNION
                     SELECT user_id AS uid FROM user_activity_events WHERE created_at >= ? AND user_id IS NOT NULL
                 )
+                WHERE uid IN (SELECT id FROM users WHERE is_demo = 0)
             """, (seven_days_ago, seven_days_ago))
             wau = cursor.fetchone()["cnt"]
 
@@ -1780,6 +2695,7 @@ class StorageManager:
                     UNION
                     SELECT user_id AS uid FROM user_activity_events WHERE created_at >= ? AND user_id IS NOT NULL
                 )
+                WHERE uid IN (SELECT id FROM users WHERE is_demo = 0)
             """, (thirty_days_ago, thirty_days_ago))
             mau = cursor.fetchone()["cnt"]
 
@@ -1801,8 +2717,8 @@ class StorageManager:
                 SELECT substr(created_at, 1, 10) as day, COUNT(*) as cnt
                 FROM users
                 WHERE is_demo = 0 AND created_at >= ?
-                GROUP BY day
-                ORDER BY day ASC
+                GROUP BY 1
+                ORDER BY 1 ASC
             """, (range_start,))
             reg_dict = {row["day"]: row["cnt"] for row in cursor.fetchall()}
 
@@ -1813,8 +2729,8 @@ class StorageManager:
                        COUNT(*) as logins
                 FROM login_events
                 WHERE created_at >= ? AND event_type = 'LOGIN_SUCCESS'
-                GROUP BY day
-                ORDER BY day ASC
+                GROUP BY 1
+                ORDER BY 1 ASC
             """, (range_start,))
             act_dict = {row["day"]: {"active_users": row["active_users"], "logins": row["logins"]} for row in cursor.fetchall()}
 
@@ -1823,8 +2739,8 @@ class StorageManager:
                 SELECT substr(created_at, 1, 10) as day, COUNT(*) as total_events
                 FROM user_activity_events
                 WHERE created_at >= ?
-                GROUP BY day
-                ORDER BY day ASC
+                GROUP BY 1
+                ORDER BY 1 ASC
             """, (range_start,))
             learn_dict = {row["day"]: row["total_events"] for row in cursor.fetchall()}
 
@@ -2113,9 +3029,15 @@ class StorageManager:
             events_by_type = [dict(r) for r in cursor.fetchall()]
 
             # 2. Top Engaged Concepts
-            cursor.execute("""
+            # Dual-engine accuracy calculation: PostgreSQL native JSON operators vs SQLite json_extract
+            if self.is_postgres:
+                accuracy_expr = "CASE WHEN (metadata_json::json->>'is_correct') IN ('true', '1') THEN 100.0 ELSE 0.0 END"
+            else:
+                accuracy_expr = "CASE WHEN json_extract(metadata_json, '$.is_correct') = 1 THEN 100.0 ELSE 0.0 END"
+
+            cursor.execute(f"""
                 SELECT concept_id, COUNT(*) as attempts_count,
-                       ROUND(AVG(CASE WHEN json_extract(metadata_json, '$.is_correct') = 1 THEN 100.0 ELSE 0.0 END), 1) as accuracy
+                       ROUND(AVG({accuracy_expr}), 1) as accuracy
                 FROM user_activity_events
                 WHERE concept_id IS NOT NULL AND created_at >= ?
                 GROUP BY concept_id
@@ -2138,8 +3060,8 @@ class StorageManager:
                        SUM(CASE WHEN event_type = 'DIAGNOSTIC_COMPLETED' THEN 1 ELSE 0 END) as diagnostics
                 FROM user_activity_events
                 WHERE created_at >= ?
-                GROUP BY day
-                ORDER BY day ASC
+                GROUP BY 1
+                ORDER BY 1 ASC
             """, (range_start,))
             daily_rows = {r["day"]: dict(r) for r in cursor.fetchall()}
 

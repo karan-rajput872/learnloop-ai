@@ -80,8 +80,8 @@ def owner_login(
     ua = request.headers.get("user-agent", "")
     rate_limit_key = f"owner_login:{client_ip}:{norm_email}"
 
-    # 1. Check brute force rate limit
-    if not check_owner_rate_limit(rate_limit_key, max_attempts=5, window_seconds=900):
+    # 1. Check brute force rate limit (hybrid in-memory and database-backed)
+    if not check_owner_rate_limit(rate_limit_key, max_attempts=5, window_seconds=900, client_ip=client_ip, email=norm_email):
         storage.record_owner_audit_event(
             actor_email=norm_email,
             action="OWNER_LOGIN_RATE_LIMITED",

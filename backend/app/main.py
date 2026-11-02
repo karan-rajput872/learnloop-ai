@@ -58,6 +58,12 @@ app.include_router(teacher.router)
 app.include_router(gamification.router)
 app.include_router(owner.router)
 
+@app.on_event("shutdown")
+def shutdown_event():
+    """Cleanly close database pools and network resources on shutdown."""
+    from app.storage.db import storage
+    storage.close()
+
 @app.get("/")
 def root():
     return {

@@ -177,7 +177,7 @@ def reset_profile(
             SET overall_mastery = 0.0,
                 diagnostic_completed = 0,
                 onboarding_completed = 0,
-                verified_proficiency_level = 1,
+                verified_proficiency_level = 'Level 1 — Beginner',
                 verified_proficiency_score = 0.0,
                 learning_path_json = NULL
             WHERE student_id = ?
