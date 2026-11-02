@@ -58,12 +58,21 @@ export const AuthModal: React.FC = () => {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage('Please enter your email address.');
+      return;
+    }
+    if (!password) {
+      setErrorMessage('Please enter your password.');
+      return;
+    }
     setIsLoading(true);
     try {
-      await login(email, password);
+      await login(trimmedEmail, password);
       closeAuthModal();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Invalid credentials.');
+      setErrorMessage(typeof err?.message === 'string' ? err.message : 'Invalid credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +81,13 @@ export const AuthModal: React.FC = () => {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    const trimmedEmail = email.trim();
+    const trimmedName = fullName.trim();
 
+    if (!trimmedEmail) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
     if (password.length < 8) {
       setErrorMessage('Password must be at least 8 characters long.');
       return;
@@ -89,15 +104,15 @@ export const AuthModal: React.FC = () => {
     setIsLoading(true);
     try {
       await register({
-        email,
+        email: trimmedEmail,
         password,
         confirm_password: confirmPassword,
-        full_name: fullName,
+        full_name: trimmedName || 'Learner',
         terms_accepted: termsAccepted
       });
       closeAuthModal();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Registration failed.');
+      setErrorMessage(typeof err?.message === 'string' ? err.message : 'Registration failed.');
     } finally {
       setIsLoading(false);
     }
@@ -207,9 +222,26 @@ export const AuthModal: React.FC = () => {
         {/* Content Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           {errorMessage && (
-            <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />
-              <span>{errorMessage}</span>
+            <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex flex-col gap-2">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />
+                <span className="leading-relaxed">{errorMessage}</span>
+              </div>
+              {errorMessage.toLowerCase().includes('already exists') && authModal === 'register' && (
+                <div className="pt-1 pl-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage(null);
+                      openAuthModal('login');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-xs transition-colors shadow-sm cursor-pointer"
+                  >
+                    <span>Log in with this email</span>
+                    <span aria-hidden="true">&rarr;</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

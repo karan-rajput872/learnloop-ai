@@ -85,3 +85,8 @@ demo_assets/final/*.mp4
 demo_assets/final/*.webm
 demo_assets/final/*.mp3
 demo_assets/*.mp3
+
+# Local Test Execution Artifacts
+frontend/test_auth_ui_screenshots/
+test_screenshots/
+

@@ -48,6 +48,7 @@ export interface LearnerProfile {
   verified_proficiency_score?: number;
   onboarding_data?: OnboardingProfile;
   learning_path?: PersonalizedLearningPath;
+  streak_days?: number;
   concepts: Record<string, ConceptMastery>;
   created_at: string;
   updated_at: string;

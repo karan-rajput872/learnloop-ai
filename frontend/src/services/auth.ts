@@ -8,6 +8,49 @@ export type AuthSyncMessage =
   | { type: 'LOGOUT' }
   | { type: 'REFRESH'; user: User; learner?: LearnerProfile };
 
+export class AuthApiError extends Error {
+  status: number;
+  isNetworkOrServerError: boolean;
+  constructor(message: string, status: number = 0, isNetworkOrServerError: boolean = false) {
+    super(message);
+    this.name = 'AuthApiError';
+    this.status = status;
+    this.isNetworkOrServerError = isNetworkOrServerError;
+  }
+}
+
+async function parseErrorResponse(res: Response, fallbackMessage: string): Promise<AuthApiError> {
+  const isServerErr = res.status >= 500;
+  if (res.status === 504 || res.status === 502) {
+    return new AuthApiError(
+      'LearnLoop AI backend is waking up from cold sleep on Render. Please wait 10 seconds and try again.',
+      res.status,
+      true
+    );
+  }
+  if (res.status === 503) {
+    return new AuthApiError(
+      'Service temporarily unavailable. Please retry in a few moments.',
+      res.status,
+      true
+    );
+  }
+  let message = fallbackMessage;
+  try {
+    const data = await res.json();
+    if (typeof data.detail === 'string') {
+      message = data.detail;
+    } else if (Array.isArray(data.detail)) {
+      message = data.detail.map((d: any) => d.msg || d.message || JSON.stringify(d)).join('. ');
+    } else if (data.message) {
+      message = data.message;
+    }
+  } catch {
+    message = res.statusText || fallbackMessage;
+  }
+  return new AuthApiError(message, res.status, isServerErr);
+}
+
 // Safe cross-tab synchronization channel
 const authChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
   ? new BroadcastChannel('learnloop_auth_sync')
@@ -52,16 +95,19 @@ export const authService = {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        email: data.email.trim().toLowerCase(),
+        full_name: data.full_name.trim()
+      }),
       credentials: 'include'
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || err.message || 'Registration failed.');
+      throw await parseErrorResponse(res, 'Registration failed. Please check your information and try again.');
     }
     const result: AuthResponse = await res.json();
     if (result.access_token) {
-      setAuthToken(result.access_token);
+      setAuthToken(result.access_token, result.user?.student_id);
     }
     broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
     return result;
@@ -75,16 +121,18 @@ export const authService = {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        email: data.email.trim().toLowerCase()
+      }),
       credentials: 'include'
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || err.message || 'Invalid email or password.');
+      throw await parseErrorResponse(res, 'Invalid email or password.');
     }
     const result: AuthResponse = await res.json();
     if (result.access_token) {
-      setAuthToken(result.access_token);
+      setAuthToken(result.access_token, result.user?.student_id);
     }
     broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
     return result;
@@ -98,12 +146,11 @@ export const authService = {
       credentials: 'include'
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || err.message || 'Google authentication failed.');
+      throw await parseErrorResponse(res, 'Google authentication failed.');
     }
     const result: AuthResponse = await res.json();
     if (result.access_token) {
-      setAuthToken(result.access_token);
+      setAuthToken(result.access_token, result.user?.student_id);
     }
     broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
     return result;
@@ -116,12 +163,11 @@ export const authService = {
       credentials: 'include'
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || err.message || 'Failed to start demo session.');
+      throw await parseErrorResponse(res, 'Failed to start demo session.');
     }
     const result: AuthResponse = await res.json();
     if (result.access_token) {
-      setAuthToken(result.access_token);
+      setAuthToken(result.access_token, result.user?.student_id);
     }
     broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
     return result;
@@ -134,8 +180,7 @@ export const authService = {
       credentials: 'include'
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || err.message || 'Failed to reset demo.');
+      throw await parseErrorResponse(res, 'Failed to reset demo.');
     }
   },
 
@@ -154,11 +199,14 @@ export const authService = {
           credentials: 'include'
         });
         if (!res.ok) {
-          throw new Error('Session expired.');
+          if (res.status === 401) {
+            throw new AuthApiError('Session expired.', 401, false);
+          }
+          throw await parseErrorResponse(res, 'Session restoration temporarily unavailable.');
         }
         const result: AuthResponse = await res.json();
         if (result.access_token) {
-          setAuthToken(result.access_token);
+          setAuthToken(result.access_token, result.user?.student_id);
         }
         return result;
       } finally {
@@ -179,7 +227,7 @@ export const authService = {
     } catch {
       // Ignore network errors on logout
     } finally {
-      setAuthToken(null);
+      setAuthToken(null, null);
       broadcastAuthSync({ type: 'LOGOUT' });
     }
   },
@@ -190,7 +238,7 @@ export const authService = {
       credentials: 'include'
     });
     if (!res.ok) {
-      throw new Error('Failed to retrieve user profile.');
+      throw await parseErrorResponse(res, 'Failed to retrieve user profile.');
     }
     return await res.json();
   },
@@ -199,12 +247,11 @@ export const authService = {
     const res = await fetch(`${API_BASE}/auth/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ full_name: fullName }),
+      body: JSON.stringify({ full_name: fullName.trim() }),
       credentials: 'include'
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || err.message || 'Profile update failed.');
+      throw await parseErrorResponse(res, 'Profile update failed.');
     }
     const data = await res.json();
     return data.user;
@@ -226,8 +273,7 @@ export const authService = {
       credentials: 'include'
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || err.message || 'Failed to change password.');
+      throw await parseErrorResponse(res, 'Failed to change password.');
     }
     return await res.json();
   }

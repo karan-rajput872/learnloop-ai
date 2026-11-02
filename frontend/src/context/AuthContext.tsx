@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, LearnerProfile } from '../types';
-import { authService, subscribeAuthSync, AuthSyncMessage } from '../services/auth';
+import { authService, subscribeAuthSync, AuthSyncMessage, AuthApiError } from '../services/auth';
 import { setAuthToken } from '../services/api';
+
+export type AuthStatus = 'INITIALIZING' | 'AUTHENTICATED' | 'UNAUTHENTICATED' | 'SESSION_EXPIRED' | 'AUTH_ERROR';
 
 interface AuthContextType {
   user: User | null;
   learner: LearnerProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  authStatus: AuthStatus;
   authModal: 'login' | 'register' | 'profile' | null;
   openAuthModal: (modal: 'login' | 'register' | 'profile') => void;
   closeAuthModal: () => void;
@@ -25,6 +28,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   setLearnerProfile: (profile: LearnerProfile) => void;
+  retryRestoreSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [learner, setLearner] = useState<LearnerProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('INITIALIZING');
   const [authModal, setAuthModal] = useState<'login' | 'register' | 'profile' | null>(null);
 
   const openAuthModal = useCallback((modal: 'login' | 'register' | 'profile') => {
@@ -53,6 +58,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const closeAuthModal = useCallback(() => {
     setAuthModal(null);
   }, []);
+
+  const restoreSession = useCallback(async () => {
+    setIsLoading(true);
+    setAuthStatus('INITIALIZING');
+    try {
+      const response = await authService.refreshSession();
+      if (response && response.access_token) {
+        setUser(response.user);
+        if (response.learner) setLearner(response.learner);
+        setAuthStatus('AUTHENTICATED');
+        try {
+          localStorage.setItem(USER_CACHE_KEY, JSON.stringify(response.user));
+        } catch {
+          // Ignore storage quota
+        }
+        setAuthToken(response.access_token, response.user.student_id);
+      } else {
+        setAuthStatus(user ? 'AUTHENTICATED' : 'UNAUTHENTICATED');
+      }
+    } catch (err: any) {
+      const isSessionExpired = err instanceof AuthApiError
+        ? err.status === 401
+        : err.message === 'Session expired.';
+
+      const isNetworkOrColdBoot = (err instanceof AuthApiError && err.isNetworkOrServerError) || (
+        err.message?.includes('Failed to fetch') ||
+        err.message?.includes('NetworkError') ||
+        err.message?.includes('timeout') ||
+        err.message?.includes('waking up')
+      );
+
+      if (isSessionExpired) {
+        setUser(null);
+        setLearner(null);
+        try {
+          localStorage.removeItem(USER_CACHE_KEY);
+        } catch {
+          // Ignore
+        }
+        setAuthToken(null, null);
+        setAuthStatus('SESSION_EXPIRED');
+      } else if (isNetworkOrColdBoot) {
+        // Cold-boot delay or transient network drop: preserve user identity from cache!
+        console.warn('[LearnLoop Auth] Transient backend delay during session restoration. Preserving cached identity.');
+        setAuthStatus(user ? 'AUTHENTICATED' : 'AUTH_ERROR');
+      } else {
+        setAuthStatus('UNAUTHENTICATED');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   // Restore session on mount via HttpOnly cookie
   useEffect(() => {
@@ -67,39 +124,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Ignore localStorage errors
     }
 
-    async function restoreSession() {
-      try {
-        const response = await authService.refreshSession();
-        if (isMounted && response && response.access_token) {
-          setUser(response.user);
-          if (response.learner) setLearner(response.learner);
-          localStorage.setItem(USER_CACHE_KEY, JSON.stringify(response.user));
-        }
-      } catch (err: any) {
-        // Only clear user credentials if the server explicitly rejected the refresh token (401/expired).
-        // If there was a temporary cold-boot delay or network glitch, preserve cached user info.
-        const isNetworkError = err && (
-          err.message?.includes('Failed to fetch') ||
-          err.message?.includes('NetworkError') ||
-          err.message?.includes('timeout')
-        );
-        if (isMounted && !isNetworkError) {
-          setUser(null);
-          setLearner(null);
-          try {
-            localStorage.removeItem(USER_CACHE_KEY);
-          } catch {
-            // Ignore
-          }
-          setAuthToken(null);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
     restoreSession();
 
     // Cross-tab synchronization via BroadcastChannel
@@ -108,20 +132,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (message.type === 'LOGIN' || message.type === 'REFRESH') {
         setUser(message.user);
         if (message.learner) setLearner(message.learner);
+        setAuthStatus('AUTHENTICATED');
         try {
           localStorage.setItem(USER_CACHE_KEY, JSON.stringify(message.user));
         } catch {
           // Ignore
         }
+        if (message.user.student_id) {
+          setAuthToken(null, message.user.student_id);
+        }
       } else if (message.type === 'LOGOUT') {
         setUser(null);
         setLearner(null);
+        setAuthStatus('UNAUTHENTICATED');
         try {
           localStorage.removeItem(USER_CACHE_KEY);
         } catch {
           // Ignore
         }
-        setAuthToken(null);
+        setAuthToken(null, null);
         setAuthModal(null);
       }
     });
@@ -136,11 +165,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authService.login({ email, password, remember_me: rememberMe });
     setUser(res.user);
     if (res.learner) setLearner(res.learner);
+    setAuthStatus('AUTHENTICATED');
     try {
       localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.user));
     } catch {
       // Ignore
     }
+    setAuthToken(res.access_token, res.user.student_id);
     setAuthModal(null);
   };
 
@@ -154,11 +185,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authService.register(data);
     setUser(res.user);
     if (res.learner) setLearner(res.learner);
+    setAuthStatus('AUTHENTICATED');
     try {
       localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.user));
     } catch {
       // Ignore
     }
+    setAuthToken(res.access_token, res.user.student_id);
     setAuthModal(null);
   };
 
@@ -166,11 +199,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await authService.loginWithGoogle(idToken);
     setUser(res.user);
     if (res.learner) setLearner(res.learner);
+    setAuthStatus('AUTHENTICATED');
     try {
       localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.user));
     } catch {
       // Ignore
     }
+    setAuthToken(res.access_token, res.user.student_id);
     setAuthModal(null);
   };
 
@@ -180,11 +215,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await authService.startDemoSession();
       setUser(response.user);
       if (response.learner) setLearner(response.learner);
+      setAuthStatus('AUTHENTICATED');
       try {
         localStorage.setItem(USER_CACHE_KEY, JSON.stringify(response.user));
       } catch {
         // Ignore
       }
+      setAuthToken(response.access_token, response.user.student_id);
       setAuthModal(null);
     } finally {
       setIsLoading(false);
@@ -206,13 +243,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setUser(null);
       setLearner(null);
+      setAuthStatus('UNAUTHENTICATED');
       try {
         localStorage.removeItem(USER_CACHE_KEY);
         localStorage.removeItem('learnloop_refresh_token');
       } catch {
         // Ignore
       }
-      setAuthToken(null);
+      setAuthToken(null, null);
       setAuthModal(null);
     }
   };
@@ -233,6 +271,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         learner,
         isAuthenticated: !!user,
         isLoading,
+        authStatus,
         authModal,
         openAuthModal,
         closeAuthModal,
@@ -243,7 +282,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetDemoSession,
         logout,
         updateUser,
-        setLearnerProfile: setLearner
+        setLearnerProfile: setLearner,
+        retryRestoreSession: restoreSession
       }}
     >
       {children}

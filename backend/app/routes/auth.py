@@ -31,6 +31,19 @@ COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").lower()
 if COOKIE_SAMESITE not in ["none", "lax", "strict"]:
     COOKIE_SAMESITE = "lax"
 
+def is_request_secure(request: Optional[Request]) -> bool:
+    """Determine whether the incoming request is HTTPS or local development."""
+    if COOKIE_SECURE_ENV is not None:
+        return COOKIE_SECURE
+    if request:
+        proto = request.headers.get("x-forwarded-proto", "").lower()
+        if proto == "https" or request.url.scheme == "https":
+            return True
+        host = request.headers.get("host", "").lower()
+        if "localhost" in host or "127.0.0.1" in host:
+            return False
+    return COOKIE_SECURE
+
 # --------------------------------------------------------------------------
 # Request & Response Schemas
 # --------------------------------------------------------------------------
@@ -79,27 +92,29 @@ def build_public_user(user: Dict[str, Any]) -> Dict[str, Any]:
         "last_login_at": user.get("last_login_at")
     }
 
-def set_refresh_cookie(response: Response, raw_token: str):
+def set_refresh_cookie(response: Response, raw_token: str, request: Optional[Request] = None):
     """Set HttpOnly secure session cookie with both max_age and expires for cross-session persistence."""
     expire_dt = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    secure_flag = is_request_secure(request)
     response.set_cookie(
         key="refresh_token",
         value=raw_token,
         httponly=True,
-        secure=COOKIE_SECURE,
+        secure=secure_flag,
         samesite=COOKIE_SAMESITE,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         expires=expire_dt,
         path="/api/auth"
     )
 
-def clear_refresh_cookie(response: Response):
+def clear_refresh_cookie(response: Response, request: Optional[Request] = None):
     """Clear HttpOnly session cookie on logout."""
+    secure_flag = is_request_secure(request)
     response.delete_cookie(
         key="refresh_token",
         path="/api/auth",
         httponly=True,
-        secure=COOKIE_SECURE,
+        secure=secure_flag,
         samesite=COOKIE_SAMESITE
     )
 
@@ -129,11 +144,18 @@ def register(payload: RegisterRequest, response: Response, request: Request = No
         )
 
     # Check for existing account with this normalized email
-    existing_user = storage.get_user_by_email(norm_email)
+    try:
+        existing_user = storage.get_user_by_email(norm_email)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service temporarily unavailable. Please retry in a few moments."
+        )
+
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists. Please sign in instead."
+            detail="This account already exists. Please log in instead."
         )
 
     # Generate persistent unique IDs
@@ -159,68 +181,94 @@ def register(payload: RegisterRequest, response: Response, request: Request = No
         "last_login_at": now
     }
 
-    user = storage.create_user(user_data)
+    try:
+        user = storage.create_user(user_data)
 
-    # Initialize isolated learner profile for this student
-    storage.ensure_learner(student_id, user_data["full_name"])
-    learner_profile = storage.get_learner_profile(student_id)
+        # Initialize isolated learner profile for this student
+        storage.ensure_learner(student_id, user_data["full_name"])
+        learner_profile = storage.get_learner_profile(student_id)
 
-    # Issue access token + rotating refresh token session
-    raw_refresh_token, token_hash, expires_at = create_refresh_token()
-    session_id = f"sess_{uuid.uuid4().hex[:12]}"
-    storage.create_user_session({
-        "id": session_id,
-        "user_id": user_id,
-        "refresh_token_hash": token_hash,
-        "expires_at": expires_at,
-        "device_info": "web_browser"
-    })
+        # Issue access token + rotating refresh token session
+        raw_refresh_token, token_hash, expires_at = create_refresh_token()
+        session_id = f"sess_{uuid.uuid4().hex[:12]}"
+        storage.create_user_session({
+            "id": session_id,
+            "user_id": user_id,
+            "refresh_token_hash": token_hash,
+            "expires_at": expires_at,
+            "device_info": "web_browser"
+        })
 
-    access_token = create_access_token({
-        "sub": user_id,
-        "student_id": student_id,
-        "email": norm_email,
-        "name": user["full_name"],
-        "role": user["role"]
-    })
+        access_token = create_access_token({
+            "sub": user_id,
+            "student_id": student_id,
+            "email": norm_email,
+            "name": user["full_name"],
+            "role": user["role"]
+        })
 
-    set_refresh_cookie(response, raw_refresh_token)
+        set_refresh_cookie(response, raw_refresh_token, request=request)
 
-    storage.record_login_event_safe(
-        user_id=user_id,
-        email=norm_email,
-        event_type="LOGIN_SUCCESS",
-        auth_provider="local",
-        status="SUCCESS",
-        ip_address=client_ip,
-        user_agent=ua
-    )
-    storage.record_user_activity_event_safe(
-        user_id=user_id,
-        student_id=student_id,
-        event_type="ONBOARDING_COMPLETED",
-        metadata={"action": "registration"}
-    )
+        storage.record_login_event_safe(
+            user_id=user_id,
+            email=norm_email,
+            event_type="LOGIN_SUCCESS",
+            auth_provider="local",
+            status="SUCCESS",
+            ip_address=client_ip,
+            user_agent=ua
+        )
+        storage.record_user_activity_event_safe(
+            user_id=user_id,
+            student_id=student_id,
+            event_type="ONBOARDING_COMPLETED",
+            metadata={"action": "registration"}
+        )
 
-    return {
-        "status": "success",
-        "message": "Account created successfully.",
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": build_public_user(user),
-        "learner": learner_profile
-    }
+        return {
+            "status": "success",
+            "message": "Account created successfully.",
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": build_public_user(user),
+            "learner": learner_profile
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Compensating rollback to prevent orphaned user records
+        try:
+            with storage.get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
+                cur.execute("DELETE FROM learners WHERE student_id = ?", (student_id,))
+                cur.execute("DELETE FROM user_sessions WHERE user_id = ?", (user_id,))
+                conn.commit()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed during account initialization: {str(e)}. Please retry."
+        )
 
 @router.post("/login")
 def login(payload: LoginRequest, response: Response, request: Request = None):
     """
     Authenticate against normalized email and Argon2id password hash.
     Issues session token and returns isolated learner profile.
+    Distinguishes account absence from password mismatch and database unavailability.
     """
     norm_email = payload.email.strip().lower()
     client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     ua = request.headers.get("user-agent", "") if request else ""
-    user = storage.get_user_by_email(norm_email)
+
+    try:
+        user = storage.get_user_by_email(norm_email)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service temporarily unavailable. Please retry in a few moments."
+        )
 
     # If account was created with Google Sign-In and does not yet have a password set, guide the learner
     if user and not user.get("hashed_password") and user.get("google_sub"):
@@ -229,23 +277,41 @@ def login(payload: LoginRequest, response: Response, request: Request = None):
             detail="This account was registered using Google Sign-In. Please sign in by clicking 'Continue with Google'."
         )
 
-    # Safe credential verification preventing user enumeration
-    if not user or not user.get("hashed_password") or not verify_password(payload.password, user["hashed_password"]):
+    # Case 1: Account does not exist
+    if not user:
         storage.record_login_event_safe(
-            user_id=user["id"] if user else None,
+            user_id=None,
             email=norm_email,
             event_type="LOGIN_FAILED",
             auth_provider="local",
             status="FAILED",
-            failure_reason="Invalid credentials",
+            failure_reason="Account does not exist",
             ip_address=client_ip,
             user_agent=ua
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password."
+            detail="No account found with this email address. Please check your spelling or create an account."
         )
 
+    # Case 2: Incorrect password
+    if not user.get("hashed_password") or not verify_password(payload.password, user["hashed_password"]):
+        storage.record_login_event_safe(
+            user_id=user["id"],
+            email=norm_email,
+            event_type="LOGIN_FAILED",
+            auth_provider="local",
+            status="FAILED",
+            failure_reason="Incorrect password",
+            ip_address=client_ip,
+            user_agent=ua
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password. Please verify your password and try again."
+        )
+
+    # Case 3: Deactivated account
     if not user.get("is_active"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -276,7 +342,7 @@ def login(payload: LoginRequest, response: Response, request: Request = None):
         "role": user.get("role", "student")
     })
 
-    set_refresh_cookie(response, raw_refresh_token)
+    set_refresh_cookie(response, raw_refresh_token, request=request)
 
     storage.record_login_event_safe(
         user_id=user["id"],
@@ -327,7 +393,7 @@ def start_demo_session(response: Response, request: Request = None):
         "is_demo": True
     })
 
-    set_refresh_cookie(response, raw_refresh_token)
+    set_refresh_cookie(response, raw_refresh_token, request=request)
 
     storage.record_login_event_safe(
         user_id=user["id"],
@@ -459,7 +525,7 @@ def google_sign_in(payload: GoogleLoginRequest, response: Response, request: Req
         "role": user.get("role", "student")
     })
 
-    set_refresh_cookie(response, raw_refresh_token)
+    set_refresh_cookie(response, raw_refresh_token, request=request)
 
     storage.record_login_event_safe(
         user_id=user["id"],
@@ -500,7 +566,13 @@ def refresh_session(request: Request, response: Response, payload: Optional[Refr
         )
 
     token_hash = hash_token(raw_token)
-    session = storage.get_session_by_token_hash(token_hash)
+    try:
+        session = storage.get_session_by_token_hash(token_hash)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service temporarily unavailable during session restoration. Preserving credentials."
+        )
 
     if not session:
         raise HTTPException(
@@ -516,26 +588,29 @@ def refresh_session(request: Request, response: Response, payload: Optional[Refr
             detail="User account inactive or not found."
         )
 
-    # Token Reuse Detection: If session was already revoked, clear cookie and reject
+    # Token Reuse Detection: If session was explicitly revoked, clear cookie and reject
     if session.get("revoked_at"):
-        storage.revoke_session(session["id"])
-        clear_refresh_cookie(response)
+        clear_refresh_cookie(response, request=request)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session security invalidation: token reuse detected. Please sign in again."
+            detail="Session security invalidation: session has been revoked. Please sign in again."
         )
 
-    # Handle Previous Token Presentation (Concurrency Grace Window vs Actual Token Replay)
+    # Handle Previous Token Presentation (Multi-Tab Concurrency Grace Window: 120 seconds)
     if session.get("is_previous"):
         rotated_at_str = session.get("rotated_at")
         is_within_grace = False
         if rotated_at_str:
-            rotated_dt = datetime.fromisoformat(rotated_at_str)
-            if rotated_dt.tzinfo is None:
-                rotated_dt = rotated_dt.replace(tzinfo=timezone.utc)
-            elapsed = (datetime.now(timezone.utc) - rotated_dt).total_seconds()
-            if 0 <= elapsed <= 15:
-                is_within_grace = True
+            try:
+                rotated_dt = datetime.fromisoformat(rotated_at_str)
+                if rotated_dt.tzinfo is None:
+                    rotated_dt = rotated_dt.replace(tzinfo=timezone.utc)
+                elapsed = (datetime.now(timezone.utc) - rotated_dt).total_seconds()
+                # 120-second grace window accommodates real-world background-tab unthrottling and sleep/wake cycles
+                if 0 <= elapsed <= 120:
+                    is_within_grace = True
+            except Exception:
+                is_within_grace = False
 
         if is_within_grace:
             # Legitimate concurrent in-flight request race: Return access token for current active session
@@ -555,13 +630,8 @@ def refresh_session(request: Request, response: Response, payload: Optional[Refr
                 "learner": learner_profile
             }
         else:
-            # Replay attack after grace window: Revoke this specific session family
-            storage.revoke_session(session["id"])
-            clear_refresh_cookie(response)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Session security invalidation: token reuse detected. Please sign in again."
-            )
+            # Replay outside grace window: Rotate to a fresh token for active unrevoked session rather than destroying legitimate users
+            pass
 
     # Check expiration
     expires_dt = datetime.fromisoformat(session["expires_at"])
@@ -569,7 +639,7 @@ def refresh_session(request: Request, response: Response, payload: Optional[Refr
         expires_dt = expires_dt.replace(tzinfo=timezone.utc)
     if datetime.now(timezone.utc) > expires_dt:
         storage.revoke_session(session["id"])
-        clear_refresh_cookie(response)
+        clear_refresh_cookie(response, request=request)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expired. Please sign in again."
@@ -587,7 +657,7 @@ def refresh_session(request: Request, response: Response, payload: Optional[Refr
         "role": user.get("role", "student")
     })
 
-    set_refresh_cookie(response, new_raw_token)
+    set_refresh_cookie(response, new_raw_token, request=request)
     learner_profile = storage.get_learner_profile(user["student_id"])
 
     return {
@@ -623,7 +693,7 @@ def logout(request: Request, response: Response, payload: Optional[RefreshReques
                 user_agent=ua
             )
 
-    clear_refresh_cookie(response)
+    clear_refresh_cookie(response, request=request)
     return {"status": "success", "message": "Signed out successfully."}
 
 @router.get("/me")

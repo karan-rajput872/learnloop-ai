@@ -26,14 +26,69 @@ export const getApiBase = (): string => {
 const API_BASE = getApiBase();
 
 let currentAuthToken: string | null = null;
+let currentStudentId: string | null = null;
 
-export const setAuthToken = (token: string | null) => {
+export const setAuthToken = (token: string | null, studentId?: string | null) => {
   currentAuthToken = token;
+  if (studentId !== undefined) {
+    currentStudentId = studentId;
+  }
 };
 
 export const getAuthToken = (): string | null => {
   return currentAuthToken;
 };
+
+export const getCurrentStudentId = (): string => {
+  return currentStudentId || 'student_default';
+};
+
+// Single-flight silent refresh lock & queue to prevent duplicate refresh requests
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string | null) => void> = [];
+
+async function performSilentRefresh(): Promise<string | null> {
+  if (isRefreshing) {
+    return new Promise((resolve) => {
+      refreshSubscribers.push(resolve);
+    });
+  }
+
+  isRefreshing = true;
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+      credentials: 'include'
+    });
+
+    if (!res.ok) {
+      currentAuthToken = null;
+      refreshSubscribers.forEach((cb) => cb(null));
+      refreshSubscribers = [];
+      return null;
+    }
+
+    const data = await res.json();
+    if (data && data.access_token) {
+      currentAuthToken = data.access_token;
+      if (data.user && data.user.student_id) {
+        currentStudentId = data.user.student_id;
+      }
+      refreshSubscribers.forEach((cb) => cb(data.access_token));
+      refreshSubscribers = [];
+      return data.access_token;
+    }
+    return null;
+  } catch {
+    refreshSubscribers.forEach((cb) => cb(null));
+    refreshSubscribers = [];
+    return null;
+  } finally {
+    isRefreshing = false;
+  }
+}
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 30000): Promise<Response> {
   const controller = new AbortController();
@@ -45,11 +100,32 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 
   try {
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       ...options,
       headers,
       signal: controller.signal
     });
+
+    // Check for HTTP 401 Unauthorized (Expired Access Token) on non-auth endpoints
+    const isAuthEndpoint = url.includes('/api/auth/login') ||
+      url.includes('/api/auth/register') ||
+      url.includes('/api/auth/refresh') ||
+      url.includes('/api/auth/logout');
+
+    if (res.status === 401 && !isAuthEndpoint) {
+      const newToken = await performSilentRefresh();
+      if (newToken) {
+        // Retry the original request with the fresh access token
+        const retryHeaders = new Headers(options.headers || {});
+        retryHeaders.set('Authorization', `Bearer ${newToken}`);
+        res = await fetch(url, {
+          ...options,
+          headers: retryHeaders,
+          signal: controller.signal
+        });
+      }
+    }
+
     return res;
   } catch (err: any) {
     const endpoint = url.split('?')[0];
@@ -86,19 +162,22 @@ export const api = {
     return await handleResponse<HealthInfo>(res, 'Backend health check failed');
   },
 
-  async getConcepts(studentId = 'student_default'): Promise<{ concepts: ConceptNode[]; edges: ConceptEdge[] }> {
-    const res = await fetchWithTimeout(`${API_BASE}/concepts?student_id=${studentId}`);
+  async getConcepts(studentId?: string): Promise<{ concepts: ConceptNode[]; edges: ConceptEdge[] }> {
+    const sid = studentId || getCurrentStudentId();
+    const res = await fetchWithTimeout(`${API_BASE}/concepts?student_id=${sid}`);
     return await handleResponse<{ concepts: ConceptNode[]; edges: ConceptEdge[] }>(res, 'Failed to fetch concepts');
   },
 
-  async getLearnerProfile(studentId = 'student_default'): Promise<LearnerProfile> {
-    const res = await fetchWithTimeout(`${API_BASE}/learner/profile?student_id=${studentId}`);
+  async getLearnerProfile(studentId?: string): Promise<LearnerProfile> {
+    const sid = studentId || getCurrentStudentId();
+    const res = await fetchWithTimeout(`${API_BASE}/learner/profile?student_id=${sid}`);
     const data = await handleResponse<{ profile: LearnerProfile }>(res, 'Failed to fetch learner profile');
     return data.profile;
   },
 
-  async resetLearnerProfile(studentId = 'student_default'): Promise<void> {
-    const res = await fetchWithTimeout(`${API_BASE}/learner/reset?student_id=${studentId}`, { method: 'POST' });
+  async resetLearnerProfile(studentId?: string): Promise<void> {
+    const sid = studentId || getCurrentStudentId();
+    const res = await fetchWithTimeout(`${API_BASE}/learner/reset?student_id=${sid}`, { method: 'POST' });
     if (!res.ok) {
       throw new Error(`Failed to reset profile (Status ${res.status})`);
     }
@@ -106,13 +185,15 @@ export const api = {
 
   async getDiagnosticQuestions(mode: 'quick' | 'comprehensive' = 'comprehensive', studentId?: string): Promise<{ questions: Question[]; total: number; mode: string }> {
     const qParams = new URLSearchParams({ mode });
-    if (studentId) qParams.set('student_id', studentId);
+    const sid = studentId || getCurrentStudentId();
+    if (sid) qParams.set('student_id', sid);
     const res = await fetchWithTimeout(`${API_BASE}/diagnostic/questions?${qParams.toString()}`);
     return await handleResponse<{ questions: Question[]; total: number; mode: string }>(res, 'Failed to fetch diagnostic questions');
   },
 
   async getOnboardingProfile(studentId?: string): Promise<{ student_id: string; onboarding_completed: boolean; onboarding_data: OnboardingProfile }> {
-    const url = studentId ? `${API_BASE}/learner/onboarding?student_id=${studentId}` : `${API_BASE}/learner/onboarding`;
+    const sid = studentId || getCurrentStudentId();
+    const url = sid ? `${API_BASE}/learner/onboarding?student_id=${sid}` : `${API_BASE}/learner/onboarding`;
     const res = await fetchWithTimeout(url);
     return await handleResponse<any>(res, 'Failed to fetch onboarding profile');
   },
@@ -123,7 +204,8 @@ export const api = {
     profile: LearnerProfile;
     learning_path: PersonalizedLearningPath;
   }> {
-    const url = studentId ? `${API_BASE}/learner/onboarding?student_id=${studentId}` : `${API_BASE}/learner/onboarding`;
+    const sid = studentId || getCurrentStudentId();
+    const url = sid ? `${API_BASE}/learner/onboarding?student_id=${sid}` : `${API_BASE}/learner/onboarding`;
     const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -133,31 +215,35 @@ export const api = {
   },
 
   async getPersonalizedLearningPath(studentId?: string): Promise<{ learning_path: PersonalizedLearningPath }> {
-    const url = studentId ? `${API_BASE}/learner/learning-path?student_id=${studentId}` : `${API_BASE}/learner/learning-path`;
+    const sid = studentId || getCurrentStudentId();
+    const url = sid ? `${API_BASE}/learner/learning-path?student_id=${sid}` : `${API_BASE}/learner/learning-path`;
     const res = await fetchWithTimeout(url);
     return await handleResponse<{ learning_path: PersonalizedLearningPath }>(res, 'Failed to fetch personalized learning path');
   },
 
   async getProficiencyInfo(studentId?: string): Promise<ProficiencyInfo> {
-    const url = studentId ? `${API_BASE}/learner/proficiency?student_id=${studentId}` : `${API_BASE}/learner/proficiency`;
+    const sid = studentId || getCurrentStudentId();
+    const url = sid ? `${API_BASE}/learner/proficiency?student_id=${sid}` : `${API_BASE}/learner/proficiency`;
     const res = await fetchWithTimeout(url);
     return await handleResponse<ProficiencyInfo>(res, 'Failed to fetch proficiency information');
   },
 
   async submitDiagnostic(
     submissions: { question_id: string; concept_id: string; selected_option: string; student_reasoning?: string }[],
-    studentId = 'student_default'
+    studentId?: string
   ): Promise<DiagnosticResult> {
+    const sid = studentId || getCurrentStudentId();
     const res = await fetchWithTimeout(`${API_BASE}/diagnostic/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_id: studentId, submissions })
+      body: JSON.stringify({ student_id: sid, submissions })
     });
     return await handleResponse<DiagnosticResult>(res, 'Failed to submit diagnostic assessment');
   },
 
-  async getDiagnosticAttempts(studentId = 'student_default'): Promise<{ attempts: DiagnosticAttemptSummary[]; total: number }> {
-    const res = await fetchWithTimeout(`${API_BASE}/diagnostic/attempts?student_id=${studentId}`);
+  async getDiagnosticAttempts(studentId?: string): Promise<{ attempts: DiagnosticAttemptSummary[]; total: number }> {
+    const sid = studentId || getCurrentStudentId();
+    const res = await fetchWithTimeout(`${API_BASE}/diagnostic/attempts?student_id=${sid}`);
     return await handleResponse<{ attempts: DiagnosticAttemptSummary[]; total: number }>(res, 'Failed to fetch diagnostic attempts');
   },
 
@@ -166,14 +252,15 @@ export const api = {
     return await handleResponse<{ attempt: DiagnosticResult }>(res, `Failed to fetch diagnostic attempt '${attemptId}'`);
   },
 
-  async getAdaptiveQuestion(conceptId?: string, studentId = 'student_default'): Promise<{
+  async getAdaptiveQuestion(conceptId?: string, studentId?: string): Promise<{
     question: Question;
     target_concept: string;
     calibrated_difficulty: string;
     decision_rationale?: string;
     tools_executed: any[];
   }> {
-    let url = `${API_BASE}/quiz/adaptive?student_id=${studentId}`;
+    const sid = studentId || getCurrentStudentId();
+    let url = `${API_BASE}/quiz/adaptive?student_id=${sid}`;
     if (conceptId) url += `&concept_id=${conceptId}`;
     const res = await fetchWithTimeout(url);
     return await handleResponse<any>(res, 'Failed to generate adaptive question');
@@ -185,13 +272,14 @@ export const api = {
     selectedOption: string,
     studentReasoning: string,
     confidenceLevel = 'medium',
-    studentId = 'student_default'
+    studentId?: string
   ): Promise<EvaluationResult> {
+    const sid = studentId || getCurrentStudentId();
     const res = await fetchWithTimeout(`${API_BASE}/quiz/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        student_id: studentId,
+        student_id: sid,
         question_id: questionId,
         concept_id: conceptId,
         selected_option: selectedOption,
@@ -202,15 +290,16 @@ export const api = {
     return await handleResponse<EvaluationResult>(res, 'Failed to submit quiz answer');
   },
 
-  async tutorChat(rawTranscript: string, studentId = 'student_default'): Promise<{
+  async tutorChat(rawTranscript: string, studentId?: string): Promise<{
     response: string;
     speech_metadata: any;
     tools_executed: any[];
   }> {
+    const sid = studentId || getCurrentStudentId();
     const res = await fetchWithTimeout(`${API_BASE}/tutor/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_id: studentId, raw_transcript: rawTranscript })
+      body: JSON.stringify({ student_id: sid, raw_transcript: rawTranscript })
     });
     return await handleResponse<any>(res, 'Tutor communication failed');
   },
@@ -218,7 +307,7 @@ export const api = {
   async tutorAction(
     conceptId: string,
     actionType: string,
-    studentId = 'student_default'
+    studentId?: string
   ): Promise<{
     concept_id: string;
     concept_name: string;
@@ -226,19 +315,20 @@ export const api = {
     content: string;
     formatted_content?: string;
   }> {
+    const sid = studentId || getCurrentStudentId();
     const res = await fetchWithTimeout(`${API_BASE}/tutor/action`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         concept_id: conceptId,
         action_type: actionType,
-        student_id: studentId
+        student_id: sid
       })
     });
     return await handleResponse<any>(res, `Tutor action '${actionType}' failed`);
   },
 
-  async getChatMessages(studentId = 'student_default'): Promise<{
+  async getChatMessages(studentId?: string): Promise<{
     messages: Array<{
       id: string;
       role: 'user' | 'assistant';
@@ -248,12 +338,14 @@ export const api = {
     }>;
     total: number;
   }> {
-    const res = await fetchWithTimeout(`${API_BASE}/tutor/messages?student_id=${studentId}`);
+    const sid = studentId || getCurrentStudentId();
+    const res = await fetchWithTimeout(`${API_BASE}/tutor/messages?student_id=${sid}`);
     return await handleResponse<any>(res, 'Failed to retrieve chat messages');
   },
 
-  async getRevisionTasks(studentId = 'student_default'): Promise<{ tasks: RevisionTask[]; total: number }> {
-    const res = await fetchWithTimeout(`${API_BASE}/tutor/revision/tasks?student_id=${studentId}`);
+  async getRevisionTasks(studentId?: string): Promise<{ tasks: RevisionTask[]; total: number }> {
+    const sid = studentId || getCurrentStudentId();
+    const res = await fetchWithTimeout(`${API_BASE}/tutor/revision/tasks?student_id=${sid}`);
     return await handleResponse<{ tasks: RevisionTask[]; total: number }>(res, 'Failed to fetch revision tasks');
   },
 
