@@ -27,9 +27,7 @@ if COOKIE_SECURE_ENV is not None:
 else:
     COOKIE_SECURE = False if os.getenv("ENVIRONMENT") == "development" else True
 
-COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").lower()
-if COOKIE_SAMESITE not in ["none", "lax", "strict"]:
-    COOKIE_SAMESITE = "lax"
+COOKIE_SAMESITE_ENV = os.getenv("COOKIE_SAMESITE", "").strip().lower()
 
 def is_request_secure(request: Optional[Request]) -> bool:
     """Determine whether the incoming request is HTTPS or local development."""
@@ -43,6 +41,14 @@ def is_request_secure(request: Optional[Request]) -> bool:
         if "localhost" in host or "127.0.0.1" in host:
             return False
     return COOKIE_SECURE
+
+def get_cookie_samesite(request: Optional[Request]) -> str:
+    """Determine SameSite attribute. In HTTPS / production cross-origin (e.g. Vercel -> Render), SameSite=None is required."""
+    if COOKIE_SAMESITE_ENV in ["none", "lax", "strict"]:
+        return COOKIE_SAMESITE_ENV
+    if is_request_secure(request):
+        return "none"
+    return "lax"
 
 # --------------------------------------------------------------------------
 # Request & Response Schemas
@@ -96,12 +102,16 @@ def set_refresh_cookie(response: Response, raw_token: str, request: Optional[Req
     """Set HttpOnly secure session cookie with both max_age and expires for cross-session persistence."""
     expire_dt = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     secure_flag = is_request_secure(request)
+    samesite_val = get_cookie_samesite(request)
+    if samesite_val == "none":
+        secure_flag = True
+
     response.set_cookie(
         key="refresh_token",
         value=raw_token,
         httponly=True,
         secure=secure_flag,
-        samesite=COOKIE_SAMESITE,
+        samesite=samesite_val,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         expires=expire_dt,
         path="/api/auth"
@@ -110,13 +120,18 @@ def set_refresh_cookie(response: Response, raw_token: str, request: Optional[Req
 def clear_refresh_cookie(response: Response, request: Optional[Request] = None):
     """Clear HttpOnly session cookie on logout."""
     secure_flag = is_request_secure(request)
-    response.delete_cookie(
-        key="refresh_token",
-        path="/api/auth",
-        httponly=True,
-        secure=secure_flag,
-        samesite=COOKIE_SAMESITE
-    )
+    samesite_val = get_cookie_samesite(request)
+    if samesite_val == "none":
+        secure_flag = True
+
+    for p in ["/api/auth", "/"]:
+        response.delete_cookie(
+            key="refresh_token",
+            path=p,
+            httponly=True,
+            secure=secure_flag,
+            samesite=samesite_val
+        )
 
 # --------------------------------------------------------------------------
 # Endpoints
@@ -153,9 +168,44 @@ def register(payload: RegisterRequest, response: Response, request: Request = No
         )
 
     if existing_user:
+        # Check if the provided password matches the existing account
+        if existing_user.get("hashed_password") and verify_password(payload.password, existing_user["hashed_password"]):
+            # Convenient seamless sign-in if the user typed their correct password on registration form
+            user_id = existing_user["id"]
+            student_id = existing_user["student_id"]
+            storage.ensure_learner(student_id, existing_user["full_name"])
+            learner_profile = storage.get_learner_profile(student_id)
+
+            raw_refresh_token, token_hash, expires_at = create_refresh_token()
+            session_id = f"sess_{uuid.uuid4().hex[:12]}"
+            storage.create_user_session({
+                "id": session_id,
+                "user_id": user_id,
+                "refresh_token_hash": token_hash,
+                "expires_at": expires_at,
+                "device_info": "web_browser"
+            })
+            access_token = create_access_token({
+                "sub": user_id,
+                "student_id": student_id,
+                "email": norm_email,
+                "name": existing_user["full_name"],
+                "role": existing_user.get("role", "student")
+            })
+            set_refresh_cookie(response, raw_refresh_token, request=request)
+            return {
+                "status": "success",
+                "message": "Account recognized. Welcome back to LearnLoop AI!",
+                "access_token": access_token,
+                "refresh_token": raw_refresh_token,
+                "token_type": "bearer",
+                "user": build_public_user(existing_user),
+                "learner": learner_profile
+            }
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This account already exists. Please log in instead."
+            detail="An account with this email already exists. Please sign in instead."
         )
 
     # Generate persistent unique IDs
@@ -229,6 +279,7 @@ def register(payload: RegisterRequest, response: Response, request: Request = No
             "status": "success",
             "message": "Account created successfully.",
             "access_token": access_token,
+            "refresh_token": raw_refresh_token,
             "token_type": "bearer",
             "user": build_public_user(user),
             "learner": learner_profile
@@ -358,6 +409,7 @@ def login(payload: LoginRequest, response: Response, request: Request = None):
         "status": "success",
         "message": "Signed in successfully.",
         "access_token": access_token,
+        "refresh_token": raw_refresh_token,
         "token_type": "bearer",
         "user": build_public_user(user),
         "learner": learner_profile
@@ -541,6 +593,7 @@ def google_sign_in(payload: GoogleLoginRequest, response: Response, request: Req
         "status": "success",
         "message": "Signed in with Google successfully.",
         "access_token": access_token,
+        "refresh_token": raw_refresh_token,
         "token_type": "bearer",
         "user": build_public_user(user),
         "learner": learner_profile
@@ -663,6 +716,7 @@ def refresh_session(request: Request, response: Response, payload: Optional[Refr
     return {
         "status": "success",
         "access_token": access_token,
+        "refresh_token": new_raw_token,
         "token_type": "bearer",
         "user": build_public_user(user),
         "learner": learner_profile

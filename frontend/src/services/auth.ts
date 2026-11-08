@@ -366,7 +366,16 @@ export function getStoredLearner(studentId: string): LearnerProfile | null {
   }
 }
 
-export function saveActiveSession(user: User, learner?: LearnerProfile, token?: string) {
+export function getStoredRefreshToken(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    return localStorage.getItem('learnloop_refresh_token') || null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveActiveSession(user: User, learner?: LearnerProfile, token?: string, refreshToken?: string) {
   if (typeof localStorage === 'undefined') return;
   try {
     localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
@@ -384,6 +393,12 @@ export function saveActiveSession(user: User, learner?: LearnerProfile, token?: 
     if (token) {
       setAuthToken(token, user.student_id);
     }
+    if (refreshToken) {
+      localStorage.setItem('learnloop_refresh_token', refreshToken);
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('learnloop_explicit_logout');
+    }
   } catch {
     // Ignore storage quota
   }
@@ -393,6 +408,10 @@ export function clearActiveSession() {
   if (typeof localStorage === 'undefined') return;
   try {
     localStorage.removeItem(USER_CACHE_KEY);
+    localStorage.removeItem('learnloop_refresh_token');
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('learnloop_explicit_logout', 'true');
+    }
     setAuthToken(null, null);
   } catch {
     // Ignore
@@ -543,12 +562,16 @@ export const authService = {
           });
           if (loginRes.ok) {
             result = await loginRes.json();
+          } else {
+            throw new AuthApiError('An account with this email already exists. Please sign in instead.', 409);
           }
-        } catch {
-          // If login fails, continue to resilient local account handler
+        } catch (err: any) {
+          if (err instanceof AuthApiError) throw err;
+          throw new AuthApiError('An account with this email already exists. Please sign in instead.', 409);
         }
       }
     } catch (e: any) {
+      if (e instanceof AuthApiError) throw e;
       console.warn('[LearnLoop Auth] Backend unavailable for registration. Proceeding with resilient local account registration.');
     }
 
@@ -556,7 +579,7 @@ export const authService = {
     if (result && result.user && result.access_token) {
       setAuthToken(result.access_token, result.user.student_id);
       saveLocalAccount(result.user, data.password, result.learner);
-      saveActiveSession(result.user, result.learner, result.access_token);
+      saveActiveSession(result.user, result.learner, result.access_token, (result as any).refresh_token);
       broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
       return result;
     }
@@ -564,8 +587,10 @@ export const authService = {
     // 2. Resilient Local Registration Fallback
     const localAccounts = getLocalAccounts();
     if (localAccounts[normEmail]) {
-      // User is registering an existing account (or known seeded account)
       const existing = localAccounts[normEmail];
+      if (existing.password && existing.password !== data.password) {
+        throw new AuthApiError('An account with this email already exists. Please sign in instead.', 409);
+      }
       const updatedUser: User = {
         ...existing.user,
         full_name: cleanName || existing.user.full_name,
@@ -649,7 +674,7 @@ export const authService = {
 
       if (res.ok) {
         result = await res.json();
-      } else if (res.status === 401 || res.status === 400 || res.status === 403) {
+      } else if (res.status === 401 || res.status === 400 || res.status === 403 || res.status === 404) {
         try {
           const errData = await res.json();
           if (errData?.detail) {
@@ -675,28 +700,27 @@ export const authService = {
     if (result && result.user && result.access_token) {
       setAuthToken(result.access_token, result.user.student_id);
       saveLocalAccount(result.user, data.password, result.learner);
-      saveActiveSession(result.user, result.learner, result.access_token);
+      saveActiveSession(result.user, result.learner, result.access_token, (result as any).refresh_token);
       broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
       return result;
     }
 
-    // 2. Resilient Account Verification
+    // If backend responded with an explicit authentication error (401 invalid password, 404 not found, etc.)
+    if (backendError && !backendError.isNetworkOrServerError) {
+      throw backendError;
+    }
+
+    // 2. Resilient Account Verification (offline / cold wake fallback)
     const localAccounts = getLocalAccounts();
     const account = localAccounts[normEmail];
 
     if (account) {
       // Validate password if known
       if (account.password && account.password !== data.password) {
-        // If known primary user logging in with their custom password, accept and update password
-        if (normEmail === 'pwkaran25@gmail.com' || normEmail === 'priyanshukaran25@gmail.com' || normEmail === 'karanrajput872@gmail.com') {
-          saveLocalAccount(account.user, data.password, account.learner);
-        } else {
-          throw new AuthApiError('Incorrect password. Please verify your password and try again.', 401);
-        }
-      } else {
-        saveLocalAccount(account.user, data.password, account.learner);
+        throw new AuthApiError('Incorrect password. Please verify your password and try again.', 401);
       }
 
+      saveLocalAccount(account.user, data.password, account.learner);
       const user = { ...account.user, last_login_at: new Date().toISOString() };
       const learner = account.learner || getStoredLearner(user.student_id) || createDefaultLearnerProfile(user.student_id, user.full_name);
       const token = `local_session_${Date.now()}`;
@@ -716,13 +740,7 @@ export const authService = {
     }
 
     // If account was NOT found in local accounts:
-    // CRITICAL FIX: If backend returned a network, server, or rate-limit error, NEVER report "No account found"!
-    if (backendError && backendError.isNetworkOrServerError) {
-      throw backendError;
-    }
-
-    // If backend explicitly returned a 401 JSON message, preserve it
-    if (backendError && backendError.status === 401) {
+    if (backendError) {
       throw backendError;
     }
 
@@ -756,7 +774,7 @@ export const authService = {
     if (result && result.user && result.access_token) {
       setAuthToken(result.access_token, result.user?.student_id);
       saveLocalAccount(result.user, undefined, result.learner);
-      saveActiveSession(result.user, result.learner, result.access_token);
+      saveActiveSession(result.user, result.learner, result.access_token, (result as any).refresh_token);
       broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
       return result;
     }
@@ -770,10 +788,14 @@ export const authService = {
     const normEmail = payload.email.trim().toLowerCase();
     const name = payload.name || normEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
     const googleSub = payload.sub || `g_${Date.now()}`;
-    const studentId = `student_g_${googleSub.slice(-8)}`;
-    const userId = `usr_g_${googleSub.slice(-8)}`;
+    
+    // Check if account already exists locally or seeded to preserve DSA mastery path
+    const localAccounts = getLocalAccounts();
+    const existing = localAccounts[normEmail];
+    const studentId = existing?.user?.student_id || `student_g_${googleSub.slice(-8)}`;
+    const userId = existing?.user?.id || `usr_g_${googleSub.slice(-8)}`;
 
-    const learner = getStoredLearner(studentId) || createDefaultLearnerProfile(studentId, name);
+    const learner = existing?.learner || getStoredLearner(studentId) || createDefaultLearnerProfile(studentId, name);
 
     const user: User = {
       id: userId,
@@ -786,13 +808,13 @@ export const authService = {
       is_email_verified: true,
       is_demo: false,
       avatar_url: payload.picture,
-      created_at: new Date().toISOString(),
+      created_at: existing?.user?.created_at || new Date().toISOString(),
       last_login_at: new Date().toISOString()
     };
 
     const token = `g_auth_session_${Date.now()}_${googleSub.slice(-6)}`;
     setAuthToken(token, studentId);
-    saveLocalAccount(user, undefined, learner);
+    saveLocalAccount(user, existing?.password, learner);
     saveActiveSession(user, learner, token);
     broadcastAuthSync({ type: 'LOGIN', user, learner });
 
@@ -880,13 +902,19 @@ export const authService = {
     }
 
     activeRefreshPromise = (async () => {
+      // If the user explicitly logged out in this session, never restore automatically
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('learnloop_explicit_logout') === 'true') {
+        throw new AuthApiError('User explicitly signed out.', 401);
+      }
+
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const storedRefreshToken = getStoredRefreshToken();
         const res = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ refresh_token: storedRefreshToken || undefined }),
           credentials: 'include',
           signal: controller.signal
         });
@@ -896,15 +924,15 @@ export const authService = {
           const result: AuthResponse = await res.json();
           if (result.access_token) {
             setAuthToken(result.access_token, result.user?.student_id);
-            saveActiveSession(result.user, result.learner, result.access_token);
+            saveActiveSession(result.user, result.learner, result.access_token, (result as any).refresh_token || storedRefreshToken || undefined);
           }
           return result;
         }
       } catch {
-        // Fall through to cached session
+        // Fall through to cached active session
       }
 
-      // Check cached session
+      // Check cached active session
       const cached = typeof localStorage !== 'undefined' ? localStorage.getItem(USER_CACHE_KEY) : null;
       if (cached) {
         try {
@@ -925,33 +953,6 @@ export const authService = {
         }
       }
 
-      // Check last user as backup restoration
-      const lastUserRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(LAST_USER_KEY) : null;
-      if (lastUserRaw) {
-        try {
-          const lastUser = JSON.parse(lastUserRaw);
-          if (lastUser && lastUser.email) {
-            const accounts = getLocalAccounts();
-            const found = accounts[lastUser.email.toLowerCase()];
-            if (found) {
-              const u = found.user;
-              const learner = found.learner || getStoredLearner(u.student_id) || createDefaultLearnerProfile(u.student_id, u.full_name);
-              const token = `restored_session_${u.student_id}`;
-              setAuthToken(token, u.student_id);
-              saveActiveSession(u, learner, token);
-              return {
-                status: 'success',
-                message: 'Session restored from last active account.',
-                access_token: token,
-                token_type: 'bearer',
-                user: u,
-                learner
-              };
-            }
-          }
-        } catch { }
-      }
-
       throw new AuthApiError('No active session.', 401);
     })();
 
@@ -960,9 +961,11 @@ export const authService = {
 
   async logout(): Promise<void> {
     try {
+      const storedRefreshToken = getStoredRefreshToken();
       await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: storedRefreshToken || null }),
         credentials: 'include'
       });
     } catch {

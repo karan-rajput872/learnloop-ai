@@ -1,0 +1,11 @@
+# LearnLoop AI — Authentication System Changed Files Inventory
+
+## Modified Source Files
+
+| File Path | Nature of Modifications |
+|---|---|
+| `backend/app/routes/auth.py` | 1. Configured dynamic `get_cookie_samesite` returning `"none"` for HTTPS/production to ensure cross-origin cookie flow between Vercel and Render.<br>2. Updated `set_refresh_cookie` and `clear_refresh_cookie` to clear both `/api/auth` and `/` paths.<br>3. Returned `refresh_token` in response bodies of `/register`, `/login`, `/google`, and `/refresh` for dual-channel cookie/JSON resilience.<br>4. Enhanced `register` to seamlessly authenticate users if matching password is provided, or return descriptive 409 with switch guidance. |
+| `frontend/src/services/auth.ts` | 1. Eliminated erroneous `LAST_USER_KEY` session synthesis from `refreshSession()` that caused automatic re-login after logout.<br>2. Added `learnloop_explicit_logout` check in `refreshSession()` and set it in `clearActiveSession()`.<br>3. Implemented dual-channel token transmission (body `refresh_token` alongside credentials).<br>4. Hardened `parseJwtPayload` with `=`-padding and `TextDecoder('utf-8')`.<br>5. Removed hardcoded auto-update password bypass for primary emails so invalid passwords are appropriately rejected.<br>6. Preserved student partition ID when linking Google accounts. |
+| `frontend/src/context/AuthContext.tsx` | 1. Stabilized `restoreSession` dependencies, removing `user` to eliminate the infinite render loop.<br>2. Removed destructive on-mount cleanup that deleted `learnloop_refresh_token`.<br>3. Synchronized `learnloop_explicit_logout` across `login`, `register`, `loginWithGoogle`, and `logout`. |
+| `frontend/src/components/AuthModal.tsx` | 1. Cleaned up error message presentation so Google action buttons only appear when appropriate.<br>2. Hid redundant custom Google button when native Google GIS button is rendered.<br>3. Added one-click `[Sign in to this account]` switch button when registering an existing email. |
+| `frontend/test_auth_lifecycle.mjs` | Added 12-test Playwright suite covering full authentication lifecycle: rejection, sign-in, persistence, logout, reload, collision handling, and multi-tab sync. |

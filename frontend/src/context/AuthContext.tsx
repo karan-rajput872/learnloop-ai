@@ -146,24 +146,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Bad JSON
       }
 
-      setAuthStatus(user ? 'AUTHENTICATED' : 'UNAUTHENTICATED');
+      setAuthStatus('UNAUTHENTICATED');
     } finally {
       setIsLoading(false);
     }
-  }, [user, rememberUser]);
+  }, [rememberUser]);
 
-  // Restore session on mount via HttpOnly cookie
+  // Restore session on mount
   useEffect(() => {
     let isMounted = true;
-
-    // Defensive cleanup of any legacy JavaScript refresh token in localStorage
-    try {
-      if (typeof localStorage !== 'undefined' && localStorage.getItem('learnloop_refresh_token')) {
-        localStorage.removeItem('learnloop_refresh_token');
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
 
     restoreSession();
 
@@ -204,6 +195,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [rememberUser, restoreSession]);
 
   const login = async (email: string, password: string, rememberMe = true) => {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('learnloop_explicit_logout');
+      }
+    } catch {}
     const res = await authService.login({ email, password, remember_me: rememberMe });
     setUser(res.user);
     rememberUser(res.user);
@@ -225,6 +221,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     full_name: string;
     terms_accepted: boolean;
   }) => {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('learnloop_explicit_logout');
+      }
+    } catch {}
     const res = await authService.register(data);
     setUser(res.user);
     rememberUser(res.user);
@@ -240,6 +241,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithGoogle = async (idToken: string) => {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('learnloop_explicit_logout');
+      }
+    } catch {}
     const res = await authService.loginWithGoogle(idToken);
     setUser(res.user);
     rememberUser(res.user);
@@ -285,6 +291,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('learnloop_explicit_logout', 'true');
+      }
       await authService.logout();
     } finally {
       setUser(null);
@@ -293,6 +302,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         localStorage.removeItem(USER_CACHE_KEY);
         localStorage.removeItem('learnloop_refresh_token');
+        localStorage.removeItem('learnloop_session_token');
       } catch {
         // Ignore
       }
