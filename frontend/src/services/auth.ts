@@ -949,7 +949,7 @@ export const authService = {
               };
             }
           }
-        } catch {}
+        } catch { }
       }
 
       throw new AuthApiError('No active session.', 401);

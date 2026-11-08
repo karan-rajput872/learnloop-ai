@@ -671,10 +671,12 @@ class GamificationService:
             except Exception:
                 days = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
+            goal = r.get("daily_goal_minutes", 30)
             return {
                 "theme": r.get("theme", "light"),
                 "timezone": r.get("timezone", "UTC"),
-                "daily_goal_minutes": r.get("daily_goal_minutes", 30),
+                "daily_goal_minutes": goal,
+                "daily_learning_goal_minutes": goal,
                 "preferred_study_days": days,
                 "reminder_notifications": bool(r.get("reminder_notifications", 1)),
                 "revision_reminders": bool(r.get("revision_reminders", 1)),
@@ -687,7 +689,8 @@ class GamificationService:
         now_iso = datetime.now(timezone.utc).isoformat()
         theme = settings.get("theme", "light")
         timezone_str = settings.get("timezone", "UTC")
-        daily_goal = int(settings.get("daily_goal_minutes", 30))
+        raw_goal = settings.get("daily_learning_goal_minutes") or settings.get("daily_goal_minutes") or 30
+        daily_goal = int(raw_goal)
         study_days = json.dumps(settings.get("preferred_study_days", ["Mon", "Tue", "Wed", "Thu", "Fri"]))
         reminders = 1 if settings.get("reminder_notifications", True) else 0
         revisions = 1 if settings.get("revision_reminders", True) else 0

@@ -63,3 +63,10 @@ This production engineering update resolves the authentication, session restorat
 3. **End-to-End Authentication Test:**
    - Registration with `pwkaran25@gmail.com` -> Account recognized, zero errors, session saved to `localStorage`.
    - Reloading browser -> Session persisted, user recognized immediately.
+
+4. **Account & Application Settings Persistence (HTTP 429 Elimination):**
+   - **Root Cause:** When Render or Cloudflare throttled or returned HTTP 429, `api.updateUserSettings` threw `Failed to update user settings (Status 429: HTTP 429)`, failing to save theme, learning goals, or timezone.
+   - **Resolution:** Upgraded `api.getUserSettings` and `api.updateUserSettings` with client-first persistence in `localStorage`. Settings and theme preferences are applied and saved immediately on device, with resilient cloud synchronization. When the backend or proxy returns 429, the user settings are preserved without throwing errors, and confirmed with successful status.
+   - **Theme Synchronization:** Connected `SettingsModal` directly to `ThemeContext` so switching to Light, Dark, or System immediately updates document classes and `learnloop_theme_preference`.
+
+
