@@ -278,7 +278,7 @@ export const api = {
             { from: 'trees', to: 'graphs' }
           ]
         };
-      } catch {}
+      } catch { }
     }
     return { concepts: [], edges: [] };
   },
@@ -292,7 +292,7 @@ export const api = {
         if (data && data.profile) {
           try {
             localStorage.setItem(`learnloop_learner_profile_${sid}`, JSON.stringify(data.profile));
-          } catch {}
+          } catch { }
           return data.profile;
         }
       }
@@ -305,7 +305,7 @@ export const api = {
       if (local) {
         try {
           return JSON.parse(local);
-        } catch {}
+        } catch { }
       }
     }
 
@@ -340,7 +340,7 @@ export const api = {
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem(`learnloop_learner_profile_${sid}`, JSON.stringify(fallbackProfile));
-      } catch {}
+      } catch { }
     }
 
     return fallbackProfile;
@@ -455,7 +455,7 @@ export const api = {
         });
         localStorage.setItem(profileKey, JSON.stringify(p));
       }
-    } catch {}
+    } catch { }
 
     return result;
   },
@@ -467,7 +467,7 @@ export const api = {
       if (res.ok) {
         return await handleResponse<{ attempts: DiagnosticAttemptSummary[]; total: number }>(res, 'Failed to fetch diagnostic attempts');
       }
-    } catch {}
+    } catch { }
     return { attempts: [], total: 0 };
   },
 
@@ -556,7 +556,7 @@ export const api = {
           localStorage.setItem(profileKey, JSON.stringify(p));
         }
       }
-    } catch {}
+    } catch { }
 
     return evalRes;
   },

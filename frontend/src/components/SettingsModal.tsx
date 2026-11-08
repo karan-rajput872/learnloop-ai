@@ -90,7 +90,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       try {
         const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (detected) setTimezone(detected);
-      } catch {}
+      } catch { }
     }
 
     // 2. Fetch fresh settings in background
@@ -196,44 +196,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex border-b border-[#E6E9EF] dark:border-[#243B5B] bg-white dark:bg-[#182A42] px-4 sm:px-6 pt-1 gap-2 sm:gap-4 text-xs font-medium overflow-x-auto no-scrollbar touch-pan-x shrink-0">
           <button
             onClick={() => setActiveTab('general')}
-            className={`py-2.5 sm:pb-2.5 border-b-2 min-h-[44px] transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
-              activeTab === 'general'
+            className={`py-2.5 sm:pb-2.5 border-b-2 min-h-[44px] transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${activeTab === 'general'
                 ? 'border-[#5B5CE2] dark:border-[#38B7A5] text-[#5B5CE2] dark:text-[#38B7A5] font-semibold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
+              }`}
           >
             <Globe className="w-4 h-4" />
             <span>General</span>
           </button>
           <button
             onClick={() => setActiveTab('preferences')}
-            className={`py-2.5 sm:pb-2.5 border-b-2 min-h-[44px] transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
-              activeTab === 'preferences'
+            className={`py-2.5 sm:pb-2.5 border-b-2 min-h-[44px] transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${activeTab === 'preferences'
                 ? 'border-[#5B5CE2] dark:border-[#38B7A5] text-[#5B5CE2] dark:text-[#38B7A5] font-semibold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
+              }`}
           >
             <Sliders className="w-4 h-4" />
             <span>Learning Preferences</span>
           </button>
           <button
             onClick={() => setActiveTab('notifications')}
-            className={`py-2.5 sm:pb-2.5 border-b-2 min-h-[44px] transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
-              activeTab === 'notifications'
+            className={`py-2.5 sm:pb-2.5 border-b-2 min-h-[44px] transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${activeTab === 'notifications'
                 ? 'border-[#5B5CE2] dark:border-[#38B7A5] text-[#5B5CE2] dark:text-[#38B7A5] font-semibold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
+              }`}
           >
             <Bell className="w-4 h-4" />
             <span>Notifications</span>
           </button>
           <button
             onClick={() => setActiveTab('security')}
-            className={`py-2.5 sm:pb-2.5 border-b-2 min-h-[44px] transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
-              activeTab === 'security'
+            className={`py-2.5 sm:pb-2.5 border-b-2 min-h-[44px] transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${activeTab === 'security'
                 ? 'border-[#5B5CE2] dark:border-[#38B7A5] text-[#5B5CE2] dark:text-[#38B7A5] font-semibold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
+              }`}
           >
             <ShieldCheck className="w-4 h-4" />
             <span>Security & Privacy</span>
@@ -283,11 +279,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             key={t.id}
                             type="button"
                             onClick={() => setTheme(t.id as any)}
-                            className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
-                              isSel
+                            className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-medium transition-all cursor-pointer ${isSel
                                 ? 'bg-[#EEF0FD] dark:bg-[#20344E] border-[#5B5CE2] dark:border-[#38B7A5] text-[#5B5CE2] dark:text-[#38B7A5] shadow-xs font-semibold'
                                 : 'bg-white dark:bg-[#14233A] border-[#E6E9EF] dark:border-[#243B5B] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#20344E]'
-                            }`}
+                              }`}
                           >
                             <Icon className="w-5 h-5 mb-1.5" />
                             <span>{t.label}</span>
@@ -309,11 +304,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           key={mins}
                           type="button"
                           onClick={() => setDailyGoal(mins)}
-                          className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                            dailyGoal === mins
+                          className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${dailyGoal === mins
                               ? 'bg-[#5B5CE2] dark:bg-[#38B7A5] border-[#5B5CE2] dark:border-[#38B7A5] text-white dark:text-[#101B2D] shadow-xs'
                               : 'bg-white dark:bg-[#14233A] border-[#E6E9EF] dark:border-[#243B5B] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#20344E]'
-                          }`}
+                            }`}
                         >
                           {mins} mins
                         </button>
@@ -356,16 +350,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <div
                           key={item.id}
                           onClick={() => togglePreference(item.id)}
-                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                            isChecked
+                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isChecked
                               ? 'bg-[#EEF0FD] dark:bg-[#20344E] border-[#C7D2FE] dark:border-[#38B7A5] text-[#172033] dark:text-[#F1F5FB]'
                               : 'bg-white dark:bg-[#14233A] border-[#E6E9EF] dark:border-[#243B5B] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#20344E]'
-                          }`}
+                            }`}
                         >
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={() => {}}
+                            onChange={() => { }}
                             className="mt-0.5 rounded text-[#5B5CE2] dark:text-[#38B7A5] focus:ring-[#5B5CE2]"
                           />
                           <div>
