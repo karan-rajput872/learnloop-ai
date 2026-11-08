@@ -300,12 +300,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           LOWER BAR — Application Workspace Navigation (Tier 2)
           ───────────────────────────────────────────────────────────── */}
       <div className="w-full bg-[#F8FAFC]/90 dark:bg-[#0D1524]/90 backdrop-blur-md border-b border-[#E2E8F0]/80 dark:border-[#243B5B]/80 transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5 sm:py-2 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5 sm:py-2 flex items-center justify-center">
 
-          {/* Exact Existing 7 Working Workspace Items (Preserved Appearance & Behavior) */}
+          {/* Exact Existing 7 Working Workspace Items (Centered in the Lower Tier) */}
           <nav
             aria-label="Application Workspaces"
-            className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 px-1.5 sm:px-2 rounded-full bento-pill-nav max-w-full"
+            className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 px-1.5 sm:px-2 rounded-full bento-pill-nav max-w-full mx-auto"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -327,14 +327,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               );
             })}
           </nav>
-
-          {/* Active Workspace Status Breadcrumb (Desktop >= lg) */}
-          <div className="hidden lg:flex items-center gap-2 text-xs font-sans text-[#64748B] dark:text-[#A8B7CC]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#38B7A5]" />
-            <span className="font-medium text-[11px] tracking-wide">
-              {getWorkspaceTitle(activeTab)}
-            </span>
-          </div>
 
         </div>
       </div>
