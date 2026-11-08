@@ -237,7 +237,7 @@ export const LiveVideoModal: React.FC<LiveVideoModalProps> = ({
         {/* ========================================================= */}
         {/* MAIN BODY                                                 */}
         {/* ========================================================= */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5 text-sm font-sans">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5 text-sm font-sans" data-lenis-prevent>
           {/* ------------------------------------------------------- */}
           {/* STATE A: INITIAL / NOT STREAMING                        */}
           {/* ------------------------------------------------------- */}

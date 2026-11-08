@@ -88,5 +88,6 @@ demo_assets/*.mp3
 
 # Local Test Execution Artifacts
 frontend/test_auth_ui_screenshots/
+frontend/test_scroll_screenshots/
 test_screenshots/
 

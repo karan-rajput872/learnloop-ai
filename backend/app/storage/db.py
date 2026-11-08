@@ -254,6 +254,15 @@ class SqliteConnectionWrapper:
 
 # Database Storage Configuration
 # Supports custom persistent path (e.g. Render Persistent Disk mounted at /var/data/learnloop.db)
+def is_production_environment() -> bool:
+    """Determine whether the current process is running in a production environment."""
+    env = os.getenv("ENVIRONMENT", "").strip().lower()
+    return (
+        env in ("production", "prod")
+        or os.getenv("RENDER", "").strip().lower() == "true"
+        or bool(os.getenv("RENDER_SERVICE_ID"))
+    )
+
 def _resolve_database_path() -> Tuple[str, str]:
     """
     Resolve SQLite database and directory path supporting:
@@ -285,6 +294,30 @@ JSON_FALLBACK = os.path.join(DB_DIR, "learner_store.json")
 class StorageManager:
     def __init__(self):
         db_url = os.getenv("DATABASE_URL", "").strip()
+        self.is_production = is_production_environment()
+
+        # Strict Production Enforcement: Never silently fall back to ephemeral SQLite in production
+        if self.is_production:
+            if not db_url:
+                raise RuntimeError(
+                    "CRITICAL DATABASE CONFIGURATION ERROR: Production environment detected (ENVIRONMENT=production or Render service), "
+                    "but DATABASE_URL is not set. LearnLoop AI strictly prohibits falling back to ephemeral SQLite in "
+                    "production to prevent silent data loss across container redeployments. Please configure DATABASE_URL "
+                    "with a managed PostgreSQL connection string in your hosting provider's dashboard (e.g. Render Dashboard)."
+                )
+            if db_url.startswith("sqlite:///"):
+                raise RuntimeError(
+                    "CRITICAL DATABASE CONFIGURATION ERROR: Production environment detected, but DATABASE_URL "
+                    "points to SQLite. LearnLoop AI strictly prohibits SQLite in production. A managed PostgreSQL "
+                    "database is required to guarantee persistence across container redeploys."
+                )
+            if not (db_url.startswith("postgresql://") or db_url.startswith("postgres://")):
+                raise RuntimeError(
+                    f"CRITICAL DATABASE CONFIGURATION ERROR: Production environment detected, but DATABASE_URL "
+                    f"scheme is invalid. Expected postgresql:// or postgres://, got: {db_url[:12]}... "
+                    "A managed PostgreSQL database is required in production."
+                )
+
         self.is_postgres = db_url.startswith("postgresql://") or db_url.startswith("postgres://")
         self._pg_pool = None
         self.postgres_url = None
@@ -301,20 +334,14 @@ class StorageManager:
                 self.postgres_url = db_url
 
             self._init_postgres_pool()
-            logger.info("[STORAGE ACTIVE] Initialized Neon/PostgreSQL backend via ThreadedConnectionPool.")
+            self._validate_postgres_connection()
+            logger.info("[STORAGE ACTIVE] Initialized and validated Neon/PostgreSQL backend via ThreadedConnectionPool.")
         else:
             try:
                 os.makedirs(DB_DIR, exist_ok=True)
             except Exception as e:
                 print(f"[STORAGE WARNING] Could not ensure database directory {DB_DIR}: {e}")
-
-            # Diagnostic notice for Render deployment
-            if os.getenv("RENDER", "").lower() == "true" or bool(os.getenv("RENDER_SERVICE_ID")):
-                if not DB_PATH.startswith("/var/data"):
-                    print(f"[RENDER STORAGE NOTICE] LearnLoop database is running at ephemeral path: {DB_PATH}")
-                    print("[RENDER STORAGE NOTICE] To persist data across container redeploys, mount a Persistent Disk at /var/data and set DATABASE_PATH=/var/data/learnloop.db")
-                else:
-                    print(f"[RENDER STORAGE ACTIVE] Verified persistent disk database mounted at: {DB_PATH}")
+            logger.info(f"[STORAGE ACTIVE] Development/testing SQLite backend active at: {DB_PATH}")
 
         self.init_db()
         self.ensure_default_learner()
@@ -323,6 +350,18 @@ class StorageManager:
         self.ensure_owner_bootstrap()
         self.backfill_historical_analytics()
         self.purge_expired_analytics_events()
+
+    def _validate_postgres_connection(self):
+        """Validate live PostgreSQL connectivity and verify target database catalog without exposing secrets."""
+        with self.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT current_database(), current_user, version();")
+            row = cur.fetchone()
+            if not row:
+                raise RuntimeError("PostgreSQL connection validation failed: empty response from server.")
+            catalog_name = row[0] if isinstance(row, (tuple, list)) else row["current_database"]
+            user_name = row[1] if isinstance(row, (tuple, list)) else row["current_user"]
+            logger.info(f"[STORAGE VALIDATED] Verified PostgreSQL catalog: '{catalog_name}' (user: '{user_name}').")
 
     def _init_postgres_pool(self, minconn: Optional[int] = None, maxconn: Optional[int] = None):
         """Initialize thread-safe PostgreSQL connection pool with configurable limits and keepalives."""
@@ -1796,11 +1835,11 @@ class StorageManager:
             return dict(row) if row else None
 
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
-        """Retrieve user by case-insensitive normalized email."""
+        """Retrieve user by case-insensitive normalized email with fallback to email column."""
         norm = email.strip().lower()
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE normalized_email = ?", (norm,))
+            cursor.execute("SELECT * FROM users WHERE normalized_email = ? OR LOWER(TRIM(email)) = ?", (norm, norm))
             row = cursor.fetchone()
             return dict(row) if row else None
 

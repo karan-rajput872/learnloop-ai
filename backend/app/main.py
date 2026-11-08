@@ -75,11 +75,17 @@ def root():
 
 @app.get("/api/health")
 def health_check():
+    from app.storage.db import storage
     has_gemini = gemini_tutor.is_ai_configured()
     return {
         "status": "healthy",
         "service": "LearnLoop AI Adaptive Tutor",
         "version": "1.0.0",
+        "database": {
+            "engine": "postgresql" if storage.is_postgres else "sqlite",
+            "is_persistent": storage.is_postgres,
+            "environment_mode": "production" if getattr(storage, "is_production", False) else "development_or_testing"
+        },
         "engine": {
             "provider": "Gemini AI API" if has_gemini else "Deterministic Local Orchestrator",
             "is_ai_configured": has_gemini,

@@ -34,11 +34,11 @@ export const BentoCard: React.FC<BentoCardProps> = ({
   }[variant];
 
   const glowBorderClasses = {
-    none: 'border-[#E6E9EF] dark:border-white/10',
-    teal: 'border-[#38B7A5]/50 dark:border-[#38B7A5]/60 hover:shadow-glowTeal',
-    indigo: 'border-[#5B5CE2]/40 dark:border-[#5B5CE2]/50 hover:shadow-glowIndigo',
-    purple: 'border-purple-300 dark:border-purple-500/40',
-    amber: 'border-amber-300 dark:border-amber-500/40'
+    none: 'border-[#E2E8F0] dark:border-[#243B5B]',
+    teal: 'border-[#38B7A5]/40 dark:border-[#38B7A5]/50 hover:border-[#38B7A5]',
+    indigo: 'border-[#6C8FF5]/30 dark:border-[#6C8FF5]/40 hover:border-[#6C8FF5]',
+    purple: 'border-purple-200 dark:border-purple-800/40',
+    amber: 'border-amber-200 dark:border-amber-800/40'
   }[glowBorder];
 
   const interactiveClasses = interactive
@@ -51,7 +51,7 @@ export const BentoCard: React.FC<BentoCardProps> = ({
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } } : undefined}
-      className={`bento-card p-5 sm:p-6 flex flex-col justify-between overflow-hidden ${variantClasses} ${glowBorderClasses} ${interactiveClasses} ${className}`}
+      className={`bento-card reveal p-5 sm:p-6 flex flex-col justify-between overflow-hidden ${variantClasses} ${glowBorderClasses} ${interactiveClasses} ${className}`}
     >
       {(title || badge || action) && (
         <div className="flex items-start justify-between gap-3 mb-4 shrink-0">

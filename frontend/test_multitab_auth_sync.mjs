@@ -57,21 +57,22 @@ async function testMultiTabSync() {
     console.log('  [PASS] Tab 2 instantly synchronized without manual reload!');
 
     console.log('\n[STEP 4] Logging out from Tab 1...');
-    await page1.waitForTimeout(1000);
-    // Dismiss wizard in Tab 1 if present
-    const closeWizard = page1.locator('button[aria-label="Close"]').first();
-    if (await closeWizard.isVisible()) {
+    // Dismiss Onboarding modal if open
+    try {
+      const closeWizard = page1.locator('button[aria-label="Close"]').first();
+      await closeWizard.waitFor({ state: 'visible', timeout: 3000 });
       await closeWizard.click();
       await page1.waitForTimeout(500);
-    } else {
-      await page1.keyboard.press('Escape');
-      await page1.waitForTimeout(300);
+    } catch (e) {
+      // Modal was not open or already dismissed
     }
-    const menuTrigger = page1.locator('button[aria-label="Account and application options"]').first();
+
+    const menuTrigger = page1.locator('button[aria-label="Account and application options"]');
+    await menuTrigger.waitFor({ state: 'visible', timeout: 5000 });
     await menuTrigger.click();
-    await page1.waitForSelector('button[role="menuitem"]:has-text("Sign Out")');
+    await page1.waitForSelector('button[role="menuitem"]:has-text("Sign Out")', { timeout: 5000 });
     await page1.click('button[role="menuitem"]:has-text("Sign Out")');
-    await page1.waitForSelector('button:has-text("Sign In")');
+    await page1.waitForSelector('button:has-text("Sign In")', { timeout: 5000 });
     console.log('  [PASS] Tab 1 signed out.');
 
     console.log('\n[STEP 5] Verifying Tab 2 automatically logged out via BroadcastChannel...');

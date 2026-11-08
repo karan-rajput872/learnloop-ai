@@ -6,18 +6,26 @@
   color-scheme: light;
   --bg-primary: #F5F7FB;
   --card-bg: #FFFFFF;
-  --card-border: #E6E9EF;
-  --text-primary: #172033;
-  --text-muted: #667085;
+  --card-surface-subtle: #EDF2F8;
+  --card-border: #E2E8F0;
+  --text-primary: #17243A;
+  --text-muted: #64748B;
+  --brand-primary: #243B63;
+  --accent-teal: #38B7A5;
+  --accent-blue: #6C8FF5;
 }
 
 html.dark {
   color-scheme: dark;
-  --bg-primary: #0B0F17;
-  --card-bg: #101B2D;
-  --card-border: #1E2D47;
-  --text-primary: #F8FAFC;
-  --text-muted: #94A3B8;
+  --bg-primary: #101B2D;
+  --card-bg: #182A42;
+  --card-surface-subtle: #20344E;
+  --card-border: #243B5B;
+  --text-primary: #F1F5FB;
+  --text-muted: #A8B7CC;
+  --brand-primary: #243B63;
+  --accent-teal: #38B7A5;
+  --accent-blue: #6C8FF5;
 }
 
 html,
@@ -108,13 +116,13 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
 
-/* Ambient Radial Glows (Pure CSS, 0 JS overhead) */
+/* Ambient Subtle Academic Backdrops (Restrained, professional lighting without neon glare) */
 .ambient-glow-teal {
   position: absolute;
   width: 480px;
   height: 480px;
-  background: radial-gradient(circle, rgba(56, 183, 165, 0.12) 0%, rgba(56, 183, 165, 0) 70%);
-  filter: blur(40px);
+  background: radial-gradient(circle, rgba(56, 183, 165, 0.04) 0%, rgba(56, 183, 165, 0) 70%);
+  filter: blur(50px);
   pointer-events: none;
   z-index: 0;
 }
@@ -123,8 +131,8 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   position: absolute;
   width: 520px;
   height: 520px;
-  background: radial-gradient(circle, rgba(91, 92, 226, 0.12) 0%, rgba(91, 92, 226, 0) 70%);
-  filter: blur(50px);
+  background: radial-gradient(circle, rgba(108, 143, 245, 0.04) 0%, rgba(108, 143, 245, 0) 70%);
+  filter: blur(60px);
   pointer-events: none;
   z-index: 0;
 }
@@ -133,55 +141,54 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   position: absolute;
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.10) 0%, rgba(168, 85, 247, 0) 70%);
-  filter: blur(45px);
+  background: radial-gradient(circle, rgba(108, 143, 245, 0.03) 0%, rgba(108, 143, 245, 0) 70%);
+  filter: blur(50px);
   pointer-events: none;
   z-index: 0;
 }
 
 /* Bento Frosted Glass Pill Navigation */
 .bento-pill-nav {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(230, 233, 239, 0.8);
-  box-shadow: 0 4px 20px -2px rgba(16, 27, 45, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 12px -2px rgba(23, 36, 58, 0.05);
 }
 
 html.dark .bento-pill-nav {
-  background: rgba(16, 27, 45, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4);
+  background: rgba(24, 42, 66, 0.90);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #243B5B;
+  box-shadow: 0 4px 20px -2px rgba(16, 27, 45, 0.5);
 }
 
 /* Bento Card Base & Hover */
 .bento-card {
   position: relative;
   background: #FFFFFF;
-  border: 1px solid #E6E9EF;
-  border-radius: 1.5rem;
-  /* 24px */
-  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+  border: 1px solid #E2E8F0;
+  border-radius: 1.25rem;
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease;
 }
 
 html.dark .bento-card {
-  background: rgba(16, 27, 45, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+  background: #182A42;
+  border: 1px solid #243B5B;
+  box-shadow: 0 2px 8px -2px rgba(16, 27, 45, 0.4);
 }
 
 .bento-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(16, 27, 45, 0.10);
-  border-color: rgba(91, 92, 226, 0.4);
+  box-shadow: 0 8px 24px -4px rgba(23, 36, 58, 0.08);
+  border-color: #CBD5E1;
 }
 
 html.dark .bento-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.45);
-  border-color: rgba(56, 183, 165, 0.4);
+  box-shadow: 0 8px 28px -4px rgba(16, 27, 45, 0.6);
+  border-color: #33507A;
 }
 
 /* Typewriter Blinking Cursor */
@@ -231,6 +238,183 @@ html.dark .edu-grid-pattern {
   scrollbar-width: none;
 }
 
+/* --------------------------------------------------------------------------
+   LENIS ULTRA-SMOOTH SCROLLING ENGINE INTEGRATION
+   -------------------------------------------------------------------------- */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   ULTRA-THIN READING & SCROLL PROGRESS BAR (MIDNIGHT ACADEMIC GRADIENT)
+   -------------------------------------------------------------------------- */
+.scroll-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 2.5px;
+  background: linear-gradient(90deg, #243B63 0%, #38B7A5 55%, #6C8FF5 100%);
+  box-shadow: 0 0 10px rgba(56, 183, 165, 0.4);
+  z-index: 10001;
+  pointer-events: none;
+  transition: width 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: width;
+}
+
+/* --------------------------------------------------------------------------
+   FLOATING BACK TO TOP CONTROL
+   -------------------------------------------------------------------------- */
+.back-to-top-btn {
+  position: fixed;
+  bottom: 84px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #E2E8F0;
+  color: #17243A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 45;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(16px);
+  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  box-shadow: 0 4px 16px -2px rgba(23, 36, 58, 0.12);
+}
+
+@media (min-width: 640px) {
+  .back-to-top-btn {
+    bottom: 28px;
+    right: 28px;
+  }
+}
+
+html.dark .back-to-top-btn {
+  background: rgba(24, 42, 66, 0.92);
+  border: 1px solid #243B5B;
+  color: #F1F5FB;
+  box-shadow: 0 4px 20px -2px rgba(16, 27, 45, 0.6);
+}
+
+.back-to-top-btn.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.back-to-top-btn:hover {
+  background: #243B63;
+  color: #FFFFFF;
+  border-color: #243B63;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -2px rgba(36, 59, 99, 0.35);
+}
+
+html.dark .back-to-top-btn:hover {
+  background: #38B7A5;
+  color: #101B2D;
+  border-color: #38B7A5;
+  box-shadow: 0 8px 24px -2px rgba(56, 183, 165, 0.45);
+}
+
+/* --------------------------------------------------------------------------
+   SCROLL REVEAL ANIMATIONS (GPU-ACCELERATED TRANSFORM + OPACITY)
+   -------------------------------------------------------------------------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+  will-change: auto;
+}
+
+/* Staggered entry classes for card grids (calibrated 40ms intervals) */
+.reveal-stagger>*:nth-child(1) {
+  transition-delay: 0.04s;
+}
+
+.reveal-stagger>*:nth-child(2) {
+  transition-delay: 0.08s;
+}
+
+.reveal-stagger>*:nth-child(3) {
+  transition-delay: 0.12s;
+}
+
+.reveal-stagger>*:nth-child(4) {
+  transition-delay: 0.16s;
+}
+
+.reveal-stagger>*:nth-child(5) {
+  transition-delay: 0.20s;
+}
+
+.reveal-stagger>*:nth-child(6) {
+  transition-delay: 0.24s;
+}
+
+.reveal-stagger>*:nth-child(7) {
+  transition-delay: 0.28s;
+}
+
+.reveal-stagger>*:nth-child(8) {
+  transition-delay: 0.32s;
+}
+
+.reveal-stagger>*:nth-child(9) {
+  transition-delay: 0.36s;
+}
+
+.reveal-stagger>*:nth-child(10) {
+  transition-delay: 0.40s;
+}
+
+/* --------------------------------------------------------------------------
+   SMOOTH COLLAPSIBLE / ACCORDION HELPER
+   -------------------------------------------------------------------------- */
+.smooth-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.smooth-collapse.expanded {
+  grid-template-rows: 1fr;
+}
+
+.smooth-collapse-inner {
+  overflow: hidden;
+}
+
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
 
@@ -241,6 +425,16 @@ html.dark .edu-grid-pattern {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .scroll-progress-bar {
+    display: none !important;
   }
 
   .typewriter-cursor {

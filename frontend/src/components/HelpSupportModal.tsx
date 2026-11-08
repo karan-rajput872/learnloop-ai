@@ -51,7 +51,7 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-600 font-sans leading-relaxed flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-600 font-sans leading-relaxed flex-1" data-lenis-prevent>
           {/* Shortcuts */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
             <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">

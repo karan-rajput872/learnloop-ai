@@ -46,7 +46,17 @@ async function parseErrorResponse(res: Response, fallbackMessage: string): Promi
       message = data.message;
     }
   } catch {
-    message = res.statusText || fallbackMessage;
+    if (res.status === 401) {
+      message = 'Invalid email or password. Please verify your credentials and try again.';
+    } else if (res.status === 409) {
+      message = 'An account with this email already exists. Please log in instead.';
+    } else if (res.status === 403) {
+      message = 'Access restricted for this account. Please contact support.';
+    } else if (isServerErr) {
+      message = 'Server encountered a temporary issue. Please retry in a few moments.';
+    } else {
+      message = res.statusText || fallbackMessage;
+    }
   }
   return new AuthApiError(message, res.status, isServerErr);
 }

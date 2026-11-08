@@ -42,7 +42,7 @@ export const FloatingMobileDock: React.FC<FloatingMobileDockProps> = ({
                 else onSelectTab('tutor');
               }}
               aria-label="Launch AI Tutor"
-              className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-tr from-[#5B5CE2] to-indigo-600 text-white shadow-lg shadow-indigo-500/40 border-2 border-white dark:border-[#0B0F17] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+              className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-tr from-[#243B63] to-[#38B7A5] text-white shadow-md border-2 border-white dark:border-[#101B2D] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
             >
               <Sparkles className="w-5 h-5 text-indigo-100" />
             </button>

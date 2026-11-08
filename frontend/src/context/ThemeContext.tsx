@@ -21,7 +21,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return saved;
       }
     }
-    return 'system';
+    // Default for first-time visitors is strictly 'light'
+    return 'light';
   });
 
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -29,7 +30,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const saved = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
       if (saved === 'dark') return true;
       if (saved === 'light') return false;
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return false;
   });

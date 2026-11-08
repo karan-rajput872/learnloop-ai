@@ -42,7 +42,7 @@ export const TermsPrivacyModal: React.FC<TermsPrivacyModalProps> = ({ isOpen, on
         </div>
 
         {/* Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-600 font-sans leading-relaxed flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-600 font-sans leading-relaxed flex-1" data-lenis-prevent>
           <div className="space-y-3">
             <h3 className="font-bold text-slate-800 text-sm">1. Terms of Educational Service</h3>
             <p>

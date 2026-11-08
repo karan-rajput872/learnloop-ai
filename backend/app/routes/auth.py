@@ -291,7 +291,7 @@ def login(payload: LoginRequest, response: Response, request: Request = None):
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No account found with this email address. Please check your spelling or create an account."
+            detail="No account found with this email address. If you do not have an account yet, please create one."
         )
 
     # Case 2: Incorrect password

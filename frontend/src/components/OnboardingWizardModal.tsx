@@ -312,7 +312,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-sm font-sans">
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-sm font-sans" data-lenis-prevent>
 
           {errorMessage && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
@@ -337,8 +337,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                         type="button"
                         onClick={() => setCategory(cat.id)}
                         className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${isSelected
-                            ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] shadow-xs ring-1 ring-[#5B5CE2]'
-                            : 'bg-white border-[#E6E9EF] hover:border-slate-300 text-slate-700'
+                          ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] shadow-xs ring-1 ring-[#5B5CE2]'
+                          : 'bg-white border-[#E6E9EF] hover:border-slate-300 text-slate-700'
                           }`}
                       >
                         <div className={`p-2 rounded-lg shrink-0 ${isSelected ? 'bg-[#5B5CE2] text-white' : 'bg-slate-100 text-slate-600'}`}>
@@ -465,8 +465,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                       type="button"
                       onClick={() => setProgrammingExp(opt)}
                       className={`p-2.5 rounded-xl border text-xs text-center font-medium transition-all ${programmingExp === opt
-                          ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#5B5CE2] font-semibold'
-                          : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#5B5CE2] font-semibold'
+                        : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
                         }`}
                     >
                       {opt}
@@ -486,8 +486,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                       type="button"
                       onClick={() => setDsaExp(opt)}
                       className={`w-full p-2.5 rounded-xl border text-xs text-left font-medium flex items-center justify-between transition-all ${dsaExp === opt
-                          ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] font-semibold'
-                          : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] font-semibold'
+                        : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
                         }`}
                     >
                       <span>{opt}</span>
@@ -510,8 +510,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                         type="button"
                         onClick={() => toggleLanguage(lang)}
                         className={`px-3 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors ${isSelected
-                            ? 'bg-[#5B5CE2] text-white border-[#5B5CE2]'
-                            : 'bg-white text-slate-700 border-[#E6E9EF] hover:bg-slate-50'
+                          ? 'bg-[#5B5CE2] text-white border-[#5B5CE2]'
+                          : 'bg-white text-slate-700 border-[#E6E9EF] hover:bg-slate-50'
                           }`}
                       >
                         {lang}
@@ -551,8 +551,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                         type="button"
                         onClick={() => toggleConcept(c.id)}
                         className={`p-2 rounded-xl border text-[11px] text-left transition-colors flex items-center justify-between ${isSelected
-                            ? 'bg-indigo-50/70 border-indigo-300 text-indigo-900 font-medium'
-                            : 'bg-white border-[#E6E9EF] text-slate-600 hover:bg-slate-50'
+                          ? 'bg-indigo-50/70 border-indigo-300 text-indigo-900 font-medium'
+                          : 'bg-white border-[#E6E9EF] text-slate-600 hover:bg-slate-50'
                           }`}
                       >
                         <span className="truncate">{c.name.split('&')[0]}</span>
@@ -581,8 +581,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                         type="button"
                         onClick={() => toggleGoal(goal)}
                         className={`p-2.5 rounded-xl border text-xs text-left font-medium flex items-center justify-between transition-colors ${isSelected
-                            ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] font-semibold'
-                            : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
+                          ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] font-semibold'
+                          : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
                           }`}
                       >
                         <span>{goal}</span>
@@ -604,8 +604,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                       type="button"
                       onClick={() => setTimeline(timeOpt)}
                       className={`p-2 rounded-xl border text-xs text-center font-medium transition-all ${timeline === timeOpt
-                          ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#5B5CE2] font-semibold'
-                          : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#5B5CE2] font-semibold'
+                        : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
                         }`}
                     >
                       {timeOpt}
@@ -625,8 +625,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                       type="button"
                       onClick={() => setAvailability(avail.label)}
                       className={`w-full p-2.5 rounded-xl border text-xs text-left flex items-center justify-between transition-all ${availability === avail.label
-                          ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] font-semibold'
-                          : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] font-semibold'
+                        : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
                         }`}
                     >
                       <div className="flex items-center gap-2">
@@ -662,8 +662,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                       type="button"
                       onClick={() => setSkillLevel(lvl.id)}
                       className={`w-full p-4 rounded-xl border text-left transition-all ${isSelected
-                          ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] shadow-xs ring-1 ring-[#5B5CE2]'
-                          : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] shadow-xs ring-1 ring-[#5B5CE2]'
+                        : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
                         }`}
                     >
                       <div className="flex items-center justify-between mb-1">
@@ -708,8 +708,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                       type="button"
                       onClick={() => togglePreference(pref.id)}
                       className={`p-3 rounded-xl border text-xs text-left font-medium flex items-center justify-between transition-all ${isSelected
-                          ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] font-semibold'
-                          : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] font-semibold'
+                        : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
                         }`}
                     >
                       <span>{pref.label}</span>
@@ -771,8 +771,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                     type="button"
                     onClick={() => setDiagnosticMode('quick')}
                     className={`p-3.5 rounded-xl border text-left transition-all ${diagnosticMode === 'quick'
-                        ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] ring-1 ring-[#5B5CE2]'
-                        : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
+                      ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] ring-1 ring-[#5B5CE2]'
+                      : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
                       }`}
                   >
                     <div className="flex items-center justify-between mb-1">
@@ -788,8 +788,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                     type="button"
                     onClick={() => setDiagnosticMode('comprehensive')}
                     className={`p-3.5 rounded-xl border text-left transition-all ${diagnosticMode === 'comprehensive'
-                        ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] ring-1 ring-[#5B5CE2]'
-                        : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
+                      ? 'bg-[#EEF0FD] border-[#5B5CE2] text-[#172033] ring-1 ring-[#5B5CE2]'
+                      : 'bg-white border-[#E6E9EF] text-slate-700 hover:bg-slate-50'
                       }`}
                   >
                     <div className="flex items-center justify-between mb-1">

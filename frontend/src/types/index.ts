@@ -49,6 +49,7 @@ export interface LearnerProfile {
   onboarding_data?: OnboardingProfile;
   learning_path?: PersonalizedLearningPath;
   streak_days?: number;
+  recent_activity?: Array<{ action?: string; concept_name?: string; timestamp?: string; details?: string; score?: number }>;
   concepts: Record<string, ConceptMastery>;
   created_at: string;
   updated_at: string;
@@ -271,7 +272,7 @@ export interface User {
   full_name: string;
   email: string;
   normalized_email?: string;
-  role: 'student' | 'teacher' | 'admin';
+  role: 'student' | 'teacher' | 'admin' | 'owner';
   auth_provider: 'local' | 'google' | 'demo';
   is_email_verified?: boolean;
   is_demo?: boolean;

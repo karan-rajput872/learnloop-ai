@@ -221,7 +221,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm font-sans">
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm font-sans" data-lenis-prevent>
           {isLoading ? (
             <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-3">
               <Loader2 className="w-6 h-6 animate-spin text-[#5B5CE2]" />

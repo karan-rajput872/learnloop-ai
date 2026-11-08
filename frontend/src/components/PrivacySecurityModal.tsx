@@ -50,7 +50,7 @@ export const PrivacySecurityModal: React.FC<PrivacySecurityModalProps> = ({ isOp
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto space-y-5 text-xs text-slate-600 font-sans leading-relaxed">
+        <div className="p-6 overflow-y-auto space-y-5 text-xs text-slate-600 font-sans leading-relaxed" data-lenis-prevent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
               <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">

@@ -99,7 +99,7 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-sm font-sans">
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-sm font-sans" data-lenis-prevent>
           
           {/* Dual Skill Level Indicators */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

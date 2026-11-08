@@ -34,6 +34,15 @@ import { TermsPrivacyModal } from './components/TermsPrivacyModal';
 import { LiveVideoModal } from './components/LiveVideoModal';
 import { OwnerConsolePage } from './pages/OwnerConsolePage';
 import { FloatingMobileDock } from './components/FloatingMobileDock';
+import { Sidebar } from './components/Sidebar';
+import { LearningRoadmapModal } from './components/LearningRoadmapModal';
+import { SkillsCareerModal } from './components/SkillsCareerModal';
+import { AchievementsModal } from './components/AchievementsModal';
+import { ProjectsModal } from './components/ProjectsModal';
+import { SmoothScrollProvider, useSmoothScroll } from './context/SmoothScrollContext';
+import { useScrollReveal } from './hooks/useScrollReveal';
+import { ScrollProgressBar } from './components/ScrollProgressBar';
+import { BackToTopButton } from './components/BackToTopButton';
 
 function AppContent() {
   const [isOwnerRoute, setIsOwnerRoute] = useState<boolean>(() => {
@@ -69,11 +78,18 @@ function AppContent() {
   const [isHelpSupportOpen, setIsHelpSupportOpen] = useState<boolean>(false);
   const [isTermsPrivacyOpen, setIsTermsPrivacyOpen] = useState<boolean>(false);
   const [isLiveVideoOpen, setIsLiveVideoOpen] = useState<boolean>(false);
+  const [isRoadmapOpen, setIsRoadmapOpen] = useState<boolean>(false);
+  const [isSkillsOpen, setIsSkillsOpen] = useState<boolean>(false);
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState<boolean>(false);
+  const [isProjectsOpen, setIsProjectsOpen] = useState<boolean>(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
 
   const [diagnosticInitialMode, setDiagnosticInitialMode] = useState<'quick' | 'comprehensive'>('comprehensive');
 
-  const { user, isAuthenticated, isLoading: isAuthLoading, authStatus, openAuthModal, startDemoSession, retryRestoreSession } = useAuth();
+  const { user, isAuthenticated, lastUser, isLoading: isAuthLoading, authStatus, openAuthModal, startDemoSession, retryRestoreSession } = useAuth();
+  const { scrollToTop } = useSmoothScroll();
+  useScrollReveal([activeTab, profile, isAuthenticated]);
 
   // Connection & Loading States
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -220,42 +236,67 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] dark:bg-[#0B0F17] text-[#172033] dark:text-[#E2E8F0] flex flex-col font-sans edu-grid-pattern relative overflow-hidden transition-colors duration-200">
-      {/* Bento Ambient Radial Lighting Halos */}
-      <div className="ambient-glow-teal top-[-100px] right-[-100px]" />
-      <div className="ambient-glow-indigo bottom-[-150px] left-[-150px]" />
-      <div className="ambient-glow-purple top-[35%] right-[5%]" />
+    <div className="min-h-screen bg-[#F5F7FB] dark:bg-[#101B2D] text-[#17243A] dark:text-[#F1F5FB] flex font-sans edu-grid-pattern relative overflow-x-hidden transition-colors duration-200">
+      {/* Ultra-Thin Reading & Scroll Progress Bar */}
+      <ScrollProgressBar />
 
-      {/* Top Navbar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={(tab) => {
-          setActiveTab(tab);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        healthInfo={healthInfo}
-        profile={profile}
-        onReset={handleReset}
-        onRefresh={() => fetchProfileAndHealth(true)}
-        isRefreshing={isRetrying}
-        onOpenMyProfile={() => setIsProfileModalOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenPreferences={() => setIsOnboardingOpen(true)}
-        onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenPrivacySecurity={() => setIsPrivacySecurityOpen(true)}
-        onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
-        onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
-        onOpenLiveVideo={() => setIsLiveVideoOpen(true)}
-        unreadNotificationsCount={unreadNotificationsCount}
-      />
+      {/* Persistent Responsive Desktop Sidebar (Authenticated or Demo Mode) */}
+      {(isAuthenticated || isOfflinePreview || user?.is_demo) && (
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            scrollToTop(0.8);
+          }}
+          isCollapsed={isSidebarCollapsed}
+          setIsCollapsed={setIsSidebarCollapsed}
+          profile={profile}
+          onOpenProfile={() => setIsProfileModalOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
+          onOpenRoadmap={() => setIsRoadmapOpen(true)}
+          onOpenSkills={() => setIsSkillsOpen(true)}
+          onOpenProjects={() => setIsProjectsOpen(true)}
+          onOpenAchievements={() => setIsAchievementsOpen(true)}
+        />
+      )}
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+      {/* Main Page Column */}
+      <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden">
+        {/* Top Navbar */}
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            scrollToTop(0.8);
+          }}
+          healthInfo={healthInfo}
+          profile={profile}
+          onReset={handleReset}
+          onRefresh={() => fetchProfileAndHealth(true)}
+          isRefreshing={isRetrying}
+          onOpenMyProfile={() => setIsProfileModalOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenPreferences={() => setIsOnboardingOpen(true)}
+          onOpenNotifications={() => setIsNotificationsOpen(true)}
+          onOpenPrivacySecurity={() => setIsPrivacySecurityOpen(true)}
+          onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
+          onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
+          onOpenLiveVideo={() => setIsLiveVideoOpen(true)}
+          onOpenRoadmap={() => setIsRoadmapOpen(true)}
+          onOpenSkills={() => setIsSkillsOpen(true)}
+          onOpenProjects={() => setIsProjectsOpen(true)}
+          onOpenAchievements={() => setIsAchievementsOpen(true)}
+          unreadNotificationsCount={unreadNotificationsCount}
+        />
+
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 min-w-0">
         {/* Offline Preview Notice Banner */}
         {isOfflinePreview && (
-          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-amber-900">
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-amber-900 dark:text-amber-200">
             <div className="flex items-center gap-2.5">
-              <Eye className="w-4 h-4 text-amber-600 shrink-0" />
+              <Eye className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <span>
                 <strong>Demonstration Preview Mode:</strong> Viewing syllabus architecture with uninitialized baseline profile.
               </span>
@@ -263,7 +304,7 @@ function AppContent() {
             <button
               onClick={() => fetchProfileAndHealth(true)}
               disabled={isRetrying}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#5B5CE2] hover:bg-[#494AC8] text-white font-medium transition-all shrink-0 shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#243B63] hover:bg-[#1E3554] dark:bg-[#38B7A5] dark:hover:bg-[#2EA191] text-white dark:text-[#101B2D] font-medium transition-all shrink-0 shadow-xs"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
               Connect Live Backend
@@ -274,11 +315,20 @@ function AppContent() {
         {/* Tab 1: Dashboard */}
         {activeTab === 'dashboard' && (
           <>
-            {/* Case 0: Unauthenticated visitor sees professional Landing Page */}
-            {!isAuthenticated && !user ? (
+            {/* Case 0A: Session Verification in Progress */}
+            {isAuthLoading || authStatus === 'INITIALIZING' ? (
+              <div className="py-24 flex flex-col items-center justify-center space-y-4">
+                <div className="w-10 h-10 border-3 border-[#38B7A5] border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm font-medium text-[#64748B] dark:text-[#A8B7CC]">
+                  Verifying authenticated session...
+                </p>
+              </div>
+            ) : !isAuthenticated && !user ? (
+              /* Case 0B: Unauthenticated visitor sees professional Landing Page with returning user recognition */
               <LandingPage
                 onOpenRegister={() => openAuthModal('register')}
                 onOpenLogin={() => openAuthModal('login')}
+                lastUser={lastUser}
                 onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
                 onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
                 onOpenLiveVideo={() => setIsLiveVideoOpen(true)}
@@ -412,8 +462,8 @@ function AppContent() {
                       setDiagnosticInitialMode('comprehensive');
                       setActiveTab('diagnostic');
                     }}
-                    onStartQuiz={() => {
-                      setFocusedConceptId(null);
+                    onStartQuiz={(cid) => {
+                      setFocusedConceptId(cid || null);
                       setActiveTab('quiz');
                     }}
                     onViewGraph={() => setActiveTab('graph')}
@@ -424,6 +474,9 @@ function AppContent() {
                       setActiveTab('tutor');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
+                    onOpenRoadmap={() => setIsRoadmapOpen(true)}
+                    onOpenSkills={() => setIsSkillsOpen(true)}
+                    onOpenAchievements={() => setIsAchievementsOpen(true)}
                   />
                 )}
               </>
@@ -553,41 +606,81 @@ function AppContent() {
       />
 
       {/* Educational Platform Footer */}
-      <footer className="bg-white border-t border-[#E6E9EF] py-6 text-center text-xs text-[#667085] font-sans">
+      <footer className="bg-white dark:bg-[#14233A] border-t border-[#E2E8F0] dark:border-[#243B5B] py-6 text-center text-xs text-[#64748B] dark:text-[#A8B7CC] font-sans">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-[#667085]">
-            <GraduationCap className="w-4 h-4 text-[#5B5CE2]" />
-            <span className="font-bold text-[#172033]">LearnLoop AI</span>
+          <div className="flex items-center gap-2 text-[#64748B] dark:text-[#A8B7CC]">
+            <GraduationCap className="w-4 h-4 text-[#38B7A5]" />
+            <span className="font-bold text-[#17243A] dark:text-[#F1F5FB]">LearnLoop AI</span>
             <span>—</span>
             <span>
               &quot;Don&apos;t just learn the answers. Master the concepts.&quot;
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-[#667085] font-mono text-[11px]">
+          <div className="flex items-center gap-3 text-[#64748B] dark:text-[#A8B7CC] font-mono text-[11px]">
             <button
               onClick={() => setIsPrivacySecurityOpen(true)}
-              className="hover:text-[#5B5CE2] transition-colors underline-offset-2 hover:underline cursor-pointer"
+              className="hover:text-[#38B7A5] transition-colors underline-offset-2 hover:underline cursor-pointer"
             >
               Privacy & Security
             </button>
             <span>•</span>
             <button
               onClick={() => setIsTermsPrivacyOpen(true)}
-              className="hover:text-[#5B5CE2] transition-colors underline-offset-2 hover:underline cursor-pointer"
+              className="hover:text-[#38B7A5] transition-colors underline-offset-2 hover:underline cursor-pointer"
             >
               Terms of Service
             </button>
             <span>•</span>
             <button
               onClick={() => setIsHelpSupportOpen(true)}
-              className="hover:text-[#5B5CE2] transition-colors underline-offset-2 hover:underline cursor-pointer"
+              className="hover:text-[#38B7A5] transition-colors underline-offset-2 hover:underline cursor-pointer"
             >
               Help & Shortcuts
             </button>
           </div>
         </div>
       </footer>
+      </div>
+
+      {/* Learning Roadmap Modal */}
+      <LearningRoadmapModal
+        isOpen={isRoadmapOpen}
+        onClose={() => setIsRoadmapOpen(false)}
+        profile={profile}
+        onStartQuiz={(cid) => {
+          setFocusedConceptId(cid || null);
+          setActiveTab('quiz');
+        }}
+      />
+
+      {/* Skills & Career Readiness Modal */}
+      <SkillsCareerModal
+        isOpen={isSkillsOpen}
+        onClose={() => setIsSkillsOpen(false)}
+        profile={profile}
+        onStartQuiz={() => {
+          setFocusedConceptId(null);
+          setActiveTab('quiz');
+        }}
+      />
+
+      {/* Achievements & Badges Modal */}
+      <AchievementsModal
+        isOpen={isAchievementsOpen}
+        onClose={() => setIsAchievementsOpen(false)}
+        profile={profile}
+      />
+
+      {/* Algorithmic Projects Modal */}
+      <ProjectsModal
+        isOpen={isProjectsOpen}
+        onClose={() => setIsProjectsOpen(false)}
+        profile={profile}
+        onOpenTutor={(prompt) => {
+          setActiveTab('tutor');
+        }}
+      />
 
       {/* Bento Floating Mobile Dock (Handheld Ergonomics) */}
       {(isAuthenticated || isOfflinePreview || user?.is_demo) && activeTab !== 'landing' && (
@@ -595,16 +688,19 @@ function AppContent() {
           activeTab={activeTab}
           onSelectTab={(tab) => {
             setActiveTab(tab);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            scrollToTop(0.8);
           }}
           onOpenTutor={() => {
             setActiveTab('tutor');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            scrollToTop(0.8);
           }}
           onOpenProfile={() => setIsProfileModalOpen(true)}
           unreadNotifications={unreadNotificationsCount}
         />
       )}
+
+      {/* Floating Back to Top Control */}
+      <BackToTopButton />
     </div>
   );
 }
@@ -613,7 +709,9 @@ export function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppContent />
+        <SmoothScrollProvider>
+          <AppContent />
+        </SmoothScrollProvider>
       </AuthProvider>
     </ThemeProvider>
   );
