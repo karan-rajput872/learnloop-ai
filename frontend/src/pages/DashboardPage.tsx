@@ -32,6 +32,7 @@ import { MasteryGauge } from '../components/MasteryGauge';
 import { BentoCard } from '../components/BentoCard';
 import { TypewriterText } from '../components/TypewriterText';
 import { CodeWindow } from '../components/CodeWindow';
+import { BSSVariantInspector } from '../components/BSSVariantInspector';
 import { useAuth } from '../context/AuthContext';
 
 interface DashboardPageProps {
@@ -336,9 +337,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </span>
                         <span>•</span>
                         <span
-                          className={`font-bold ${
-                            task.priority === 'High' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'
-                          }`}
+                          className={`font-bold ${task.priority === 'High' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'
+                            }`}
                         >
                           {task.priority} Priority
                         </span>
@@ -576,13 +576,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </span>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`font-mono font-bold ${
-                        c.mastery_percentage >= 70
+                      className={`font-mono font-bold ${c.mastery_percentage >= 70
                           ? 'text-[#38B7A5]'
                           : c.mastery_percentage >= 40
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-[#6C8FF5]'
-                      }`}
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-[#6C8FF5]'
+                        }`}
                     >
                       {Math.round(c.mastery_percentage)}%
                     </span>
@@ -597,13 +596,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                 <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      c.mastery_percentage >= 70
+                    className={`h-full rounded-full transition-all duration-300 ${c.mastery_percentage >= 70
                         ? 'bg-[#38B7A5]'
                         : c.mastery_percentage >= 40
-                        ? 'bg-amber-500'
-                        : 'bg-[#6C8FF5]'
-                    }`}
+                          ? 'bg-amber-500'
+                          : 'bg-[#6C8FF5]'
+                      }`}
                     style={{ width: `${Math.min(100, Math.max(5, c.mastery_percentage))}%` }}
                   />
                 </div>
@@ -619,27 +617,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </BentoCard>
 
-        {/* BENTO CARD 7: ALGORITHM INVARIANT CODE INSPECTOR (Wide, 2 cols) */}
+        {/* BENTO CARD 7: BSS LEVEL SCORE & VARIANT INSPECTOR (Wide, 2 cols) */}
         <BentoCard
           variant="wide"
           glowBorder="teal"
-          title="Algorithm Invariant Inspector"
-          subtitle="Reference implementation with formal loop invariants and boundary assertions"
+          title="BSS Level Score & Variant Inspector"
+          subtitle="Binary Search Space invariant evaluation, proficiency telemetry & algorithmic variants"
           badge={
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-[#38B7A5] text-[11px] font-mono font-semibold border border-teal-200 dark:border-teal-800">
-              DSA Syllabus Core
+              Verified Telemetry
             </span>
           }
         >
-          <CodeWindow
-            title="binary_search_invariant.py"
-            language="python"
-            code={sampleAlgorithmCode}
-            onAskTutor={(snippet) =>
-              onOpenTutor
-                ? onOpenTutor(`Can you explain the loop invariant and termination guarantee in this snippet:\n\`\`\`python\n${snippet}\n\`\`\``)
-                : onStartQuiz()
-            }
+          <BSSVariantInspector
+            profile={profile}
+            onOpenTutor={onOpenTutor}
+            onStartQuiz={onStartQuiz}
           />
         </BentoCard>
       </div>

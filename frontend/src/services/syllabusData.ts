@@ -3,12 +3,12 @@ import { ConceptNode, ConceptEdge, LearnerProfile, ConceptMastery } from '../typ
 export const FALLBACK_CONCEPTS: ConceptNode[] = [
   {
     id: 'arrays',
-    name: 'Arrays',
+    name: 'Arrays & Basic Operations',
     category: 'Linear Data Structures',
     prerequisites: [],
     description: 'Contiguous memory blocks offering O(1) random access by index, cache locality, and static/dynamic resizing tradeoffs.',
     difficulty_tier: 'novice',
-    graph_position: { x: 120, y: 80 },
+    graph_position: { x: 40, y: 60 },
     key_subtopics: [
       'Contiguous memory allocation',
       'Zero-indexed address arithmetic',
@@ -21,12 +21,12 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
   },
   {
     id: 'time_complexity',
-    name: 'Time Complexity',
+    name: 'Time Complexity & Big-O',
     category: 'Algorithmic Analysis',
     prerequisites: [],
     description: 'Asymptotic upper/tight bounds (Big O, Big Theta, Big Omega) measuring operation count growth relative to input size n.',
     difficulty_tier: 'novice',
-    graph_position: { x: 380, y: 80 },
+    graph_position: { x: 260, y: 60 },
     key_subtopics: [
       'Big O notation definition',
       'Loop iterations and polynomial growth',
@@ -44,7 +44,7 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
     prerequisites: ['time_complexity'],
     description: 'Auxiliary working memory vs input space allocation during execution, including recursive stack frames.',
     difficulty_tier: 'novice',
-    graph_position: { x: 640, y: 80 },
+    graph_position: { x: 480, y: 60 },
     key_subtopics: [
       'Auxiliary space vs total space',
       'In-place modifications',
@@ -55,30 +55,13 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
     current_difficulty: 'novice'
   },
   {
-    id: 'linked_lists',
-    name: 'Linked Lists',
-    category: 'Linear Data Structures',
-    prerequisites: ['arrays'],
-    description: 'Non-contiguous dynamic nodes connected via pointer references; efficient O(1) insertions/deletions given reference.',
-    difficulty_tier: 'novice',
-    graph_position: { x: 120, y: 240 },
-    key_subtopics: [
-      'Singly and doubly linked nodes',
-      'Pointer manipulation and sentinel nodes',
-      'Fast and slow pointer cycle detection'
-    ],
-    mastery_percentage: 0,
-    questions_attempted: 0,
-    current_difficulty: 'novice'
-  },
-  {
     id: 'recursion',
-    name: 'Recursion',
+    name: 'Recursion Fundamentals',
     category: 'Algorithmic Paradigms',
     prerequisites: ['time_complexity', 'space_complexity'],
     description: 'Self-referential function dispatch resolving subproblems via base-case termination and call-stack frame unwind.',
     difficulty_tier: 'novice',
-    graph_position: { x: 510, y: 240 },
+    graph_position: { x: 700, y: 60 },
     key_subtopics: [
       'Base case identification and prevention of stack overflow',
       'Call stack frame lifecycles',
@@ -89,13 +72,30 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
     current_difficulty: 'novice'
   },
   {
+    id: 'linked_lists',
+    name: 'Linked Lists & Pointers',
+    category: 'Linear Data Structures',
+    prerequisites: ['arrays'],
+    description: 'Non-contiguous dynamic nodes connected via pointer references; efficient O(1) insertions/deletions given reference.',
+    difficulty_tier: 'novice',
+    graph_position: { x: 40, y: 220 },
+    key_subtopics: [
+      'Singly and doubly linked nodes',
+      'Pointer manipulation and sentinel nodes',
+      'Fast and slow pointer cycle detection'
+    ],
+    mastery_percentage: 0,
+    questions_attempted: 0,
+    current_difficulty: 'novice'
+  },
+  {
     id: 'stacks',
-    name: 'Stacks',
+    name: 'Stacks & LIFO',
     category: 'Abstract Data Types',
     prerequisites: ['arrays', 'linked_lists'],
     description: 'Last-In-First-Out (LIFO) protocol constrained to top-element push, pop, and peek operations.',
     difficulty_tier: 'novice',
-    graph_position: { x: 40, y: 400 },
+    graph_position: { x: 260, y: 220 },
     key_subtopics: [
       'LIFO invariant and plate stack mental model',
       'Parentheses matching and expression evaluation',
@@ -107,12 +107,12 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
   },
   {
     id: 'queues',
-    name: 'Queues',
+    name: 'Queues & FIFO',
     category: 'Abstract Data Types',
     prerequisites: ['arrays', 'linked_lists'],
     description: 'First-In-First-Out (FIFO) buffer protocol supporting front dequeue and rear enqueue operations.',
     difficulty_tier: 'novice',
-    graph_position: { x: 260, y: 400 },
+    graph_position: { x: 480, y: 220 },
     key_subtopics: [
       'FIFO invariant and queue buffer mechanics',
       'Circular queue implementation with modulo arithmetic',
@@ -124,12 +124,12 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
   },
   {
     id: 'searching',
-    name: 'Searching',
+    name: 'Linear & Binary Search',
     category: 'Core Algorithms',
     prerequisites: ['arrays', 'time_complexity'],
     description: 'Linear scan vs logarithmic Binary Search exploiting sorted order invariants in random-access data.',
     difficulty_tier: 'novice',
-    graph_position: { x: 480, y: 400 },
+    graph_position: { x: 700, y: 220 },
     key_subtopics: [
       'Linear search O(n) bounds',
       'Binary search mid computation avoiding integer overflow',
@@ -141,12 +141,12 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
   },
   {
     id: 'sorting',
-    name: 'Sorting',
+    name: 'Sorting Algorithms',
     category: 'Core Algorithms',
     prerequisites: ['arrays', 'recursion', 'time_complexity'],
     description: 'Quadratic comparison sorts vs O(n log n) Divide & Conquer algorithms (MergeSort, QuickSort).',
     difficulty_tier: 'intermediate',
-    graph_position: { x: 720, y: 400 },
+    graph_position: { x: 150, y: 380 },
     key_subtopics: [
       'Stability in sorting algorithms',
       'MergeSort divide-and-conquer auxiliary buffer',
@@ -158,12 +158,12 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
   },
   {
     id: 'trees',
-    name: 'Trees',
+    name: 'Tree Structures',
     category: 'Hierarchical Data Structures',
     prerequisites: ['linked_lists', 'recursion'],
     description: 'Acyclic connected hierarchical graphs composed of root, parent, child, and leaf nodes.',
     difficulty_tier: 'intermediate',
-    graph_position: { x: 180, y: 560 },
+    graph_position: { x: 370, y: 380 },
     key_subtopics: [
       'Tree terminology: root, height, depth, subtree',
       'Pre-order, in-order, post-order depth-first traversals',
@@ -175,12 +175,12 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
   },
   {
     id: 'binary_trees',
-    name: 'Binary Trees',
+    name: 'Binary Trees & BSTs',
     category: 'Hierarchical Data Structures',
     prerequisites: ['trees'],
     description: 'Hierarchical trees where every node has at most two children; includes Binary Search Tree ordering invariants.',
     difficulty_tier: 'intermediate',
-    graph_position: { x: 420, y: 560 },
+    graph_position: { x: 590, y: 380 },
     key_subtopics: [
       'Binary Search Tree (BST) ancestor constraint invariants',
       'Search, insert, and delete in BST',
@@ -192,16 +192,16 @@ export const FALLBACK_CONCEPTS: ConceptNode[] = [
   },
   {
     id: 'graphs',
-    name: 'Graphs',
+    name: 'Graph Representations',
     category: 'Non-Linear Data Structures',
     prerequisites: ['trees', 'queues', 'recursion'],
     description: 'Networks of vertices connected by directed or undirected edges, represented via adjacency matrices or lists.',
     difficulty_tier: 'advanced',
-    graph_position: { x: 680, y: 560 },
+    graph_position: { x: 370, y: 540 },
     key_subtopics: [
-      'Adjacency list vs adjacency matrix space-time tradeoffs',
-      'Depth-First Search (DFS) and cycle detection',
-      'Breadth-First Search (BFS) and shortest-path computation'
+      'Adjacency lists vs adjacency matrix tradeoffs',
+      'Breadth-first search (BFS) queue shortest path discovery',
+      'Depth-first search (DFS) recursion and cycle detection with visited sets'
     ],
     mastery_percentage: 0,
     questions_attempted: 0,

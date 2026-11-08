@@ -213,8 +213,8 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
             onTouchEnd={handleTouchEnd}
           >
             <svg
-              viewBox="0 0 780 660"
-              className="w-full h-full min-w-[720px] transition-transform duration-75 origin-top-left"
+              viewBox="0 0 920 680"
+              className="w-full h-full min-w-[760px] transition-transform duration-75 origin-top-left"
               style={{
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`
               }}
@@ -239,15 +239,15 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
                 const toNode = conceptMap.get(edge.to);
                 if (!fromNode || !toNode) return null;
 
-                const x1 = fromNode.graph_position.x + 55;
-                const y1 = fromNode.graph_position.y + 25;
-                const x2 = toNode.graph_position.x + 55;
-                const y2 = toNode.graph_position.y + 25;
+                const x1 = fromNode.graph_position.x + 84;
+                const y1 = fromNode.graph_position.y + 34;
+                const x2 = toNode.graph_position.x + 84;
+                const y2 = toNode.graph_position.y + 34;
 
                 const dx = x2 - x1;
                 const dy = y2 - y1;
                 const cx = x1 + dx * 0.5;
-                const cy = y1 + dy * 0.5 - 15;
+                const cy = y1 + dy * 0.5 - 18;
 
                 return (
                   <path
@@ -280,40 +280,39 @@ export const ConceptGraphView: React.FC<ConceptGraphViewProps> = ({
                     }}
                     className="cursor-pointer group"
                   >
-                    <rect
-                      width="110"
-                      height="50"
-                      rx="10"
-                      fill="#FFFFFF"
-                      stroke={isSelected ? '#5B5CE2' : colors.stroke}
-                      strokeWidth={isSelected ? '2.5' : '1.5'}
-                      filter="drop-shadow(0 1px 2px rgba(16, 24, 40, 0.05))"
-                      className="transition-all duration-150"
-                    />
+                    <foreignObject width="168" height="68" className="overflow-visible">
+                      <div
+                        className={`w-[168px] h-[68px] p-2.5 rounded-xl bg-white border transition-all duration-150 flex flex-col justify-between shadow-xs select-none ${
+                          isSelected
+                            ? 'border-[#5B5CE2] ring-2 ring-[#5B5CE2]/20 shadow-md'
+                            : 'border-[#E2E8F0] hover:border-[#5B5CE2]/50 hover:shadow-sm'
+                        }`}
+                        style={{ borderLeftColor: colors.stroke, borderLeftWidth: '3.5px' }}
+                      >
+                        <div className="flex items-start justify-between gap-1.5 min-w-0">
+                          <span className="text-[11px] font-bold text-[#172033] font-sans leading-snug line-clamp-2">
+                            {concept.name}
+                          </span>
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0 mt-0.5"
+                            style={{ backgroundColor: colors.stroke }}
+                            title={`${concept.mastery_percentage}% Mastery`}
+                          />
+                        </div>
 
-                    <text
-                      x="55"
-                      y="22"
-                      textAnchor="middle"
-                      fill="#172033"
-                      fontSize="11"
-                      fontWeight="600"
-                      fontFamily="Inter, sans-serif"
-                    >
-                      {concept.name}
-                    </text>
-
-                    <text
-                      x="55"
-                      y="38"
-                      textAnchor="middle"
-                      fill={colors.text}
-                      fontSize="10"
-                      fontWeight="600"
-                      fontFamily="JetBrains Mono, monospace"
-                    >
-                      {concept.questions_attempted === 0 ? 'Not Assessed' : `${concept.mastery_percentage}% Mastery`}
-                    </text>
+                        <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                          <span className="text-[#64748B] capitalize truncate max-w-[85px]">
+                            {concept.difficulty_tier || 'novice'}
+                          </span>
+                          <span
+                            className="font-semibold px-1.5 py-0.5 rounded text-[10px]"
+                            style={{ backgroundColor: colors.pillBg, color: colors.text }}
+                          >
+                            {concept.questions_attempted === 0 ? '0%' : `${concept.mastery_percentage}%`}
+                          </span>
+                        </div>
+                      </div>
+                    </foreignObject>
                   </g>
                 );
               })}

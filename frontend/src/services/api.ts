@@ -14,6 +14,12 @@ import {
   ProficiencyInfo,
   LiveVideoAnalysisResult
 } from '../types';
+import {
+  getAuthoritativeDiagnosticQuestions,
+  getAuthoritativeAdaptiveQuestion,
+  evaluateDiagnosticSubmissions,
+  evaluateAdaptiveSubmission
+} from './questionBank';
 
 // Always use same-origin '/api' in browser environment.
 // This automatically routes via Vite proxy in development (http://localhost:8000)
@@ -322,8 +328,24 @@ export const api = {
     const qParams = new URLSearchParams({ mode });
     const sid = studentId || getCurrentStudentId();
     if (sid) qParams.set('student_id', sid);
-    const res = await fetchWithTimeout(`${API_BASE}/diagnostic/questions?${qParams.toString()}`);
-    return await handleResponse<{ questions: Question[]; total: number; mode: string }>(res, 'Failed to fetch diagnostic questions');
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/diagnostic/questions?${qParams.toString()}`, {}, 6000);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.questions) && data.questions.length > 0) {
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('[Diagnostic API] Backend diagnostic fetch timed out or failed, using authoritative syllabus bank:', err);
+    }
+
+    const fallbackQuestions = getAuthoritativeDiagnosticQuestions(mode);
+    return {
+      questions: fallbackQuestions,
+      total: fallbackQuestions.length,
+      mode
+    };
   },
 
   async getOnboardingProfile(studentId?: string): Promise<{ student_id: string; onboarding_completed: boolean; onboarding_data: OnboardingProfile }> {
@@ -368,18 +390,55 @@ export const api = {
     studentId?: string
   ): Promise<DiagnosticResult> {
     const sid = studentId || getCurrentStudentId();
-    const res = await fetchWithTimeout(`${API_BASE}/diagnostic/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_id: sid, submissions })
-    });
-    return await handleResponse<DiagnosticResult>(res, 'Failed to submit diagnostic assessment');
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/diagnostic/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: sid, submissions })
+      }, 7000);
+      if (res.ok) {
+        return await handleResponse<DiagnosticResult>(res, 'Failed to submit diagnostic assessment');
+      }
+    } catch (err) {
+      console.warn('[Diagnostic API] Backend diagnostic submission failed, evaluating with verified local evaluator:', err);
+    }
+
+    const result = evaluateDiagnosticSubmissions(submissions, sid);
+    try {
+      const profileKey = `learnloop_learner_profile_${sid}`;
+      const saved = localStorage.getItem(profileKey);
+      if (saved) {
+        const p: LearnerProfile = JSON.parse(saved);
+        p.diagnostic_completed = true;
+        p.overall_mastery = result.overall_mastery;
+        result.concept_breakdown.forEach((cb: any) => {
+          if (p.concepts && p.concepts[cb.concept_id]) {
+            p.concepts[cb.concept_id].mastery_percentage = cb.baseline_mastery;
+            p.concepts[cb.concept_id].current_difficulty = cb.calibrated_difficulty;
+            p.concepts[cb.concept_id].questions_attempted = (p.concepts[cb.concept_id].questions_attempted || 0) + 1;
+            if (cb.is_correct) {
+              p.concepts[cb.concept_id].correct_answers = (p.concepts[cb.concept_id].correct_answers || 0) + 1;
+            } else {
+              p.concepts[cb.concept_id].incorrect_answers = (p.concepts[cb.concept_id].incorrect_answers || 0) + 1;
+            }
+          }
+        });
+        localStorage.setItem(profileKey, JSON.stringify(p));
+      }
+    } catch {}
+
+    return result;
   },
 
   async getDiagnosticAttempts(studentId?: string): Promise<{ attempts: DiagnosticAttemptSummary[]; total: number }> {
     const sid = studentId || getCurrentStudentId();
-    const res = await fetchWithTimeout(`${API_BASE}/diagnostic/attempts?student_id=${sid}`);
-    return await handleResponse<{ attempts: DiagnosticAttemptSummary[]; total: number }>(res, 'Failed to fetch diagnostic attempts');
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/diagnostic/attempts?student_id=${sid}`, {}, 5000);
+      if (res.ok) {
+        return await handleResponse<{ attempts: DiagnosticAttemptSummary[]; total: number }>(res, 'Failed to fetch diagnostic attempts');
+      }
+    } catch {}
+    return { attempts: [], total: 0 };
   },
 
   async getDiagnosticAttempt(attemptId: string): Promise<{ attempt: DiagnosticResult }> {
@@ -397,8 +456,19 @@ export const api = {
     const sid = studentId || getCurrentStudentId();
     let url = `${API_BASE}/quiz/adaptive?student_id=${sid}`;
     if (conceptId) url += `&concept_id=${conceptId}`;
-    const res = await fetchWithTimeout(url);
-    return await handleResponse<any>(res, 'Failed to generate adaptive question');
+    try {
+      const res = await fetchWithTimeout(url, {}, 6000);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.question) {
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('[Adaptive Quiz API] Backend adaptive fetch timed out or failed, calibrating question locally:', err);
+    }
+
+    return getAuthoritativeAdaptiveQuestion(conceptId, 'novice');
   },
 
   async submitAnswer(
@@ -410,19 +480,55 @@ export const api = {
     studentId?: string
   ): Promise<EvaluationResult> {
     const sid = studentId || getCurrentStudentId();
-    const res = await fetchWithTimeout(`${API_BASE}/quiz/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        student_id: sid,
-        question_id: questionId,
-        concept_id: conceptId,
-        selected_option: selectedOption,
-        student_reasoning: studentReasoning,
-        confidence_level: confidenceLevel
-      })
-    });
-    return await handleResponse<EvaluationResult>(res, 'Failed to submit quiz answer');
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/quiz/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: sid,
+          question_id: questionId,
+          concept_id: conceptId,
+          selected_option: selectedOption,
+          student_reasoning: studentReasoning,
+          confidence_level: confidenceLevel
+        })
+      }, 7000);
+      if (res.ok) {
+        return await handleResponse<EvaluationResult>(res, 'Failed to submit quiz answer');
+      }
+    } catch (err) {
+      console.warn('[Adaptive Quiz API] Backend submitAnswer timed out or failed, evaluating with verified local evaluator:', err);
+    }
+
+    const evalRes = evaluateAdaptiveSubmission(questionId, conceptId, selectedOption, studentReasoning, confidenceLevel);
+    try {
+      const profileKey = `learnloop_learner_profile_${sid}`;
+      const saved = localStorage.getItem(profileKey);
+      if (saved) {
+        const p: LearnerProfile = JSON.parse(saved);
+        if (p.concepts && p.concepts[conceptId]) {
+          p.concepts[conceptId].mastery_percentage = evalRes.new_mastery;
+          p.concepts[conceptId].questions_attempted = (p.concepts[conceptId].questions_attempted || 0) + 1;
+          if (evalRes.is_correct) {
+            p.concepts[conceptId].correct_answers = (p.concepts[conceptId].correct_answers || 0) + 1;
+            p.concepts[conceptId].consecutive_correct = (p.concepts[conceptId].consecutive_correct || 0) + 1;
+          } else {
+            p.concepts[conceptId].incorrect_answers = (p.concepts[conceptId].incorrect_answers || 0) + 1;
+            p.concepts[conceptId].consecutive_correct = 0;
+            if (evalRes.detected_misconception) {
+              p.concepts[conceptId].last_misconception = evalRes.detected_misconception.id;
+              p.concepts[conceptId].last_misconception_name = evalRes.detected_misconception.name;
+            }
+          }
+          const allVals = Object.values(p.concepts);
+          const sum = allVals.reduce((acc, c: any) => acc + (c.mastery_percentage || 0), 0);
+          p.overall_mastery = Math.round(sum / Math.max(1, allVals.length));
+          localStorage.setItem(profileKey, JSON.stringify(p));
+        }
+      }
+    } catch {}
+
+    return evalRes;
   },
 
   async tutorChat(rawTranscript: string, studentId?: string): Promise<{

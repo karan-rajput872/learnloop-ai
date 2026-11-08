@@ -236,62 +236,64 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] dark:bg-[#101B2D] text-[#17243A] dark:text-[#F1F5FB] flex font-sans edu-grid-pattern relative overflow-x-hidden transition-colors duration-200">
+    <div className="min-h-screen bg-[#F5F7FB] dark:bg-[#101B2D] text-[#17243A] dark:text-[#F1F5FB] flex flex-col font-sans edu-grid-pattern relative transition-colors duration-200">
       {/* Ultra-Thin Reading & Scroll Progress Bar */}
       <ScrollProgressBar />
 
-      {/* Persistent Responsive Desktop Sidebar (Authenticated or Demo Mode) */}
-      {(isAuthenticated || isOfflinePreview || user?.is_demo) && (
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={(tab) => {
-            setActiveTab(tab);
-            scrollToTop(0.8);
-          }}
-          isCollapsed={isSidebarCollapsed}
-          setIsCollapsed={setIsSidebarCollapsed}
-          profile={profile}
-          onOpenProfile={() => setIsProfileModalOpen(true)}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
-          onOpenRoadmap={() => setIsRoadmapOpen(true)}
-          onOpenSkills={() => setIsSkillsOpen(true)}
-          onOpenProjects={() => setIsProjectsOpen(true)}
-          onOpenAchievements={() => setIsAchievementsOpen(true)}
-        />
-      )}
+      {/* Top Two-Tier Application Header (Full Width) */}
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          scrollToTop(0.8);
+        }}
+        healthInfo={healthInfo}
+        profile={profile}
+        onReset={handleReset}
+        onRefresh={() => fetchProfileAndHealth(true)}
+        isRefreshing={isRetrying}
+        onOpenMyProfile={() => setIsProfileModalOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenPreferences={() => setIsOnboardingOpen(true)}
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
+        onOpenPrivacySecurity={() => setIsPrivacySecurityOpen(true)}
+        onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
+        onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
+        onOpenLiveVideo={() => setIsLiveVideoOpen(true)}
+        onOpenRoadmap={() => setIsRoadmapOpen(true)}
+        onOpenSkills={() => setIsSkillsOpen(true)}
+        onOpenProjects={() => setIsProjectsOpen(true)}
+        onOpenAchievements={() => setIsAchievementsOpen(true)}
+        unreadNotificationsCount={unreadNotificationsCount}
+      />
 
-      {/* Main Page Column */}
-      <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden">
-        {/* Top Navbar */}
-        <Navbar
-          activeTab={activeTab}
-          setActiveTab={(tab) => {
-            setActiveTab(tab);
-            scrollToTop(0.8);
-          }}
-          healthInfo={healthInfo}
-          profile={profile}
-          onReset={handleReset}
-          onRefresh={() => fetchProfileAndHealth(true)}
-          isRefreshing={isRetrying}
-          onOpenMyProfile={() => setIsProfileModalOpen(true)}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenPreferences={() => setIsOnboardingOpen(true)}
-          onOpenNotifications={() => setIsNotificationsOpen(true)}
-          onOpenPrivacySecurity={() => setIsPrivacySecurityOpen(true)}
-          onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
-          onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
-          onOpenLiveVideo={() => setIsLiveVideoOpen(true)}
-          onOpenRoadmap={() => setIsRoadmapOpen(true)}
-          onOpenSkills={() => setIsSkillsOpen(true)}
-          onOpenProjects={() => setIsProjectsOpen(true)}
-          onOpenAchievements={() => setIsAchievementsOpen(true)}
-          unreadNotificationsCount={unreadNotificationsCount}
-        />
+      {/* Main Workspace Layout below Two-Tier Navbar */}
+      <div className="flex-1 flex w-full relative">
+        {/* Persistent Responsive Desktop Sidebar (Authenticated or Demo Mode) */}
+        {(isAuthenticated || isOfflinePreview || user?.is_demo) && (
+          <Sidebar
+            activeTab={activeTab}
+            setActiveTab={(tab) => {
+              setActiveTab(tab);
+              scrollToTop(0.8);
+            }}
+            isCollapsed={isSidebarCollapsed}
+            setIsCollapsed={setIsSidebarCollapsed}
+            profile={profile}
+            onOpenProfile={() => setIsProfileModalOpen(true)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenHelpSupport={() => setIsHelpSupportOpen(true)}
+            onOpenRoadmap={() => setIsRoadmapOpen(true)}
+            onOpenSkills={() => setIsSkillsOpen(true)}
+            onOpenProjects={() => setIsProjectsOpen(true)}
+            onOpenAchievements={() => setIsAchievementsOpen(true)}
+          />
+        )}
 
-        {/* Main Content Area */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 min-w-0">
+        {/* Main Page Column */}
+        <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden">
+          {/* Main Content Area */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 min-w-0">
         {/* Offline Preview Notice Banner */}
         {isOfflinePreview && (
           <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-amber-900 dark:text-amber-200">
@@ -641,6 +643,7 @@ function AppContent() {
           </div>
         </div>
       </footer>
+        </div>
       </div>
 
       {/* Learning Roadmap Modal */}

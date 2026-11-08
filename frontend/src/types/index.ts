@@ -122,6 +122,7 @@ export interface AgentToolLog {
   execution_time_ms: number;
   input_summary: string;
   output_summary: string;
+  decision_made?: string;
 }
 
 export interface EvaluationResult {
@@ -322,6 +323,10 @@ export interface LiveVideoAnalysisResult {
   feedback_type: 'socratic_hint' | 'correction' | 'worked_example' | 'confirmation';
   is_ai_powered: boolean;
   timestamp: string;
+  feedback?: string;
+  invariants_checked?: string[];
+  suggested_question?: string;
+  next_step?: string;
 }
 
 

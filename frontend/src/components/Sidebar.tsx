@@ -118,16 +118,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     ...(isTeacherOrAdmin
       ? [
-          {
-            group: 'TEACH',
-            items: [
-              { id: 'teacher', label: 'Teacher Studio', icon: Users },
-              { id: 'classrooms', label: 'Classrooms', icon: School },
-              { id: 'assignments', label: 'Assignments', icon: ClipboardCheck },
-              { id: 'analytics', label: 'Analytics', icon: BarChart3 }
-            ]
-          }
-        ]
+        {
+          group: 'TEACH',
+          items: [
+            { id: 'teacher', label: 'Teacher Studio', icon: Users },
+            { id: 'classrooms', label: 'Classrooms', icon: School },
+            { id: 'assignments', label: 'Assignments', icon: ClipboardCheck },
+            { id: 'analytics', label: 'Analytics', icon: BarChart3 }
+          ]
+        }
+      ]
       : []),
     {
       group: 'ACCOUNT',
@@ -141,69 +141,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`hidden md:flex flex-col shrink-0 bg-white dark:bg-[#14233A] border-r border-[#E2E8F0] dark:border-[#243B5B] transition-all duration-300 z-30 sticky top-0 h-screen overflow-hidden ${
-        isCollapsed ? 'w-18' : 'w-64'
-      }`}
+      className={`hidden md:flex flex-col shrink-0 bg-white dark:bg-[#14233A] border-r border-[#E2E8F0] dark:border-[#243B5B] transition-all duration-300 z-30 sticky top-[108px] h-[calc(100dvh-108px)] overflow-hidden self-start ${isCollapsed ? 'w-16' : 'w-64'
+        }`}
       aria-label="Main Navigation Sidebar"
     >
-      {/* 1. Header with Brand & Collapse Trigger */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-[#E2E8F0] dark:border-[#243B5B] shrink-0">
+      {/* 1. Header with Section Title & Collapse Trigger */}
+      <div className="h-12 flex items-center justify-between px-3.5 border-b border-[#E2E8F0] dark:border-[#243B5B] shrink-0 bg-slate-50/60 dark:bg-[#101B2D]/60">
         {!isCollapsed && (
-          <div
-            onClick={() => setActiveTab('dashboard')}
-            className="flex items-center gap-2.5 cursor-pointer group"
-          >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#243B63] to-[#38B7A5] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
-              <GraduationCap className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-base font-bold font-heading tracking-tight text-[#17243A] dark:text-[#F1F5FB] block leading-tight">
-                LearnLoop<span className="text-[#38B7A5]">.AI</span>
-              </span>
-              <span className="text-[10px] text-[#64748B] dark:text-[#A8B7CC] font-mono block">
-                {user?.role === 'owner' ? 'Platform Owner' : user?.role === 'teacher' ? 'Faculty Portal' : 'Student Edition'}
-              </span>
-            </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[11px] font-mono font-bold tracking-wider uppercase text-[#64748B] dark:text-[#A8B7CC]">
+              {user?.role === 'owner' ? 'Owner Portal' : user?.role === 'teacher' ? 'Faculty Studio' : 'Workspace'}
+            </span>
           </div>
         )}
 
         {isCollapsed && (
           <div
-            onClick={() => setActiveTab('dashboard')}
-            className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#243B63] to-[#38B7A5] flex items-center justify-center text-white shadow-xs cursor-pointer mx-auto"
-            title="LearnLoop AI"
+            onClick={() => setIsCollapsed(false)}
+            className="w-8 h-8 rounded-lg bg-[#EEF0FD] dark:bg-[#20344E] text-[#5B5CE2] dark:text-[#38B7A5] flex items-center justify-center cursor-pointer mx-auto transition-transform hover:scale-105"
+            title="Expand Sidebar"
           >
-            <GraduationCap className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4" />
           </div>
         )}
 
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className={`p-1.5 rounded-lg text-[#64748B] dark:text-[#A8B7CC] hover:text-[#17243A] dark:hover:text-[#F1F5FB] hover:bg-slate-100 dark:hover:bg-[#20344E] transition-colors cursor-pointer ${
-            isCollapsed ? 'hidden' : 'block'
-          }`}
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
+        {!isCollapsed && (
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1.5 rounded-lg text-[#64748B] dark:text-[#A8B7CC] hover:text-[#17243A] dark:hover:text-[#F1F5FB] hover:bg-slate-200/60 dark:hover:bg-[#20344E] transition-colors cursor-pointer"
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {isCollapsed && (
-        <div className="py-2 flex justify-center border-b border-[#E2E8F0] dark:border-[#243B5B]">
-          <button
-            onClick={() => setIsCollapsed(false)}
-            className="p-1.5 rounded-lg text-[#64748B] dark:text-[#A8B7CC] hover:text-[#17243A] dark:hover:text-[#F1F5FB] hover:bg-slate-100 dark:hover:bg-[#20344E] transition-colors cursor-pointer"
-            title="Expand sidebar"
-            aria-label="Expand sidebar"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* 2. Scrollable Navigation List */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5" data-lenis-prevent>
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5 no-scrollbar" data-lenis-prevent>
         {navGroups.map((group) => (
           <div key={group.group} className="space-y-1">
             {!isCollapsed && (
@@ -224,18 +199,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
                   title={isCollapsed ? item.label : undefined}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
-                    isActive
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${isActive
                       ? 'bg-[#243B63] dark:bg-[#38B7A5] text-white dark:text-[#101B2D] font-semibold shadow-xs'
                       : 'text-[#64748B] dark:text-[#A8B7CC] hover:text-[#17243A] dark:hover:text-[#F1F5FB] hover:bg-[#EDF2F8] dark:hover:bg-[#20344E]'
-                  } ${isCollapsed ? 'justify-center px-0 h-10 w-10 mx-auto' : ''}`}
+                    } ${isCollapsed ? 'justify-center px-0 h-10 w-10 mx-auto' : ''}`}
                 >
                   <Icon
-                    className={`w-4 h-4 shrink-0 ${
-                      isActive
+                    className={`w-4 h-4 shrink-0 ${isActive
                         ? 'text-white dark:text-[#101B2D]'
                         : 'text-[#64748B] dark:text-[#A8B7CC]'
-                    }`}
+                      }`}
                   />
                   {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </button>

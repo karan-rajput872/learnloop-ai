@@ -62,8 +62,8 @@ export const SmoothScrollProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       const lenis = new Lenis({
-        lerp: 0.075, // Silky linear interpolation factor
-        wheelMultiplier: 0.82, // Fluid natural wheel glide
+        lerp: 0.1, // Silky linear interpolation factor
+        wheelMultiplier: 1.0, // Natural fluid wheel glide
         touchMultiplier: 1.0, // 100% native gesture response
         syncTouch: false, // Maintain native mobile touch momentum
         orientation: 'vertical',

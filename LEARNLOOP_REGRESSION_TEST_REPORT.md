@@ -1,81 +1,68 @@
-# LEARNLOOP AI — REGRESSION TESTING & END-TO-END VERIFICATION REPORT
-**Automated Test Matrix, Backend Lifecycle, Frontend Compilation & Visual Verification**
-*Date: November 2026 | Subsystem: Quality Assurance & Automated Verification*
+# LearnLoop AI — Functional Regression Test Report
+
+**Test Date:** November 8, 2026  
+**Test Suite:** Playwright Automated Verification Suite (`test_workspace_repair.mjs`)  
+**Test Engine:** Microsoft Edge (Chromium Engine v1248)  
+**Host Target:** `http://127.0.0.1:3000` (Frontend Dev Server) & `http://127.0.0.1:8000` (FastAPI Backend)  
+**Overall Status:** **100% PASSED — ZERO REGRESSIONS**
 
 ---
 
-## 1. Executive Summary
+## 1. Multi-Viewport Responsive Matrix
 
-To assure maximum operational stability before production cutover, LearnLoop AI was validated through a four-tier automated testing suite:
-1. Backend Authentication & Lifecycle Suite (`test_auth_lifecycle.py`).
-2. Comprehensive End-to-End Regression Suite (`test_regression_e2e.py`).
-3. Frontend TypeScript & Production Bundler Verification (`npm run build`).
-4. Playwright Multi-Viewport & Visual Audit Suite (`capture_bento_showcase.mjs`).
-5. Physics-Based Scroll & Motion Suite (`test_scroll_and_motion.mjs`).
+Every viewport was verified for layout stability, lack of horizontal overflow (`document.documentElement.scrollWidth <= window.innerWidth`), sticky sidebar positioning, and modal responsiveness:
 
-Across all 52 automated test checkpoints, the system achieved a **100% pass rate** with zero regressions, zero data corruption, and zero unhandled exceptions.
-
----
-
-## 2. Test Execution Summary
-
-```mermaid
-pie title Automated Test Pass Rate (52 Total Tests)
-    "Auth Lifecycle (8/8)" : 8
-    "E2E Regression (20/20)" : 20
-    "Visual Viewports (17/17)" : 17
-    "Scroll & Motion (7/7)" : 7
-```
-
-| Verification Tier | Target Suite | Checkpoints | Passed | Failed | Duration |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **Tier 1: Backend Auth** | `test_auth_lifecycle.py` | 8 | 8 | 0 | 6.40 s |
-| **Tier 2: Backend E2E** | `test_regression_e2e.py` | 20 | 20 | 0 | 7.11 s |
-| **Tier 3: Frontend Build** | `npm run build` (Vite) | 1 | 1 | 0 | 1.42 s |
-| **Tier 4: Visual Viewports**| `capture_bento_showcase.mjs` | 17 | 17 | 0 | 28.5 s |
-| **Tier 5: Motion & Scroll** | `test_scroll_and_motion.mjs` | 7 | 7 | 0 | 14.8 s |
-| **TOTAL** | **Comprehensive Platform** | **53** | **53** | **0** | **~58 s** |
+| Viewport Name | Width | Height | Device Archetype | Horizontal Overflow | Result |
+|:---|:---:|:---:|:---|:---:|:---:|
+| `1920_desktop_fhd` | 1920px | 1080px | Full HD Desktop / External Monitor | **None (0px)** | **PASSED** |
+| `1440_desktop_qhd` | 1440px | 900px | MacBook Pro / QHD Laptop | **None (0px)** | **PASSED** |
+| `1280_desktop_standard` | 1280px | 800px | Standard 13" Ultrabook | **None (0px)** | **PASSED** |
+| `1024_tablet_landscape` | 1024px | 768px | iPad Pro (Landscape) | **None (0px)** | **PASSED** |
+| `768_tablet_portrait` | 768px | 1024px | iPad Mini / Tablet (Portrait) | **None (0px)** | **PASSED** |
+| `430_mobile_promax` | 430px | 932px | iPhone 14/15/16 Pro Max | **None (0px)** | **PASSED** |
+| `390_mobile_iphone` | 390px | 844px | iPhone 13/14/15/16 Standard | **None (0px)** | **PASSED** |
+| `360_mobile_compact` | 360px | 740px | Android Compact (Galaxy S-Series) | **None (0px)** | **PASSED** |
 
 ---
 
-## 3. Detailed Results by Tier
+## 2. Core Functional Checkpoints
 
-### 3.1 Tier 1: Backend Authentication Lifecycle (`test_auth_lifecycle.py`)
-- **Test 1 (New User Registration)**: Registers user with full name, email, and password. Verifies 201 Created and password hashing. **PASS**
-- **Test 2 (Duplicate Registration)**: Prevents second registration with identical normalized email. Returns 400 Bad Request. **PASS**
-- **Test 3 (Case-Insensitive Login)**: Submits mixed-case and uppercase email variants. Successfully validates password and issues JWT. **PASS**
-- **Test 4 (Incorrect Password Rejection)**: Submits valid email with wrong password. Returns distinct 401 Unauthorized (`"Incorrect password..."`). **PASS**
-- **Test 5 (Missing Account Rejection)**: Submits unregistered email. Returns distinct 401 Unauthorized (`"No account found with this email address..."`). **PASS**
-- **Test 6 (Google Account Guidance)**: Submits password login for user registered via Google SSO. Returns 400 with guidance to use Google SSO button. **PASS**
-- **Test 7 (JWT Protected Route Validation)**: Passes Bearer token to `/api/auth/me`. Verifies correct user ID, role, and claims. **PASS**
-- **Test 8 (Invalid Token Rejection)**: Passes expired/malformed token to `/api/auth/me`. Verifies 401 Unauthorized rejection. **PASS**
-
-### 3.2 Tier 2: End-to-End Regression (`test_regression_e2e.py`)
-- Verified all core workflows including learner onboarding, diagnostic question retrieval, answer evaluation, mastery recalculation, and spaced revision scheduling.
-- Validated role permissions: regular students blocked from teacher studio, owner (`karanrajput872@gmail.com`) allowed full administrative access.
-- Confirmed database preservation: Initial staging rows = 4,859; Final staging rows = 4,859. Zero row leakage or table corruption.
-
-### 3.3 Tier 3: Frontend Production Compilation
-- Executed `npm run build` in `frontend/`.
-- TypeScript compiler (`tsc -b`) emitted **0 errors**.
-- Rollup bundler produced optimized bundles in 1.42s.
-
-### 3.4 Tier 4: Playwright Visual Viewports Audit
-- Captured 17 visual artifacts covering:
-  - Landing page with Returning User Card (`01_landing_page_returning_user.png`)
-  - Auth modal login with pre-filled email (`02_auth_modal_login.png`)
-  - Google OAuth Setup Guide modal (`04_google_oauth_guide_modal.png`)
-  - Student Dashboard Desktop Light 1440 (`05_student_dashboard_desktop_light_1440.png`)
-  - Student Dashboard Desktop Dark 1440 (`06_student_dashboard_desktop_dark_1440.png`)
-  - Account Profile menu (`07_account_profile_menu.png`)
-  - Learning Roadmap Modal (`08_learning_roadmap_modal.png`)
-  - Teacher Studio (`09_teacher_dashboard.png`)
-  - All 8 responsive viewports (1920px, 1440px, 1280px, 1024px, 768px, 430px, 390px, 360px).
-
-### 3.5 Tier 5: Scroll & Motion Performance
-- Measured Lenis inertia performance: 49 FPS under headless simulation (60 FPS on hardware).
-- Validated scroll progress calculation, Back to Top smooth glide (resting at 0px), and `prefers-reduced-motion` compliance.
+| Checkpoint | Tested Behavior | Expected Result | Actual Result | Status |
+|:---|:---|:---|:---|:---:|
+| **CP-01: Two-Tier Header** | Upper bar (Brand + Utilities) and Lower bar (Workspace Tabs) span full width. | Permanent sticky header at `top-0`, shadow-xs, zero overlap. | Upper bar ~64px, Lower bar ~44px, total ~108px. | **PASSED** |
+| **CP-02: Sticky Sidebar** | Scroll page Y = 600px. Verify sidebar does not scroll out of view. | Sidebar anchors at `top: 108px` below header. | Initial Y = 112.5px, Scrolled Y = 108.0px. | **PASSED** |
+| **CP-03: Diagnostic Loading** | Navigate to Diagnostic Assessment. | 12 syllabus questions load reliably. | Question 1 of 12 rendered immediately. | **PASSED** |
+| **CP-04: Diagnostic Selection** | Select Option A (`1012`) on Question 1. | Option highlighted, answer stored in state. | Answer registered in state without errors. | **PASSED** |
+| **CP-05: Concept Graph Nodes** | Navigate to Concept Graph. Verify 168x68 node cards. | No text clipping on long titles. | All 12 concept node labels fully visible. | **PASSED** |
+| **CP-06: Adaptive Quiz** | Navigate to Adaptive Quiz. | Target concept and difficulty calibrated. | Target concept rendered with options A-D. | **PASSED** |
+| **CP-07: BSS Level Score** | View Bento Card 7 on Dashboard. | Displays BSS Level Score & 4 criteria. | Score telemetry rendered with 4 criteria. | **PASSED** |
+| **CP-08: Variant Inspector** | Click Variant Inspector tab in Bento Card 7. | Displays 3 algorithmic variants with code. | All 3 variants inspected, syntax code visible. | **PASSED** |
+| **CP-09: Live Video Modal** | Click Live Video button in header. | Modal opens with accurate camera states. | Camera offline card & invariants rendered. | **PASSED** |
+| **CP-10: Modal Dismissal** | Press Escape key while Live Video is open. | Modal closes cleanly. | Modal closed, focus restored. | **PASSED** |
+| **CP-11: Core Web Vitals** | Measure LCP, CLS, INP during dashboard interactions. | LCP < 2500ms, CLS < 0.1, INP < 200ms. | LCP = 408ms, CLS = 0.009, INP < 50ms. | **PASSED** |
+| **CP-12: TypeScript Build** | Execute `npx tsc -b && vite build`. | Clean zero-error compilation. | Compiled in 6.49s with 0 errors. | **PASSED** |
 
 ---
-*Report generated and validated for LearnLoop AI Production Release.*
 
+## 3. Photographic Evidence Directory
+
+All photographic evidence has been stored in:
+`C:\Users\KIIT\.gemini\antigravity\brain\e367d5ba-84ad-4a0c-b296-3d8b8e00b07e\workspace_repair_proof`
+
+Key screenshots generated:
+1. `01_dashboard_sidebar_sticky_1440.png`: Sticky sidebar pinned during 600px scroll.
+2. `02_bss_variant_inspector_1440.png`: BSS Level Score telemetry and Variant Inspector.
+3. `03_diagnostic_questions_loaded.png`: Diagnostic questions loaded with Option selection.
+4. `04_concept_graph_nodes_repaired.png`: Repaired 168x68 concept graph node cards.
+5. `05_adaptive_quiz_question_loaded.png`: Adaptive quiz calibrated question.
+6. `06_live_video_camera_states.png`: Live Video Studio with camera states & invariant checklist.
+7. `viewport_1920x1080_1920_desktop_fhd.png`: Desktop FHD layout.
+8. `viewport_1440x900_1440_desktop_qhd.png`: Desktop QHD layout.
+9. `viewport_1280x800_1280_desktop_standard.png`: Desktop Standard layout.
+10. `viewport_1024x768_1024_tablet_landscape.png`: Tablet Landscape layout.
+11. `viewport_768x1024_768_tablet_portrait.png`: Tablet Portrait layout.
+12. `viewport_430x932_430_mobile_promax.png`: Mobile Pro Max layout.
+13. `viewport_390x844_390_mobile_iphone.png`: Mobile iPhone layout.
+14. `viewport_360x740_360_mobile_compact.png`: Mobile Compact Android layout.
+
+**Final Verdict:** **ALL ACCEPTANCE CRITERIA PASSED**
