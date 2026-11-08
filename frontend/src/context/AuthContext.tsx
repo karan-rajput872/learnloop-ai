@@ -112,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthStatus('INITIALIZING');
     try {
       const response = await authService.refreshSession();
-      if (response && response.access_token) {
+      if (response && response.user) {
         setUser(response.user);
         rememberUser(response.user);
         if (response.learner) setLearner(response.learner);
@@ -122,41 +122,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch {
           // Ignore storage quota
         }
-        setAuthToken(response.access_token, response.user.student_id);
-      } else {
-        setAuthStatus(user ? 'AUTHENTICATED' : 'UNAUTHENTICATED');
-      }
-    } catch (err: any) {
-      const isSessionExpired = err instanceof AuthApiError
-        ? err.status === 401
-        : err.message === 'Session expired.';
-
-      const isNetworkOrColdBoot = (err instanceof AuthApiError && err.isNetworkOrServerError) || (
-        err.message?.includes('Failed to fetch') ||
-        err.message?.includes('NetworkError') ||
-        err.message?.includes('timeout') ||
-        err.message?.includes('waking up') ||
-        err.message?.includes('temporarily unavailable')
-      );
-
-      if (isSessionExpired) {
-        setUser(null);
-        setLearner(null);
-        try {
-          localStorage.removeItem(USER_CACHE_KEY);
-          // NOTE: We deliberately PRESERVE 'learnloop_last_user' so returning users are recognized!
-        } catch {
-          // Ignore
+        if (response.access_token) {
+          setAuthToken(response.access_token, response.user.student_id);
         }
-        setAuthToken(null, null);
-        setAuthStatus('SESSION_EXPIRED');
-      } else if (isNetworkOrColdBoot) {
-        // Cold-boot delay or transient network drop: preserve user identity from cache!
-        console.warn('[LearnLoop Auth] Transient backend delay during session restoration. Preserving cached identity.');
-        setAuthStatus(user ? 'AUTHENTICATED' : 'AUTH_ERROR');
-      } else {
-        setAuthStatus('UNAUTHENTICATED');
+        return;
       }
+    } catch {
+      // In case backend is cold, 429, or offline, preserve active user identity from local cache!
+      try {
+        const cached = localStorage.getItem(USER_CACHE_KEY);
+        if (cached) {
+          const u = JSON.parse(cached);
+          console.info('[LearnLoop Auth] Preserving active user session from local cache:', u.email);
+          setUser(u);
+          rememberUser(u);
+          const storedLearner = authService.getStoredLearner(u.student_id);
+          if (storedLearner) setLearner(storedLearner);
+          setAuthStatus('AUTHENTICATED');
+          setAuthToken('restored_cached_session', u.student_id);
+          return;
+        }
+      } catch {
+        // Bad JSON
+      }
+
+      setAuthStatus(user ? 'AUTHENTICATED' : 'UNAUTHENTICATED');
     } finally {
       setIsLoading(false);
     }

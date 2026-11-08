@@ -51,6 +51,7 @@ export const AuthModal: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showGoogleConfigGuide, setShowGoogleConfigGuide] = useState(false);
+  const [isGoogleBtnRendered, setIsGoogleBtnRendered] = useState(false);
 
   const googleBtnContainerRef = React.useRef<HTMLDivElement>(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -59,9 +60,19 @@ export const AuthModal: React.FC = () => {
     setErrorMessage(null);
     setSuccessMessage(null);
     setShowGoogleConfigGuide(false);
-    if (authModal === 'login') {
-      if (!email && lastUser?.email) {
-        setEmail(lastUser.email);
+    if (authModal === 'login' || authModal === 'register') {
+      if (!email) {
+        if (lastUser?.email) {
+          setEmail(lastUser.email);
+        } else {
+          try {
+            const saved = localStorage.getItem('learnloop_last_user');
+            if (saved) {
+              const u = JSON.parse(saved);
+              if (u?.email) setEmail(u.email);
+            }
+          } catch {}
+        }
       }
     }
   }, [authModal, lastUser]);
@@ -72,6 +83,7 @@ export const AuthModal: React.FC = () => {
         try {
           (window as any).google.accounts.id.initialize({
             client_id: googleClientId.trim(),
+            auto_select: false,
             callback: async (response: { credential: string }) => {
               if (response?.credential) {
                 setIsLoading(true);
@@ -80,7 +92,7 @@ export const AuthModal: React.FC = () => {
                   await loginWithGoogle(response.credential);
                   closeAuthModal();
                 } catch (err: any) {
-                  setErrorMessage(err.message || 'Google authentication failed.');
+                  setErrorMessage(err.message || 'Google authentication failed. Please try again.');
                 } finally {
                   setIsLoading(false);
                 }
@@ -96,8 +108,10 @@ export const AuthModal: React.FC = () => {
             shape: 'rectangular',
             logo_alignment: 'left'
           });
+          setIsGoogleBtnRendered(true);
         } catch (e) {
           console.warn('[Google GIS] Button render error:', e);
+          setIsGoogleBtnRendered(false);
         }
       }
     }
