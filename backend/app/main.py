@@ -84,7 +84,8 @@ def health_check():
         "database": {
             "engine": "postgresql" if storage.is_postgres else "sqlite",
             "is_persistent": storage.is_postgres,
-            "environment_mode": "production" if getattr(storage, "is_production", False) else "development_or_testing"
+            "environment_mode": "production" if getattr(storage, "is_production", False) else "development_or_testing",
+            "storage_status": "Neon PostgreSQL Persistent Cluster" if storage.is_postgres else "SQLite Active Storage (Pending Gate B Cutover)"
         },
         "engine": {
             "provider": "Gemini AI API" if has_gemini else "Deterministic Local Orchestrator",

@@ -9,7 +9,7 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": [],
         "description": "Contiguous memory blocks offering O(1) random access by index, cache locality, and static/dynamic resizing tradeoffs.",
         "difficulty_tier": "novice",
-        "graph_position": {"x": 120, "y": 80},
+        "graph_position": {"x": 40, "y": 60},
         "key_subtopics": [
             "Contiguous memory allocation",
             "Zero-indexed address arithmetic",
@@ -24,7 +24,7 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": [],
         "description": "Asymptotic upper/tight bounds (Big O, Big Theta, Big Omega) measuring operation count growth relative to input size n.",
         "difficulty_tier": "novice",
-        "graph_position": {"x": 380, "y": 80},
+        "graph_position": {"x": 260, "y": 60},
         "key_subtopics": [
             "Big O notation definition",
             "Loop iterations and polynomial growth",
@@ -39,26 +39,11 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": ["time_complexity"],
         "description": "Auxiliary working memory vs input space allocation during execution, including recursive stack frames.",
         "difficulty_tier": "novice",
-        "graph_position": {"x": 640, "y": 80},
+        "graph_position": {"x": 480, "y": 60},
         "key_subtopics": [
             "Auxiliary space vs total space",
             "In-place modifications",
             "Call stack frame allocation in recursion"
-        ]
-    },
-    "linked_lists": {
-        "id": "linked_lists",
-        "name": "Linked Lists",
-        "category": "Linear Data Structures",
-        "prerequisites": ["arrays"],
-        "description": "Non-contiguous dynamic nodes connected via pointer references; efficient O(1) insertions/deletions given reference.",
-        "difficulty_tier": "novice",
-        "graph_position": {"x": 120, "y": 240},
-        "key_subtopics": [
-            "Singly and doubly linked nodes",
-            "Pointer manipulation and sentinel nodes",
-            "Fast and slow pointer cycle detection (Floyd's algorithm)",
-            "Reverse linked list techniques"
         ]
     },
     "recursion": {
@@ -68,12 +53,27 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": ["time_complexity", "space_complexity"],
         "description": "Self-referential functions that decompose problems into self-similar subproblems with base and inductive steps.",
         "difficulty_tier": "intermediate",
-        "graph_position": {"x": 500, "y": 240},
+        "graph_position": {"x": 700, "y": 60},
         "key_subtopics": [
             "Base case and progress towards termination",
             "Call stack unwind semantics",
             "Divide and conquer decomposition",
             "Recurrence relations (Master Theorem)"
+        ]
+    },
+    "linked_lists": {
+        "id": "linked_lists",
+        "name": "Linked Lists",
+        "category": "Linear Data Structures",
+        "prerequisites": ["arrays"],
+        "description": "Non-contiguous dynamic nodes connected via pointer references; efficient O(1) insertions/deletions given reference.",
+        "difficulty_tier": "novice",
+        "graph_position": {"x": 40, "y": 220},
+        "key_subtopics": [
+            "Singly and doubly linked nodes",
+            "Pointer manipulation and sentinel nodes",
+            "Fast and slow pointer cycle detection (Floyd's algorithm)",
+            "Reverse linked list techniques"
         ]
     },
     "stacks": {
@@ -83,7 +83,7 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": ["arrays", "linked_lists"],
         "description": "LIFO (Last-In, First-Out) discipline with O(1) Push, Pop, and Peek primitives; essential for parsing, undo buffers, and DFS.",
         "difficulty_tier": "intermediate",
-        "graph_position": {"x": 60, "y": 400},
+        "graph_position": {"x": 260, "y": 220},
         "key_subtopics": [
             "LIFO ordering rules",
             "Stack overflow and underflow boundaries",
@@ -98,7 +98,7 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": ["arrays", "linked_lists"],
         "description": "FIFO (First-In, First-Out) discipline with O(1) Enqueue and Dequeue; foundational for BFS and buffering.",
         "difficulty_tier": "intermediate",
-        "graph_position": {"x": 260, "y": 400},
+        "graph_position": {"x": 480, "y": 220},
         "key_subtopics": [
             "FIFO ordering rules",
             "Circular array buffer wrap-around with modulo",
@@ -113,7 +113,7 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": ["arrays", "time_complexity"],
         "description": "Linear search O(n) and binary search O(log n) over ordered domains with lower/upper bound invariants.",
         "difficulty_tier": "intermediate",
-        "graph_position": {"x": 420, "y": 400},
+        "graph_position": {"x": 700, "y": 220},
         "key_subtopics": [
             "Linear scan vs Binary search invariants",
             "Midpoint calculation avoiding integer overflow",
@@ -128,7 +128,7 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": ["arrays", "recursion", "time_complexity"],
         "description": "Comparison sorts (MergeSort, QuickSort, HeapSort) and non-comparison sorts (Counting, Radix); stability guarantees.",
         "difficulty_tier": "intermediate",
-        "graph_position": {"x": 650, "y": 400},
+        "graph_position": {"x": 150, "y": 380},
         "key_subtopics": [
             "Stability in sorting algorithms",
             "MergeSort O(n log n) divide and conquer",
@@ -143,7 +143,7 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": ["linked_lists", "recursion"],
         "description": "Acyclic hierarchical graphs with a distinguished root and subtrees; fundamental for DOMs, filesystems, and hierarchies.",
         "difficulty_tier": "intermediate",
-        "graph_position": {"x": 200, "y": 560},
+        "graph_position": {"x": 370, "y": 380},
         "key_subtopics": [
             "Tree terminology (root, height, depth, leaves)",
             "Depth-First Search traversals (Pre/In/Post order)",
@@ -158,7 +158,7 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": ["trees"],
         "description": "Specialized trees where nodes have at most two children; includes Binary Search Trees (BST), AVL, and Heaps.",
         "difficulty_tier": "advanced",
-        "graph_position": {"x": 420, "y": 560},
+        "graph_position": {"x": 590, "y": 380},
         "key_subtopics": [
             "BST ordering property (all left < root < all right)",
             "Tree validation and ancestor range passing",
@@ -173,7 +173,7 @@ DSA_CONCEPTS: Dict[str, Dict[str, Any]] = {
         "prerequisites": ["trees", "queues", "recursion"],
         "description": "Generalized networks of vertices and edges (directed/undirected, weighted/unweighted, cyclic/acyclic).",
         "difficulty_tier": "advanced",
-        "graph_position": {"x": 650, "y": 560},
+        "graph_position": {"x": 370, "y": 540},
         "key_subtopics": [
             "Adjacency list vs adjacency matrix representations",
             "BFS shortest path on unweighted graphs",

@@ -21,6 +21,7 @@ import {
 interface LandingPageProps {
   onOpenRegister: () => void;
   onOpenLogin: () => void;
+  onStartDemo?: () => void;
   lastUser?: { email: string; full_name: string; student_id: string } | null;
   onOpenLiveVideo?: () => void;
   onOpenTermsPrivacy?: () => void;
@@ -30,6 +31,7 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenRegister,
   onOpenLogin,
+  onStartDemo,
   lastUser,
   onOpenLiveVideo,
   onOpenTermsPrivacy,
@@ -91,6 +93,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span>Get Started Free</span>
               <ArrowRight className="w-4 h-4" />
             </button>
+
+            {onStartDemo && (
+              <button
+                type="button"
+                onClick={onStartDemo}
+                className="w-full sm:w-auto min-h-[48px] flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#38B7A5]/15 hover:bg-[#38B7A5]/25 text-[#0F9F91] dark:text-[#38B7A5] border border-[#38B7A5]/30 font-bold text-sm shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Explore Guest Demo</span>
+              </button>
+            )}
 
             {onOpenLiveVideo && (
               <button

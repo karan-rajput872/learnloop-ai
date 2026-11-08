@@ -129,7 +129,9 @@ function AppContent() {
         setProfile(p);
         setIsOfflinePreview(false);
         setApiError(null);
-      } else if (!profileRef.current && !isOfflinePreview) {
+      } else if (!profileRef.current) {
+        setProfile(createDefaultProfile());
+        setIsOfflinePreview(true);
         setApiError(
           'Connecting to LearnLoop AI backend on Render. Free-tier cloud instances sleep when inactive and may take 20–40 seconds to complete a cold start.'
         );
@@ -330,6 +332,7 @@ function AppContent() {
               <LandingPage
                 onOpenRegister={() => openAuthModal('register')}
                 onOpenLogin={() => openAuthModal('login')}
+                onStartDemo={startDemoSession}
                 lastUser={lastUser}
                 onOpenTermsPrivacy={() => setIsTermsPrivacyOpen(true)}
                 onOpenHelpSupport={() => setIsHelpSupportOpen(true)}

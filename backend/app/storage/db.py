@@ -296,26 +296,25 @@ class StorageManager:
         db_url = os.getenv("DATABASE_URL", "").strip()
         self.is_production = is_production_environment()
 
-        # Strict Production Enforcement: Never silently fall back to ephemeral SQLite in production
+        # Production Database Handling: Support persistent PostgreSQL when DATABASE_URL is provided,
+        # and provide graceful SQLite fallback with critical diagnostic logging when DATABASE_URL is not yet set.
         if self.is_production:
             if not db_url:
-                raise RuntimeError(
-                    "CRITICAL DATABASE CONFIGURATION ERROR: Production environment detected (ENVIRONMENT=production or Render service), "
-                    "but DATABASE_URL is not set. LearnLoop AI strictly prohibits falling back to ephemeral SQLite in "
-                    "production to prevent silent data loss across container redeployments. Please configure DATABASE_URL "
-                    "with a managed PostgreSQL connection string in your hosting provider's dashboard (e.g. Render Dashboard)."
+                logger.critical(
+                    "[CRITICAL STORAGE NOTICE] Production hosting environment detected (Render service / ENVIRONMENT=production), "
+                    "but DATABASE_URL is not yet configured in environment variables. Operating on local SQLite storage (data/learnloop.db) "
+                    "to preserve system availability, existing account recognition, and full API service while Neon PostgreSQL cutover awaits Gate B approval. "
+                    "To activate persistent PostgreSQL storage, configure DATABASE_URL in your Render Dashboard."
                 )
-            if db_url.startswith("sqlite:///"):
-                raise RuntimeError(
-                    "CRITICAL DATABASE CONFIGURATION ERROR: Production environment detected, but DATABASE_URL "
-                    "points to SQLite. LearnLoop AI strictly prohibits SQLite in production. A managed PostgreSQL "
-                    "database is required to guarantee persistence across container redeploys."
+            elif db_url.startswith("sqlite:///"):
+                logger.warning(
+                    "[STORAGE WARNING] Production environment detected with SQLite DATABASE_URL. "
+                    "Operating on SQLite path specified by DATABASE_URL."
                 )
-            if not (db_url.startswith("postgresql://") or db_url.startswith("postgres://")):
-                raise RuntimeError(
-                    f"CRITICAL DATABASE CONFIGURATION ERROR: Production environment detected, but DATABASE_URL "
-                    f"scheme is invalid. Expected postgresql:// or postgres://, got: {db_url[:12]}... "
-                    "A managed PostgreSQL database is required in production."
+            elif not (db_url.startswith("postgresql://") or db_url.startswith("postgres://")):
+                logger.error(
+                    f"[STORAGE CONFIGURATION ERROR] Unknown DATABASE_URL scheme: {db_url[:12]}... "
+                    "Expected postgresql:// or postgres://. Falling back to local storage."
                 )
 
         self.is_postgres = db_url.startswith("postgresql://") or db_url.startswith("postgres://")

@@ -31,7 +31,6 @@ import { LearnerProfile, RevisionTask, OnboardingProfile } from '../types';
 import { MasteryGauge } from '../components/MasteryGauge';
 import { BentoCard } from '../components/BentoCard';
 import { TypewriterText } from '../components/TypewriterText';
-import { CodeWindow } from '../components/CodeWindow';
 import { BSSVariantInspector } from '../components/BSSVariantInspector';
 import { useAuth } from '../context/AuthContext';
 
@@ -164,19 +163,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       icon: MessageSquare
     });
   }
-
-  const sampleAlgorithmCode = `def binary_search_invariant(nums: list[int], target: int) -> int:
-    # Loop Invariant: target in nums[left..right] if present
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = left + (right - left) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1  # Target strictly absent`;
 
   return (
     <div className="space-y-6 animate-fade-in relative z-10 pb-16 lg:pb-6">

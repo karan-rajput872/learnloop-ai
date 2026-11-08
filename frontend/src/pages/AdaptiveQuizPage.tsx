@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Question, EvaluationResult, AgentToolLog } from '../types';
 import { api } from '../services/api';
+import { getAuthoritativeAdaptiveQuestion } from '../services/questionBank';
 import { AgentTimeline } from '../components/AgentTimeline';
 import {
   GraduationCap,
@@ -45,13 +46,28 @@ export const AdaptiveQuizPage: React.FC<AdaptiveQuizPageProps> = ({
 
     try {
       const data = await api.getAdaptiveQuestion(conceptId || initialConceptId || undefined);
-      setQuestion(data.question);
-      setTargetConcept(data.target_concept);
-      setDifficulty(data.calibrated_difficulty);
-      setQuestionRationale(data.decision_rationale || '');
-      setInitTools(data.tools_executed || []);
+      if (data && data.question) {
+        setQuestion(data.question);
+        setTargetConcept(data.target_concept);
+        setDifficulty(data.calibrated_difficulty);
+        setQuestionRationale(data.decision_rationale || '');
+        setInitTools(data.tools_executed || []);
+      } else {
+        const fallback = getAuthoritativeAdaptiveQuestion(conceptId || initialConceptId || undefined, 'novice');
+        setQuestion(fallback.question);
+        setTargetConcept(fallback.target_concept);
+        setDifficulty(fallback.calibrated_difficulty);
+        setQuestionRationale(fallback.decision_rationale);
+        setInitTools(fallback.tools_executed);
+      }
     } catch (err) {
-      console.error('Failed to load adaptive question', err);
+      console.warn('Backend sync failed, using authoritative adaptive question bank:', err);
+      const fallback = getAuthoritativeAdaptiveQuestion(conceptId || initialConceptId || undefined, 'novice');
+      setQuestion(fallback.question);
+      setTargetConcept(fallback.target_concept);
+      setDifficulty(fallback.calibrated_difficulty);
+      setQuestionRationale(fallback.decision_rationale);
+      setInitTools(fallback.tools_executed);
     } finally {
       setLoading(false);
     }

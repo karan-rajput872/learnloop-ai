@@ -117,7 +117,7 @@ export const BSSVariantInspector: React.FC<BSSVariantInspectorProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'score' | 'inspector'>('score');
   const [selectedVariantId, setSelectedVariantId] = useState<string>('exact_match');
-  const [isCodeExpanded, setIsCodeExpanded] = useState<boolean>(true);
+  const [isCodeExpanded, setIsCodeExpanded] = useState<boolean>(false);
 
   // Real learner telemetry for searching
   const searchConcept = profile?.concepts?.['searching'];

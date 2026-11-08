@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Question, DiagnosticResult, DiagnosticQuestionReview, DiagnosticAttemptSummary } from '../types';
 import { api } from '../services/api';
+import { getAuthoritativeDiagnosticQuestions } from '../services/questionBank';
 import {
   GraduationCap,
   ArrowRight,
@@ -74,10 +75,18 @@ export const DiagnosticPage: React.FC<DiagnosticPageProps> = ({
     setCurrentIndex(0);
     api.getDiagnosticQuestions(selectedMode)
       .then((data) => {
-        setQuestions(data.questions);
+        if (data && Array.isArray(data.questions) && data.questions.length > 0) {
+          setQuestions(data.questions);
+        } else {
+          setQuestions(getAuthoritativeDiagnosticQuestions(selectedMode));
+        }
         setTestMode(selectedMode);
       })
-      .catch((err) => console.error('Failed to load diagnostic', err))
+      .catch((err) => {
+        console.warn('Backend sync failed, using authoritative diagnostic question bank:', err);
+        setQuestions(getAuthoritativeDiagnosticQuestions(selectedMode));
+        setTestMode(selectedMode);
+      })
       .finally(() => setLoading(false));
   };
 

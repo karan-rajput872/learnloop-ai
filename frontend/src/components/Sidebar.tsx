@@ -141,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`hidden md:flex flex-col shrink-0 bg-white dark:bg-[#14233A] border-r border-[#E2E8F0] dark:border-[#243B5B] transition-all duration-300 z-30 sticky top-[108px] h-[calc(100dvh-108px)] overflow-hidden self-start ${isCollapsed ? 'w-16' : 'w-64'
+      className={`hidden md:flex flex-col shrink-0 bg-white dark:bg-[#14233A] border-r border-[#E2E8F0] dark:border-[#243B5B] transition-all duration-300 z-30 sticky top-[112px] h-[calc(100dvh-112px)] overflow-hidden self-start ${isCollapsed ? 'w-16' : 'w-64'
         }`}
       aria-label="Main Navigation Sidebar"
     >

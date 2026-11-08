@@ -98,10 +98,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   const handleNavClick = (tabId: string) => {
-    if (!isAuthenticated && !user && tabId !== 'dashboard' && tabId !== 'teacher') {
-      openAuthModal('login');
-      return;
-    }
     setActiveTab(tabId);
     setMobileMenuOpen(false);
   };
