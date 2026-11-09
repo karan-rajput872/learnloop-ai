@@ -22,3 +22,4 @@ LearnLoop AI supports Google Identity Services (GIS) for Google Sign-In and Goog
 - Frontend: `VITE_GOOGLE_CLIENT_ID` (set in Vercel environment variables).
 - Backend: `GOOGLE_CLIENT_ID` (set in Render environment variables).
 - If the backend is running in fallback mode, the client validates the GIS JWT signature and maintains secure session continuity.
+

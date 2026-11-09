@@ -25,3 +25,4 @@
 | **AUTH-10** | Unique brand-new learner account registration | Creates user in database and initializes profile | Verified new learner created and authenticated | **PASS** |
 | **AUTH-11** | Multi-tab active session synchronization | Opening second tab synchronizes active session | Tab 2 opens authenticated with identical learner state | **PASS** |
 | **AUTH-12** | Multi-tab logout invalidation via BroadcastChannel | Signing out in Tab 1 signs out Tab 2 automatically | Tab 2 instantaneously updates to signed-out state | **PASS** |
+

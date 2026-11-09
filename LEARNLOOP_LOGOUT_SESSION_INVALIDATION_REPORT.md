@@ -20,3 +20,4 @@ Previously, clicking "Sign Out" cleared active tokens in memory, but reloading t
 - **Test 4 (Sign Out):** Clicking Sign Out immediately transitions user to unauthenticated state (`authStatus === 'UNAUTHENTICATED'`).
 - **Test 5 (Reload after Logout):** Reloading page verifies user remains signed out. The Sign In button remains visible. Opening the Sign In dialog confirms the email is pre-filled for convenience, but credentials are required to sign in.
 - **Test 8 (Multi-Tab Invalidation):** Tab 1 logs out -> Tab 2 automatically updates to signed-out state via `BroadcastChannel`.
+

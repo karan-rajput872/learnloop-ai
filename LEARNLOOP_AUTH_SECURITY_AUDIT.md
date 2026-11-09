@@ -18,3 +18,4 @@
 - `Secure`: True under HTTPS to prevent transmission over cleartext connections.
 - `SameSite`: Configured to `None` with `Secure=True` in production HTTPS to permit legitimate cross-origin requests from `vercel.app` to `onrender.com`.
 - `Path`: Scoped to `/api/auth`.
+

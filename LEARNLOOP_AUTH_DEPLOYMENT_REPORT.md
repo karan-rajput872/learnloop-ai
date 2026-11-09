@@ -12,3 +12,4 @@
 3. **Dual-Tier Navigation Bar:** Lower application workspace bar (`nav[aria-label="Application Workspaces"]`) centered horizontally on all screen sizes.
 4. **Argon2id Account Restoration:** Known accounts (`pwkaran25@gmail.com`, `karanrajput872@gmail.com`, etc.) fully functional.
 5. **Cross-Origin Cookie Security:** `SameSite=None; Secure=True` configured for cross-site cookie flow between Vercel and Render.
+

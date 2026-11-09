@@ -34,3 +34,4 @@ This report documents the forensic investigation and resolution of critical auth
 ### Defect 5: Google One-Tap & Base64 Decoding Glitch
 - **Mechanism:** Google Identity Services returns an unpadded base64url-encoded JWT credential. Calling native `window.atob()` without padding or UTF-8 decoding threw `DOMException`.
 - **Resolution:** Hardened `parseJwtPayload` with proper `=`-padding and `TextDecoder('utf-8')`. Updated `AuthModal.tsx` to cleanly handle Google GIS render states without duplicate buttons.
+

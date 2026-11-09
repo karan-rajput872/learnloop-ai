@@ -9,3 +9,4 @@
 | `frontend/src/context/AuthContext.tsx` | 1. Stabilized `restoreSession` dependencies, removing `user` to eliminate the infinite render loop.<br>2. Removed destructive on-mount cleanup that deleted `learnloop_refresh_token`.<br>3. Synchronized `learnloop_explicit_logout` across `login`, `register`, `loginWithGoogle`, and `logout`. |
 | `frontend/src/components/AuthModal.tsx` | 1. Cleaned up error message presentation so Google action buttons only appear when appropriate.<br>2. Hid redundant custom Google button when native Google GIS button is rendered.<br>3. Added one-click `[Sign in to this account]` switch button when registering an existing email. |
 | `frontend/test_auth_lifecycle.mjs` | Added 12-test Playwright suite covering full authentication lifecycle: rejection, sign-in, persistence, logout, reload, collision handling, and multi-tab sync. |
+

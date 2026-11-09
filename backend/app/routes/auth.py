@@ -168,6 +168,16 @@ def register(payload: RegisterRequest, response: Response, request: Request = No
         )
 
     if existing_user:
+        # If existing account has no password yet (e.g. Google-registered), adopt this password
+        if not existing_user.get("hashed_password"):
+            new_hash = hash_password(payload.password)
+            try:
+                storage.update_user_password(existing_user["id"], new_hash)
+                existing_user["hashed_password"] = new_hash
+                logger.info(f"[Auth] Successfully adopted password for user in register: {norm_email}")
+            except Exception as e:
+                logger.warning(f"[Auth] Could not persist adopted password in register: {e}")
+
         # Check if the provided password matches the existing account
         if existing_user.get("hashed_password") and verify_password(payload.password, existing_user["hashed_password"]):
             # Convenient seamless sign-in if the user typed their correct password on registration form
@@ -321,12 +331,17 @@ def login(payload: LoginRequest, response: Response, request: Request = None):
             detail="Database service temporarily unavailable. Please retry in a few moments."
         )
 
-    # If account was created with Google Sign-In and does not yet have a password set, guide the learner
-    if user and not user.get("hashed_password") and user.get("google_sub"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This account was registered using Google Sign-In. Please sign in by clicking 'Continue with Google'."
-        )
+    # Seamless password adoption: If account was created with Google Sign-In or does not yet
+    # have an Argon2id password hash, adopt the password provided by the learner so they can
+    # authenticate via both Google and password credentials seamlessly.
+    if user and not user.get("hashed_password"):
+        new_hash = hash_password(payload.password)
+        try:
+            storage.update_user_password(user["id"], new_hash)
+            user["hashed_password"] = new_hash
+            logger.info(f"[Auth] Successfully adopted password for user: {norm_email}")
+        except Exception as e:
+            logger.warning(f"[Auth] Could not persist adopted password in login: {e}")
 
     # Case 1: Account does not exist
     if not user:

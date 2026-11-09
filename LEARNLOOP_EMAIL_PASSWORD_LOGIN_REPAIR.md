@@ -35,3 +35,4 @@
 - **Test 2:** Submitting `pwkaran25@gmail.com` with `Password123!` -> **PASS** (authenticated, learner profile loaded)
 - **Test 6:** Registering `pwkaran25@gmail.com` with mismatching password -> **PASS** (presents clear collision error and 1-click switch button)
 - **Test 7:** Registering brand-new unique account -> **PASS** (successful account creation and onboarding initialization)
+

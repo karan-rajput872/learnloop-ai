@@ -66,12 +66,24 @@ export const AuthModal: React.FC = () => {
           setEmail(lastUser.email);
         } else {
           try {
-            const saved = localStorage.getItem('learnloop_last_user');
-            if (saved) {
-              const u = JSON.parse(saved);
-              if (u?.email) setEmail(u.email);
+            const savedEmail = localStorage.getItem('learnloop_saved_email');
+            if (savedEmail) {
+              setEmail(savedEmail);
+            } else {
+              const saved = localStorage.getItem('learnloop_last_user');
+              if (saved) {
+                const u = JSON.parse(saved);
+                if (u?.email) setEmail(u.email);
+              } else {
+                const accounts = localStorage.getItem('learnloop_accounts');
+                if (accounts) {
+                  const parsed = JSON.parse(accounts);
+                  const keys = Object.keys(parsed);
+                  if (keys.length > 0) setEmail(keys[keys.length - 1]);
+                }
+              }
             }
-          } catch {}
+          } catch { }
         }
       }
     }
@@ -131,6 +143,9 @@ export const AuthModal: React.FC = () => {
       setErrorMessage('Please enter your password.');
       return;
     }
+    try {
+      localStorage.setItem('learnloop_saved_email', trimmedEmail);
+    } catch {}
     setIsLoading(true);
     try {
       await login(trimmedEmail, password);
@@ -152,6 +167,9 @@ export const AuthModal: React.FC = () => {
       setErrorMessage('Please enter a valid email address.');
       return;
     }
+    try {
+      localStorage.setItem('learnloop_saved_email', trimmedEmail);
+    } catch {}
     if (password.length < 8) {
       setErrorMessage('Password must be at least 8 characters long.');
       return;
@@ -345,16 +363,16 @@ export const AuthModal: React.FC = () => {
           {authModal === 'login' && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               {/* Returning User Recognition Chip */}
-              {lastUser && (
+              {(lastUser || email) && (
                 <div className="p-3 rounded-xl bg-[#EDF2F8] dark:bg-[#20344E] border border-[#E2E8F0] dark:border-[#243B5B] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="w-7 h-7 rounded-full bg-[#243B63] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                      {lastUser.full_name?.charAt(0) || 'U'}
+                      {(lastUser?.full_name || email || 'L').charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0">
-                      <span className="text-[10px] text-[#64748B] dark:text-[#A8B7CC] block">Returning account:</span>
+                      <span className="text-[10px] text-[#64748B] dark:text-[#A8B7CC] block">Recognized account:</span>
                       <strong className="text-[#17243A] dark:text-[#F1F5FB] font-semibold truncate block">
-                        {lastUser.full_name}
+                        {lastUser?.full_name || email}
                       </strong>
                     </div>
                   </div>
@@ -363,6 +381,10 @@ export const AuthModal: React.FC = () => {
                     onClick={() => {
                       clearLastUser();
                       setEmail('');
+                      setPassword('');
+                      try {
+                        localStorage.removeItem('learnloop_saved_email');
+                      } catch {}
                     }}
                     className="text-xs text-[#6C8FF5] hover:underline cursor-pointer shrink-0 ml-2"
                   >

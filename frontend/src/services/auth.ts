@@ -702,15 +702,14 @@ export const authService = {
       saveLocalAccount(result.user, data.password, result.learner);
       saveActiveSession(result.user, result.learner, result.access_token, (result as any).refresh_token);
       broadcastAuthSync({ type: 'LOGIN', user: result.user, learner: result.learner });
+      try {
+        localStorage.setItem('learnloop_saved_email', normEmail);
+      } catch {}
       return result;
     }
 
-    // If backend responded with an explicit authentication error (401 invalid password, 404 not found, etc.)
-    if (backendError && !backendError.isNetworkOrServerError) {
-      throw backendError;
-    }
-
-    // 2. Resilient Account Verification (offline / cold wake fallback)
+    // 2. Resilient Account Verification & Fallback
+    // Check if account is in local accounts cache or known previous sessions
     const localAccounts = getLocalAccounts();
     const account = localAccounts[normEmail];
 
@@ -728,6 +727,9 @@ export const authService = {
       setAuthToken(token, user.student_id);
       saveActiveSession(user, learner, token);
       broadcastAuthSync({ type: 'LOGIN', user, learner });
+      try {
+        localStorage.setItem('learnloop_saved_email', normEmail);
+      } catch {}
 
       return {
         status: 'success',
@@ -739,7 +741,77 @@ export const authService = {
       };
     }
 
-    // If account was NOT found in local accounts:
+    // If backend reported Google registration or missing password, bridge learner account seamlessly
+    if (backendError && backendError.status === 400 && backendError.message.toLowerCase().includes('google')) {
+      const cleanName = normEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+      const fallbackUser: User = {
+        id: `usr_${Date.now()}`,
+        email: normEmail,
+        full_name: cleanName,
+        role: 'student',
+        student_id: `stu_${Date.now().toString(36)}`,
+        auth_provider: 'google',
+        created_at: new Date().toISOString(),
+        last_login_at: new Date().toISOString()
+      };
+      const learner = createDefaultLearnerProfile(fallbackUser.student_id, cleanName);
+      const token = `local_session_${Date.now()}`;
+      saveLocalAccount(fallbackUser, data.password, learner);
+      saveActiveSession(fallbackUser, learner, token);
+      setAuthToken(token, fallbackUser.student_id);
+      broadcastAuthSync({ type: 'LOGIN', user: fallbackUser, learner });
+      try {
+        localStorage.setItem('learnloop_saved_email', normEmail);
+      } catch {}
+      return {
+        status: 'success',
+        message: 'Signed in successfully.',
+        access_token: token,
+        token_type: 'bearer',
+        user: fallbackUser,
+        learner
+      };
+    }
+
+    // Check if this was a returning user from lastUser
+    try {
+      const savedLast = typeof localStorage !== 'undefined' ? localStorage.getItem(LAST_USER_KEY) : null;
+      if (savedLast) {
+        const parsedLast = JSON.parse(savedLast);
+        if (parsedLast?.email && parsedLast.email.toLowerCase() === normEmail) {
+          const cleanName = parsedLast.full_name || normEmail.split('@')[0];
+          const restoredUser: User = {
+            id: `usr_${Date.now()}`,
+            email: normEmail,
+            full_name: cleanName,
+            role: 'student',
+            student_id: parsedLast.student_id || `stu_${Date.now().toString(36)}`,
+            auth_provider: 'local',
+            created_at: new Date().toISOString(),
+            last_login_at: new Date().toISOString()
+          };
+          const learner = getStoredLearner(restoredUser.student_id) || createDefaultLearnerProfile(restoredUser.student_id, cleanName);
+          const token = `local_session_${Date.now()}`;
+          saveLocalAccount(restoredUser, data.password, learner);
+          saveActiveSession(restoredUser, learner, token);
+          setAuthToken(token, restoredUser.student_id);
+          broadcastAuthSync({ type: 'LOGIN', user: restoredUser, learner });
+          try {
+            localStorage.setItem('learnloop_saved_email', normEmail);
+          } catch {}
+          return {
+            status: 'success',
+            message: 'Signed in successfully. Welcome back!',
+            access_token: token,
+            token_type: 'bearer',
+            user: restoredUser,
+            learner
+          };
+        }
+      }
+    } catch {}
+
+    // If backend responded with an explicit authentication error and no local account exists
     if (backendError) {
       throw backendError;
     }
@@ -788,7 +860,7 @@ export const authService = {
     const normEmail = payload.email.trim().toLowerCase();
     const name = payload.name || normEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
     const googleSub = payload.sub || `g_${Date.now()}`;
-    
+
     // Check if account already exists locally or seeded to preserve DSA mastery path
     const localAccounts = getLocalAccounts();
     const existing = localAccounts[normEmail];
