@@ -32,6 +32,15 @@ def get_profile(
     if not profile:
         storage.ensure_learner(effective_id, user.get("full_name") if user else None)
         profile = storage.get_learner_profile(effective_id)
+    elif user and user.get("full_name"):
+        real_name = user["full_name"]
+        curr_name = profile.get("name") or ""
+        if not curr_name or curr_name.startswith("Student student_"):
+            try:
+                storage.update_learner_name(effective_id, real_name)
+                profile["name"] = real_name
+            except Exception:
+                pass
     return {"profile": profile}
 
 @router.get("/onboarding")

@@ -46,6 +46,32 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const USER_CACHE_KEY = 'learnloop_cached_user';
 const LAST_USER_KEY = 'learnloop_last_user';
 
+// Automatic logout after 3.5 hours of inactivity (in the 3 to 4 hours range requested)
+const INACTIVITY_TIMEOUT_MS = 3.5 * 60 * 60 * 1000;
+const LAST_ACTIVITY_KEY = 'learnloop_last_activity_time';
+
+export function recordUserActivity(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+  } catch {}
+}
+
+export function getLastActivityTime(): number {
+  if (typeof localStorage === 'undefined') return Date.now();
+  try {
+    const val = localStorage.getItem(LAST_ACTIVITY_KEY);
+    return val ? parseInt(val, 10) : Date.now();
+  } catch {
+    return Date.now();
+  }
+}
+
+export function isSessionExpiredByInactivity(): boolean {
+  const last = getLastActivityTime();
+  return Date.now() - last > INACTIVITY_TIMEOUT_MS;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     try {
@@ -108,6 +134,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const restoreSession = useCallback(async () => {
+    // 1. Enforce automatic logout after 3 to 4 hours of inactivity
+    const cachedUser = typeof localStorage !== 'undefined' ? localStorage.getItem(USER_CACHE_KEY) : null;
+    if (cachedUser && isSessionExpiredByInactivity()) {
+      console.info('[LearnLoop Auth] Session expired due to inactivity (>3.5 hours). Automatically signing out.');
+      try {
+        localStorage.removeItem(USER_CACHE_KEY);
+        localStorage.removeItem('learnloop_refresh_token');
+        localStorage.removeItem('learnloop_session_token');
+        localStorage.setItem('learnloop_inactivity_expired', 'true');
+      } catch {}
+      setAuthToken(null, null);
+      setUser(null);
+      setLearner(null);
+      setAuthStatus('UNAUTHENTICATED');
+      setIsLoading(false);
+      return;
+    }
+
+    recordUserActivity();
     setIsLoading(true);
     setAuthStatus('INITIALIZING');
     try {
@@ -200,6 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionStorage.removeItem('learnloop_explicit_logout');
       }
     } catch {}
+    recordUserActivity();
     const res = await authService.login({ email, password, remember_me: rememberMe });
     setUser(res.user);
     rememberUser(res.user);
@@ -226,6 +272,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionStorage.removeItem('learnloop_explicit_logout');
       }
     } catch {}
+    recordUserActivity();
     const res = await authService.register(data);
     setUser(res.user);
     rememberUser(res.user);
@@ -246,6 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionStorage.removeItem('learnloop_explicit_logout');
       }
     } catch {}
+    recordUserActivity();
     const res = await authService.loginWithGoogle(idToken);
     setUser(res.user);
     rememberUser(res.user);
@@ -263,6 +311,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const startDemoSession = async () => {
     setIsLoading(true);
     try {
+      recordUserActivity();
       const response = await authService.startDemoSession();
       setUser(response.user);
       rememberUser(response.user);
@@ -310,6 +359,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthModal(null);
     }
   };
+
+  // Listen for user interaction to track active usage and enforce 3-4 hr inactivity timeout
+  useEffect(() => {
+    if (!user) return;
+
+    let lastThrottle = Date.now();
+    recordUserActivity();
+
+    const handleUserInteraction = () => {
+      const now = Date.now();
+      if (now - lastThrottle > 30000) {
+        lastThrottle = now;
+        recordUserActivity();
+      }
+    };
+
+    window.addEventListener('mousedown', handleUserInteraction, { passive: true });
+    window.addEventListener('keydown', handleUserInteraction, { passive: true });
+    window.addEventListener('scroll', handleUserInteraction, { passive: true });
+    window.addEventListener('touchstart', handleUserInteraction, { passive: true });
+
+    // Periodic check every 60s for long-running idle tabs
+    const interval = setInterval(() => {
+      if (isSessionExpiredByInactivity()) {
+        console.warn('[LearnLoop Auth] 3.5 hour inactivity threshold reached. Executing auto-logout.');
+        logout();
+        try {
+          localStorage.setItem('learnloop_inactivity_expired', 'true');
+        } catch {}
+        openAuthModal('login');
+      }
+    }, 60000);
+
+    return () => {
+      window.removeEventListener('mousedown', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+      window.removeEventListener('scroll', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      clearInterval(interval);
+    };
+  }, [user, openAuthModal]);
 
   const updateUser = (updated: User) => {
     setUser(updated);

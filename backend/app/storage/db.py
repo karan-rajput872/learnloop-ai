@@ -1156,8 +1156,15 @@ class StorageManager:
         """Ensure learner and 12 concept mastery rows exist for any given student ID."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT student_id FROM learners WHERE student_id = ?", (student_id,))
-            if not cursor.fetchone():
+            cursor.execute("SELECT student_id, name FROM learners WHERE student_id = ?", (student_id,))
+            existing = cursor.fetchone()
+            if existing:
+                existing_name = existing["name"] if "name" in existing.keys() else None
+                if name and (not existing_name or existing_name.startswith("Student student_") or existing_name != name):
+                    now = datetime.utcnow().isoformat()
+                    cursor.execute("UPDATE learners SET name = ?, updated_at = ? WHERE student_id = ?", (name, now, student_id))
+                    conn.commit()
+            else:
                 now = datetime.utcnow().isoformat()
                 display_name = name or (f"Student {student_id}" if student_id != "student_default" else "Alex Chen")
                 cursor.execute("""
@@ -1349,6 +1356,19 @@ class StorageManager:
             if not learner_row:
                 return None
 
+            learner_name = learner_row["name"] if "name" in learner_row.keys() else ""
+            if not learner_name or learner_name.startswith("Student student_"):
+                try:
+                    cursor.execute("SELECT full_name FROM users WHERE student_id = ? LIMIT 1", (student_id,))
+                    u_row = cursor.fetchone()
+                    if u_row and u_row["full_name"]:
+                        learner_name = u_row["full_name"]
+                        now_ts = datetime.utcnow().isoformat()
+                        cursor.execute("UPDATE learners SET name = ?, updated_at = ? WHERE student_id = ?", (learner_name, now_ts, student_id))
+                        conn.commit()
+                except Exception:
+                    pass
+
             cursor.execute("SELECT * FROM concept_mastery WHERE student_id = ?", (student_id,))
             concept_rows = cursor.fetchall()
             concepts = {}
@@ -1373,7 +1393,7 @@ class StorageManager:
                     min_mastery = m
                     weakest_concept = c_dict
 
-            # Calculate real learning streak from attempts table
+            # Calculate real learning streak from attempts table and gamification records
             cursor.execute("""
                 SELECT DISTINCT SUBSTR(timestamp, 1, 10) as practice_date
                 FROM attempts
@@ -1381,7 +1401,40 @@ class StorageManager:
                 ORDER BY practice_date DESC
             """, (student_id,))
             dates = [r["practice_date"] for r in cursor.fetchall() if r["practice_date"]]
-            streak_days = len(dates)  # Actual distinct practice days logged
+            
+            today_str = datetime.utcnow().strftime("%Y-%m-%d")
+            yesterday_str = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+            streak_days = 0
+            if dates:
+                first_date = dates[0]
+                # A streak requires learning activity performed today or yesterday to remain active
+                if first_date == today_str or first_date == yesterday_str:
+                    expected = datetime.strptime(first_date, "%Y-%m-%d").date()
+                    for d_str in dates:
+                        try:
+                            d = datetime.strptime(d_str, "%Y-%m-%d").date()
+                            if d == expected:
+                                streak_days += 1
+                                expected = expected - timedelta(days=1)
+                            else:
+                                break
+                        except Exception:
+                            break
+
+            # Also check user_streaks table from gamification service
+            try:
+                cursor.execute("SELECT current_streak, last_activity_date FROM user_streaks WHERE student_id = ?", (student_id,))
+                st_row = cursor.fetchone()
+                if st_row and st_row["last_activity_date"]:
+                    last_act = st_row["last_activity_date"]
+                    if last_act == today_str or last_act == yesterday_str:
+                        streak_days = max(streak_days, int(st_row["current_streak"] or 0))
+                    elif last_act < yesterday_str:
+                        # Inactive streak resets to 0
+                        streak_days = 0
+            except Exception:
+                pass
 
             # Fetch recent activity
             cursor.execute("""
@@ -1406,6 +1459,8 @@ class StorageManager:
                 })
 
             profile = dict(learner_row)
+            if learner_name:
+                profile["name"] = learner_name
             profile["diagnostic_completed"] = bool(profile.get("diagnostic_completed", 0))
             profile["onboarding_completed"] = bool(profile.get("onboarding_completed", 0))
             profile["onboarding_completed_at"] = profile.get("onboarding_completed_at")
@@ -1466,6 +1521,14 @@ class StorageManager:
                 }
 
             return profile
+
+    def update_learner_name(self, student_id: str, name: str) -> None:
+        """Update learner display name in learners table."""
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE learners SET name = ?, updated_at = ? WHERE student_id = ?", (name, now, student_id))
+            conn.commit()
 
     def save_learner_onboarding(self, student_id: str, onboarding_dict: Dict[str, Any]) -> Dict[str, Any]:
         """Save onboarding profile data and mark onboarding completed."""

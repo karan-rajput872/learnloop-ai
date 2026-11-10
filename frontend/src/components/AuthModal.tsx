@@ -14,7 +14,8 @@ import {
   Sparkles,
   ArrowRight,
   Eye,
-  EyeOff
+  EyeOff,
+  Clock
 } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
@@ -50,11 +51,26 @@ export const AuthModal: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [inactivityNotice, setInactivityNotice] = useState<string | null>(null);
   const [showGoogleConfigGuide, setShowGoogleConfigGuide] = useState(false);
   const [isGoogleBtnRendered, setIsGoogleBtnRendered] = useState(false);
 
   const googleBtnContainerRef = React.useRef<HTMLDivElement>(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  useEffect(() => {
+    if (authModal === 'login') {
+      try {
+        const wasInactive = localStorage.getItem('learnloop_inactivity_expired');
+        if (wasInactive === 'true') {
+          setInactivityNotice('Your session timed out after 3.5 hours of inactivity. Please sign in to resume your learning.');
+          localStorage.removeItem('learnloop_inactivity_expired');
+        }
+      } catch {}
+    } else {
+      setInactivityNotice(null);
+    }
+  }, [authModal]);
 
   useEffect(() => {
     setErrorMessage(null);
@@ -285,6 +301,16 @@ export const AuthModal: React.FC = () => {
 
         {/* Content Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1" data-lenis-prevent>
+          {inactivityNotice && (
+            <div className="mb-4 p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-xl text-xs flex items-start gap-2.5">
+              <Clock className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
+              <div className="space-y-0.5">
+                <span className="font-semibold block">Automatic Session Sign-Out</span>
+                <span className="leading-relaxed">{inactivityNotice}</span>
+              </div>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="mb-4 p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl text-xs flex flex-col gap-2">
               <div className="flex items-start gap-2.5">

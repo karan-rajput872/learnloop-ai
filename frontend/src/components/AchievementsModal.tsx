@@ -29,7 +29,7 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
 
   const concepts = Object.values(profile.concepts || {});
   const masteredConcepts = concepts.filter((c) => c.mastery_percentage >= 70);
-  const streak = profile.streak_days || 1;
+  const streak = typeof profile.streak_days === 'number' ? profile.streak_days : 0;
   const completedDiagnostic = Boolean(profile.diagnostic_completed);
 
   const badges = [

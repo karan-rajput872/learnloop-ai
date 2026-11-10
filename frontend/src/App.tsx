@@ -64,7 +64,6 @@ function AppContent() {
   }, []);
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [profile, setProfile] = useState<LearnerProfile | null>(null);
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
   const [revisionTasks, setRevisionTasks] = useState<RevisionTask[]>([]);
   const [focusedConceptId, setFocusedConceptId] = useState<string | null>(null);
@@ -87,12 +86,29 @@ function AppContent() {
 
   const [diagnosticInitialMode, setDiagnosticInitialMode] = useState<'quick' | 'comprehensive'>('comprehensive');
 
-  const { user, isAuthenticated, lastUser, isLoading: isAuthLoading, authStatus, openAuthModal, startDemoSession, retryRestoreSession } = useAuth();
+  const { user, learner, isAuthenticated, lastUser, isLoading: isAuthLoading, authStatus, openAuthModal, startDemoSession, retryRestoreSession } = useAuth();
   const { scrollToTop } = useSmoothScroll();
+
+  // Instant synchronous cache retrieval for zero-latency page loads
+  const getInitialProfile = (): LearnerProfile => {
+    try {
+      if (learner) return learner;
+      const currentSid = user?.student_id || (typeof localStorage !== 'undefined' && localStorage.getItem('learnloop_cached_user') ? JSON.parse(localStorage.getItem('learnloop_cached_user')!).student_id : null) || 'student_default';
+      if (typeof localStorage !== 'undefined') {
+        const cached = localStorage.getItem(`learnloop_learner_profile_${currentSid}`);
+        if (cached) return JSON.parse(cached);
+      }
+    } catch {}
+    const studentName = user?.full_name || (user?.email ? user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) : 'Learner');
+    return createDefaultProfile(user?.student_id || 'student_default', studentName);
+  };
+
+  const [profile, setProfile] = useState<LearnerProfile>(getInitialProfile);
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   useScrollReveal([activeTab, profile, isAuthenticated]);
 
   // Connection & Loading States
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isOfflinePreview, setIsOfflinePreview] = useState<boolean>(false);
@@ -103,10 +119,18 @@ function AppContent() {
     profileRef.current = profile;
   }, [profile]);
 
+  // Keep profile synchronized if learner in AuthContext updates
+  useEffect(() => {
+    if (learner) {
+      setProfile(learner);
+    }
+  }, [learner]);
+
   const fetchProfileAndHealth = useCallback(async (isManualRetry = false) => {
     if (isManualRetry) {
       setIsRetrying(true);
     }
+    setIsCloudSyncing(true);
 
     try {
       setApiError(null);
@@ -129,12 +153,6 @@ function AppContent() {
         setProfile(p);
         setIsOfflinePreview(false);
         setApiError(null);
-      } else if (!profileRef.current) {
-        setProfile(createDefaultProfile());
-        setIsOfflinePreview(true);
-        setApiError(
-          'Connecting to LearnLoop AI backend on Render. Free-tier cloud instances sleep when inactive and may take 20–40 seconds to complete a cold start.'
-        );
       }
 
       if (r && Array.isArray(r.tasks)) {
@@ -142,14 +160,12 @@ function AppContent() {
       }
     } catch (e: any) {
       console.error('Error fetching profile or health', e);
-      if (!profileRef.current && !isOfflinePreview) {
-        setApiError(e?.message || 'Network connection failed.');
-      }
     } finally {
       setIsLoading(false);
       setIsRetrying(false);
+      setIsCloudSyncing(false);
     }
-  }, [isOfflinePreview, user?.student_id]);
+  }, [user?.student_id]);
 
   useEffect(() => {
     fetchProfileAndHealth();
@@ -197,16 +213,18 @@ function AppContent() {
     }
   }, [isAuthenticated, user, activeTab, openAuthModal, isAuthLoading, authStatus]);
 
-  // Timer to give visual feedback during cold starts
+  // Timer to track cloud backend synchronization
   useEffect(() => {
     let timer: any;
-    if (isLoading && !profile) {
+    if (isCloudSyncing) {
       timer = setInterval(() => {
         setBootTimer((prev) => prev + 1);
       }, 1000);
+    } else {
+      setBootTimer(0);
     }
     return () => clearInterval(timer);
-  }, [isLoading, profile]);
+  }, [isCloudSyncing]);
 
   const handlePracticeConcept = (conceptId: string) => {
     setFocusedConceptId(conceptId);
@@ -460,29 +478,39 @@ function AppContent() {
 
                 {/* Case C: Success State (Profile Loaded or in Preview) */}
                 {profile && (
-                  <DashboardPage
-                    profile={profile}
-                    revisionTasks={revisionTasks}
-                    onStartDiagnostic={() => {
-                      setDiagnosticInitialMode('comprehensive');
-                      setActiveTab('diagnostic');
-                    }}
-                    onStartQuiz={(cid) => {
-                      setFocusedConceptId(cid || null);
-                      setActiveTab('quiz');
-                    }}
-                    onViewGraph={() => setActiveTab('graph')}
-                    onOpenRevision={() => setActiveTab('revision')}
-                    onOpenProfile={() => setIsProfileModalOpen(true)}
-                    onOpenOnboarding={() => setIsOnboardingOpen(true)}
-                    onOpenTutor={(prompt?: string) => {
-                      setActiveTab('tutor');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    onOpenRoadmap={() => setIsRoadmapOpen(true)}
-                    onOpenSkills={() => setIsSkillsOpen(true)}
-                    onOpenAchievements={() => setIsAchievementsOpen(true)}
-                  />
+                  <>
+                    {isCloudSyncing && bootTimer > 2 && (
+                      <div className="mb-4 p-3 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs flex items-center justify-between gap-3 animate-fade-in shadow-xs">
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-500 shrink-0" />
+                          <span>Syncing with cloud engine ({bootTimer}s elapsed). Platform is active with local DSA mastery path.</span>
+                        </div>
+                      </div>
+                    )}
+                    <DashboardPage
+                      profile={profile}
+                      revisionTasks={revisionTasks}
+                      onStartDiagnostic={() => {
+                        setDiagnosticInitialMode('comprehensive');
+                        setActiveTab('diagnostic');
+                      }}
+                      onStartQuiz={(cid) => {
+                        setFocusedConceptId(cid || null);
+                        setActiveTab('quiz');
+                      }}
+                      onViewGraph={() => setActiveTab('graph')}
+                      onOpenRevision={() => setActiveTab('revision')}
+                      onOpenProfile={() => setIsProfileModalOpen(true)}
+                      onOpenOnboarding={() => setIsOnboardingOpen(true)}
+                      onOpenTutor={(prompt?: string) => {
+                        setActiveTab('tutor');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      onOpenRoadmap={() => setIsRoadmapOpen(true)}
+                      onOpenSkills={() => setIsSkillsOpen(true)}
+                      onOpenAchievements={() => setIsAchievementsOpen(true)}
+                    />
+                  </>
                 )}
               </>
             )}

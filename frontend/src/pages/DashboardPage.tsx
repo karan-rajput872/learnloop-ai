@@ -87,12 +87,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     mastery_percentage: 0
   };
 
+  const streakDays = typeof profile.streak_days === 'number' ? profile.streak_days : 0;
+
+  // Resolve authentic student display name: prioritize real user full_name, filter out student_id placeholders
+  const rawName = user?.full_name || profile.name || '';
+  const isAutoId = !rawName || rawName.toLowerCase().startsWith('student student_') || rawName.toLowerCase().startsWith('student_');
+  const studentDisplayName = isAutoId
+    ? (user?.email ? user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) : 'Learner')
+    : rawName;
+
   // Dynamic Typewriter Phrases for the Welcome Hero Card
   const heroPhrases = [
     completedDiagnostic
       ? `Next focus: Master ${primaryFocusConcept.concept_name} (Current: ${Math.round(primaryFocusConcept.mastery_percentage)}%)`
       : 'Calibrate your 12-concept baseline with our adaptive diagnostic',
-    `Active learning streak: ${profile.streak_days || 1} day${(profile.streak_days || 1) > 1 ? 's' : ''} 🔥`,
+    streakDays > 0
+      ? `Active learning streak: ${streakDays} day${streakDays > 1 ? 's' : ''} 🔥`
+      : 'Start your daily learning streak with an assessment today! 🔥',
     'Socratic AI Tutor is online for guided problem breakdowns',
     'Real-time misconception detection active across all assessments'
   ];
@@ -218,14 +229,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <User className="w-3 h-3" />
               {category}
             </span>
-            <span className="inline-flex items-center gap-1 text-xs font-mono text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800/60">
-              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-              <span>{profile.streak_days || 1}d Streak</span>
+            <span className={`inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-1 rounded-full border ${
+              streakDays > 0
+                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+            }`}>
+              <Flame className={`w-3.5 h-3.5 ${streakDays > 0 ? 'fill-amber-500 text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} />
+              <span>{streakDays}d Streak</span>
             </span>
           </div>
 
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold font-heading tracking-tight text-[#17243A] dark:text-[#F1F5FB]">
-            Welcome back, <span className="text-[#38B7A5]">{profile.name}</span>
+            Welcome back, <span className="text-[#38B7A5]">{studentDisplayName}</span>
           </h1>
 
           <div className="text-sm text-[#243B63] dark:text-[#A8B7CC] font-medium min-h-[1.75rem] flex items-center">
@@ -503,7 +518,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#20344E] border border-[#E2E8F0] dark:border-[#243B5B]">
                 <span className="text-lg font-bold font-mono text-[#6C8FF5] block">
-                  {profile.streak_days || 1}d
+                  {streakDays}d
                 </span>
                 <span className="text-[10px] text-[#64748B] dark:text-[#A8B7CC]">Active Streak</span>
               </div>

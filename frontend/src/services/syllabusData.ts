@@ -231,7 +231,7 @@ export const FALLBACK_EDGES: ConceptEdge[] = [
   { from: 'recursion', to: 'graphs' }
 ];
 
-export function createDefaultProfile(): LearnerProfile {
+export function createDefaultProfile(studentId: string = 'student_default', name: string = 'Alex Chen'): LearnerProfile {
   const conceptsMap: Record<string, ConceptMastery> = {};
   for (const c of FALLBACK_CONCEPTS) {
     conceptsMap[c.id] = {
@@ -252,8 +252,8 @@ export function createDefaultProfile(): LearnerProfile {
   }
 
   return {
-    student_id: 'student_default',
-    name: 'Alex Chen',
+    student_id: studentId,
+    name: name,
     target_exam: 'Data Structures & Algorithms Exam',
     overall_mastery: 0.0,
     diagnostic_completed: false,
