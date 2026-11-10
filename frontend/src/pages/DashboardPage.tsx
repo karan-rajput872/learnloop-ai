@@ -229,11 +229,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <User className="w-3 h-3" />
               {category}
             </span>
-            <span className={`inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-1 rounded-full border ${
-              streakDays > 0
+            <span className={`inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-1 rounded-full border ${streakDays > 0
                 ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-            }`}>
+              }`}>
               <Flame className={`w-3.5 h-3.5 ${streakDays > 0 ? 'fill-amber-500 text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} />
               <span>{streakDays}d Streak</span>
             </span>
@@ -578,10 +577,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="flex items-center gap-2">
                     <span
                       className={`font-mono font-bold ${c.mastery_percentage >= 70
-                          ? 'text-[#38B7A5]'
-                          : c.mastery_percentage >= 40
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-[#6C8FF5]'
+                        ? 'text-[#38B7A5]'
+                        : c.mastery_percentage >= 40
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-[#6C8FF5]'
                         }`}
                     >
                       {Math.round(c.mastery_percentage)}%
@@ -598,10 +597,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-300 ${c.mastery_percentage >= 70
-                        ? 'bg-[#38B7A5]'
-                        : c.mastery_percentage >= 40
-                          ? 'bg-amber-500'
-                          : 'bg-[#6C8FF5]'
+                      ? 'bg-[#38B7A5]'
+                      : c.mastery_percentage >= 40
+                        ? 'bg-amber-500'
+                        : 'bg-[#6C8FF5]'
                       }`}
                     style={{ width: `${Math.min(100, Math.max(5, c.mastery_percentage))}%` }}
                   />

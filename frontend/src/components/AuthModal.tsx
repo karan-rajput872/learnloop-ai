@@ -66,7 +66,7 @@ export const AuthModal: React.FC = () => {
           setInactivityNotice('Your session timed out after 3.5 hours of inactivity. Please sign in to resume your learning.');
           localStorage.removeItem('learnloop_inactivity_expired');
         }
-      } catch {}
+      } catch { }
     } else {
       setInactivityNotice(null);
     }
@@ -161,7 +161,7 @@ export const AuthModal: React.FC = () => {
     }
     try {
       localStorage.setItem('learnloop_saved_email', trimmedEmail);
-    } catch {}
+    } catch { }
     setIsLoading(true);
     try {
       await login(trimmedEmail, password);
@@ -185,7 +185,7 @@ export const AuthModal: React.FC = () => {
     }
     try {
       localStorage.setItem('learnloop_saved_email', trimmedEmail);
-    } catch {}
+    } catch { }
     if (password.length < 8) {
       setErrorMessage('Password must be at least 8 characters long.');
       return;
@@ -410,7 +410,7 @@ export const AuthModal: React.FC = () => {
                       setPassword('');
                       try {
                         localStorage.removeItem('learnloop_saved_email');
-                      } catch {}
+                      } catch { }
                     }}
                     className="text-xs text-[#6C8FF5] hover:underline cursor-pointer shrink-0 ml-2"
                   >

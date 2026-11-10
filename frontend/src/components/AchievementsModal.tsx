@@ -143,18 +143,16 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
               return (
                 <div
                   key={badge.id}
-                  className={`p-3.5 rounded-xl border transition-all flex items-start gap-3 ${
-                    badge.unlocked
+                  className={`p-3.5 rounded-xl border transition-all flex items-start gap-3 ${badge.unlocked
                       ? 'bg-white dark:bg-[#182A42] border-[#E2E8F0] dark:border-[#243B5B] shadow-xs'
                       : 'bg-slate-50 dark:bg-[#20344E]/50 border-dashed border-slate-200 dark:border-slate-800 opacity-60'
-                  }`}
+                    }`}
                 >
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                      badge.unlocked
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${badge.unlocked
                         ? 'bg-[#38B7A5]/15 text-[#38B7A5] border border-[#38B7A5]/30'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
-                    }`}
+                      }`}
                   >
                     {badge.unlocked ? <Icon className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                   </div>
